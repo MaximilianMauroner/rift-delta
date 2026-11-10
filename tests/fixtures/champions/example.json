@@ -1,0 +1,1640 @@
+{
+  "version": 1,
+  "source": {
+    "kind": "synthetic",
+    "id": "champions-deterministic-demo-v1",
+    "collectedAt": "2026-10-03T00:00:00Z",
+    "selectionDescription": "Twelve invented matches for command verification. No Riot or creator records."
+  },
+  "scope": {
+    "patch": "synthetic-1",
+    "queueId": 420,
+    "platform": "SYNTHETIC",
+    "population": "solo-queue",
+    "rankSnapshotLabel": "Synthetic example. No observed rank."
+  },
+  "window": {
+    "start": "2026-10-01T00:00:00Z",
+    "end": "2026-10-02T00:00:00Z"
+  },
+  "matches": [
+    {
+      "matchId": "synthetic-1",
+      "scope": {
+        "patch": "synthetic-1",
+        "queueId": 420,
+        "platform": "SYNTHETIC",
+        "population": "solo-queue",
+        "rankSnapshotLabel": "Synthetic example. No observed rank."
+      },
+      "startedAt": "2026-10-01T00:00:00Z",
+      "durationSeconds": 1200,
+      "winnerTeamId": 100,
+      "participants": [
+        {
+          "participantId": "1",
+          "teamId": 100,
+          "championId": 11,
+          "role": "TOP",
+          "won": true,
+          "finalDamage": {
+            "physical": 1000,
+            "magic": 2500,
+            "true": 100
+          }
+        },
+        {
+          "participantId": "2",
+          "teamId": 100,
+          "championId": 12,
+          "role": "JUNGLE",
+          "won": true
+        },
+        {
+          "participantId": "3",
+          "teamId": 100,
+          "championId": 3,
+          "role": "MIDDLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 1600,
+            "magic": 2300,
+            "true": 100
+          }
+        },
+        {
+          "participantId": "4",
+          "teamId": 100,
+          "championId": 4,
+          "role": "BOTTOM",
+          "won": true,
+          "finalDamage": {
+            "physical": 1900,
+            "magic": 2200,
+            "true": 100
+          }
+        },
+        {
+          "participantId": "5",
+          "teamId": 100,
+          "championId": 5,
+          "role": "UTILITY",
+          "won": true,
+          "finalDamage": {
+            "physical": 2200,
+            "magic": 2100,
+            "true": 100
+          }
+        },
+        {
+          "participantId": "6",
+          "teamId": 200,
+          "championId": 6,
+          "role": "TOP",
+          "won": false,
+          "finalDamage": {
+            "physical": 2500,
+            "magic": 2000,
+            "true": 100
+          }
+        },
+        {
+          "participantId": "7",
+          "teamId": 200,
+          "championId": 7,
+          "role": "JUNGLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 2800,
+            "magic": 1900,
+            "true": 100
+          }
+        },
+        {
+          "participantId": "8",
+          "teamId": 200,
+          "championId": 8,
+          "role": "MIDDLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 3100,
+            "magic": 1800,
+            "true": 100
+          }
+        },
+        {
+          "participantId": "9",
+          "teamId": 200,
+          "championId": 9,
+          "role": "BOTTOM",
+          "won": false,
+          "finalDamage": {
+            "physical": 3400,
+            "magic": 1700,
+            "true": 100
+          }
+        },
+        {
+          "participantId": "10",
+          "teamId": 200,
+          "championId": 10,
+          "role": "UTILITY",
+          "won": false,
+          "finalDamage": {
+            "physical": 3700,
+            "magic": 1600,
+            "true": 100
+          }
+        }
+      ]
+    },
+    {
+      "matchId": "synthetic-2",
+      "scope": {
+        "patch": "synthetic-1",
+        "queueId": 420,
+        "platform": "SYNTHETIC",
+        "population": "solo-queue",
+        "rankSnapshotLabel": "Synthetic example. No observed rank."
+      },
+      "startedAt": "2026-10-01T01:00:00Z",
+      "durationSeconds": 1290,
+      "winnerTeamId": 100,
+      "participants": [
+        {
+          "participantId": "1",
+          "teamId": 100,
+          "championId": 1,
+          "role": "TOP",
+          "won": true,
+          "finalDamage": {
+            "physical": 1000,
+            "magic": 2500,
+            "true": 110
+          }
+        },
+        {
+          "participantId": "2",
+          "teamId": 100,
+          "championId": 2,
+          "role": "JUNGLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 1300,
+            "magic": 2400,
+            "true": 110
+          }
+        },
+        {
+          "participantId": "3",
+          "teamId": 100,
+          "championId": 3,
+          "role": "MIDDLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 1600,
+            "magic": 2300,
+            "true": 110
+          }
+        },
+        {
+          "participantId": "4",
+          "teamId": 100,
+          "championId": 4,
+          "role": "BOTTOM",
+          "won": true,
+          "finalDamage": {
+            "physical": 1900,
+            "magic": 2200,
+            "true": 110
+          }
+        },
+        {
+          "participantId": "5",
+          "teamId": 100,
+          "championId": 5,
+          "role": "UTILITY",
+          "won": true,
+          "finalDamage": {
+            "physical": 2200,
+            "magic": 2100,
+            "true": 110
+          }
+        },
+        {
+          "participantId": "6",
+          "teamId": 200,
+          "championId": 6,
+          "role": "TOP",
+          "won": false,
+          "finalDamage": {
+            "physical": 2500,
+            "magic": 2000,
+            "true": 110
+          }
+        },
+        {
+          "participantId": "7",
+          "teamId": 200,
+          "championId": 7,
+          "role": "JUNGLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 2800,
+            "magic": 1900,
+            "true": 110
+          }
+        },
+        {
+          "participantId": "8",
+          "teamId": 200,
+          "championId": 18,
+          "role": "MIDDLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 3100,
+            "magic": 1800,
+            "true": 110
+          }
+        },
+        {
+          "participantId": "9",
+          "teamId": 200,
+          "championId": 9,
+          "role": "BOTTOM",
+          "won": false,
+          "finalDamage": {
+            "physical": 3400,
+            "magic": 1700,
+            "true": 110
+          }
+        },
+        {
+          "participantId": "10",
+          "teamId": 200,
+          "championId": 10,
+          "role": "UTILITY",
+          "won": false,
+          "finalDamage": {
+            "physical": 3700,
+            "magic": 1600,
+            "true": 110
+          }
+        }
+      ]
+    },
+    {
+      "matchId": "synthetic-3",
+      "scope": {
+        "patch": "synthetic-1",
+        "queueId": 420,
+        "platform": "SYNTHETIC",
+        "population": "solo-queue",
+        "rankSnapshotLabel": "Synthetic example. No observed rank."
+      },
+      "startedAt": "2026-10-01T02:00:00Z",
+      "durationSeconds": 1380,
+      "winnerTeamId": 200,
+      "participants": [
+        {
+          "participantId": "1",
+          "teamId": 100,
+          "championId": 1,
+          "role": "TOP",
+          "won": false,
+          "finalDamage": {
+            "physical": 1000,
+            "magic": 2500,
+            "true": 120
+          }
+        },
+        {
+          "participantId": "2",
+          "teamId": 100,
+          "championId": 12,
+          "role": "JUNGLE",
+          "won": false
+        },
+        {
+          "participantId": "3",
+          "teamId": 100,
+          "championId": 3,
+          "role": "MIDDLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 1600,
+            "magic": 2300,
+            "true": 120
+          }
+        },
+        {
+          "participantId": "4",
+          "teamId": 100,
+          "championId": 4,
+          "role": "BOTTOM",
+          "won": false,
+          "finalDamage": {
+            "physical": 1900,
+            "magic": 2200,
+            "true": 120
+          }
+        },
+        {
+          "participantId": "5",
+          "teamId": 100,
+          "championId": 5,
+          "role": "UTILITY",
+          "won": false,
+          "finalDamage": {
+            "physical": 2200,
+            "magic": 2100,
+            "true": 120
+          }
+        },
+        {
+          "participantId": "6",
+          "teamId": 200,
+          "championId": 6,
+          "role": "TOP",
+          "won": true,
+          "finalDamage": {
+            "physical": 2500,
+            "magic": 2000,
+            "true": 120
+          }
+        },
+        {
+          "participantId": "7",
+          "teamId": 200,
+          "championId": 7,
+          "role": "JUNGLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 2800,
+            "magic": 1900,
+            "true": 120
+          }
+        },
+        {
+          "participantId": "8",
+          "teamId": 200,
+          "championId": 8,
+          "role": "MIDDLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 3100,
+            "magic": 1800,
+            "true": 120
+          }
+        },
+        {
+          "participantId": "9",
+          "teamId": 200,
+          "championId": 9,
+          "role": "BOTTOM",
+          "won": true,
+          "finalDamage": {
+            "physical": 3400,
+            "magic": 1700,
+            "true": 120
+          }
+        },
+        {
+          "participantId": "10",
+          "teamId": 200,
+          "championId": 10,
+          "role": "UTILITY",
+          "won": true,
+          "finalDamage": {
+            "physical": 3700,
+            "magic": 1600,
+            "true": 120
+          }
+        }
+      ]
+    },
+    {
+      "matchId": "synthetic-4",
+      "scope": {
+        "patch": "synthetic-1",
+        "queueId": 420,
+        "platform": "SYNTHETIC",
+        "population": "solo-queue",
+        "rankSnapshotLabel": "Synthetic example. No observed rank."
+      },
+      "startedAt": "2026-10-01T03:00:00Z",
+      "durationSeconds": 1470,
+      "winnerTeamId": 200,
+      "participants": [
+        {
+          "participantId": "1",
+          "teamId": 100,
+          "championId": 11,
+          "role": "TOP",
+          "won": false,
+          "finalDamage": {
+            "physical": 1000,
+            "magic": 2500,
+            "true": 130
+          }
+        },
+        {
+          "participantId": "2",
+          "teamId": 100,
+          "championId": 2,
+          "role": "JUNGLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 1300,
+            "magic": 2400,
+            "true": 130
+          }
+        },
+        {
+          "participantId": "3",
+          "teamId": 100,
+          "championId": 3,
+          "role": "MIDDLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 1600,
+            "magic": 2300,
+            "true": 130
+          }
+        },
+        {
+          "participantId": "4",
+          "teamId": 100,
+          "championId": 4,
+          "role": "BOTTOM",
+          "won": false,
+          "finalDamage": {
+            "physical": 1900,
+            "magic": 2200,
+            "true": 130
+          }
+        },
+        {
+          "participantId": "5",
+          "teamId": 100,
+          "championId": 5,
+          "role": "UTILITY",
+          "won": false,
+          "finalDamage": {
+            "physical": 2200,
+            "magic": 2100,
+            "true": 130
+          }
+        },
+        {
+          "participantId": "6",
+          "teamId": 200,
+          "championId": 6,
+          "role": "TOP",
+          "won": true,
+          "finalDamage": {
+            "physical": 2500,
+            "magic": 2000,
+            "true": 130
+          }
+        },
+        {
+          "participantId": "7",
+          "teamId": 200,
+          "championId": 7,
+          "role": "JUNGLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 2800,
+            "magic": 1900,
+            "true": 130
+          }
+        },
+        {
+          "participantId": "8",
+          "teamId": 200,
+          "championId": 8,
+          "role": "MIDDLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 3100,
+            "magic": 1800,
+            "true": 130
+          }
+        },
+        {
+          "participantId": "9",
+          "teamId": 200,
+          "championId": 9,
+          "role": "BOTTOM",
+          "won": true,
+          "finalDamage": {
+            "physical": 3400,
+            "magic": 1700,
+            "true": 130
+          }
+        },
+        {
+          "participantId": "10",
+          "teamId": 200,
+          "championId": 10,
+          "role": "UTILITY",
+          "won": true,
+          "finalDamage": {
+            "physical": 3700,
+            "magic": 1600,
+            "true": 130
+          }
+        }
+      ]
+    },
+    {
+      "matchId": "synthetic-5",
+      "scope": {
+        "patch": "synthetic-1",
+        "queueId": 420,
+        "platform": "SYNTHETIC",
+        "population": "solo-queue",
+        "rankSnapshotLabel": "Synthetic example. No observed rank."
+      },
+      "startedAt": "2026-10-01T04:00:00Z",
+      "durationSeconds": 1560,
+      "winnerTeamId": 100,
+      "participants": [
+        {
+          "participantId": "1",
+          "teamId": 100,
+          "championId": 1,
+          "role": "TOP",
+          "won": true,
+          "finalDamage": {
+            "physical": 1000,
+            "magic": 2500,
+            "true": 140
+          }
+        },
+        {
+          "participantId": "2",
+          "teamId": 100,
+          "championId": 12,
+          "role": "JUNGLE",
+          "won": true
+        },
+        {
+          "participantId": "3",
+          "teamId": 100,
+          "championId": 3,
+          "role": "MIDDLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 1600,
+            "magic": 2300,
+            "true": 140
+          }
+        },
+        {
+          "participantId": "4",
+          "teamId": 100,
+          "championId": 4,
+          "role": "BOTTOM",
+          "won": true,
+          "finalDamage": {
+            "physical": 1900,
+            "magic": 2200,
+            "true": 140
+          }
+        },
+        {
+          "participantId": "5",
+          "teamId": 100,
+          "championId": 5,
+          "role": "UTILITY",
+          "won": true,
+          "finalDamage": {
+            "physical": 2200,
+            "magic": 2100,
+            "true": 140
+          }
+        },
+        {
+          "participantId": "6",
+          "teamId": 200,
+          "championId": 6,
+          "role": "TOP",
+          "won": false,
+          "finalDamage": {
+            "physical": 2500,
+            "magic": 2000,
+            "true": 140
+          }
+        },
+        {
+          "participantId": "7",
+          "teamId": 200,
+          "championId": 7,
+          "role": "JUNGLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 2800,
+            "magic": 1900,
+            "true": 140
+          }
+        },
+        {
+          "participantId": "8",
+          "teamId": 200,
+          "championId": 18,
+          "role": "MIDDLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 3100,
+            "magic": 1800,
+            "true": 140
+          }
+        },
+        {
+          "participantId": "9",
+          "teamId": 200,
+          "championId": 9,
+          "role": "BOTTOM",
+          "won": false,
+          "finalDamage": {
+            "physical": 3400,
+            "magic": 1700,
+            "true": 140
+          }
+        },
+        {
+          "participantId": "10",
+          "teamId": 200,
+          "championId": 10,
+          "role": "UTILITY",
+          "won": false,
+          "finalDamage": {
+            "physical": 3700,
+            "magic": 1600,
+            "true": 140
+          }
+        }
+      ]
+    },
+    {
+      "matchId": "synthetic-6",
+      "scope": {
+        "patch": "synthetic-1",
+        "queueId": 420,
+        "platform": "SYNTHETIC",
+        "population": "solo-queue",
+        "rankSnapshotLabel": "Synthetic example. No observed rank."
+      },
+      "startedAt": "2026-10-01T05:00:00Z",
+      "durationSeconds": 1650,
+      "winnerTeamId": 100,
+      "participants": [
+        {
+          "participantId": "1",
+          "teamId": 100,
+          "championId": 1,
+          "role": "TOP",
+          "won": true,
+          "finalDamage": {
+            "physical": 1000,
+            "magic": 2500,
+            "true": 150
+          }
+        },
+        {
+          "participantId": "2",
+          "teamId": 100,
+          "championId": 2,
+          "role": "JUNGLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 1300,
+            "magic": 2400,
+            "true": 150
+          }
+        },
+        {
+          "participantId": "3",
+          "teamId": 100,
+          "championId": 3,
+          "role": "MIDDLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 1600,
+            "magic": 2300,
+            "true": 150
+          }
+        },
+        {
+          "participantId": "4",
+          "teamId": 100,
+          "championId": 4,
+          "role": "BOTTOM",
+          "won": true,
+          "finalDamage": {
+            "physical": 1900,
+            "magic": 2200,
+            "true": 150
+          }
+        },
+        {
+          "participantId": "5",
+          "teamId": 100,
+          "championId": 5,
+          "role": "UTILITY",
+          "won": true,
+          "finalDamage": {
+            "physical": 2200,
+            "magic": 2100,
+            "true": 150
+          }
+        },
+        {
+          "participantId": "6",
+          "teamId": 200,
+          "championId": 6,
+          "role": "TOP",
+          "won": false,
+          "finalDamage": {
+            "physical": 2500,
+            "magic": 2000,
+            "true": 150
+          }
+        },
+        {
+          "participantId": "7",
+          "teamId": 200,
+          "championId": 7,
+          "role": "JUNGLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 2800,
+            "magic": 1900,
+            "true": 150
+          }
+        },
+        {
+          "participantId": "8",
+          "teamId": 200,
+          "championId": 8,
+          "role": "MIDDLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 3100,
+            "magic": 1800,
+            "true": 150
+          }
+        },
+        {
+          "participantId": "9",
+          "teamId": 200,
+          "championId": 9,
+          "role": "BOTTOM",
+          "won": false,
+          "finalDamage": {
+            "physical": 3400,
+            "magic": 1700,
+            "true": 150
+          }
+        },
+        {
+          "participantId": "10",
+          "teamId": 200,
+          "championId": 10,
+          "role": "UTILITY",
+          "won": false,
+          "finalDamage": {
+            "physical": 3700,
+            "magic": 1600,
+            "true": 150
+          }
+        }
+      ]
+    },
+    {
+      "matchId": "synthetic-7",
+      "scope": {
+        "patch": "synthetic-1",
+        "queueId": 420,
+        "platform": "SYNTHETIC",
+        "population": "solo-queue",
+        "rankSnapshotLabel": "Synthetic example. No observed rank."
+      },
+      "startedAt": "2026-10-01T06:00:00Z",
+      "durationSeconds": 1740,
+      "winnerTeamId": 200,
+      "participants": [
+        {
+          "participantId": "1",
+          "teamId": 100,
+          "championId": 11,
+          "role": "TOP",
+          "won": false,
+          "finalDamage": {
+            "physical": 1000,
+            "magic": 2500,
+            "true": 160
+          }
+        },
+        {
+          "participantId": "2",
+          "teamId": 100,
+          "championId": 12,
+          "role": "JUNGLE",
+          "won": false
+        },
+        {
+          "participantId": "3",
+          "teamId": 100,
+          "championId": 3,
+          "role": "MIDDLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 1600,
+            "magic": 2300,
+            "true": 160
+          }
+        },
+        {
+          "participantId": "4",
+          "teamId": 100,
+          "championId": 4,
+          "role": "BOTTOM",
+          "won": false,
+          "finalDamage": {
+            "physical": 1900,
+            "magic": 2200,
+            "true": 160
+          }
+        },
+        {
+          "participantId": "5",
+          "teamId": 100,
+          "championId": 5,
+          "role": "UTILITY",
+          "won": false,
+          "finalDamage": {
+            "physical": 2200,
+            "magic": 2100,
+            "true": 160
+          }
+        },
+        {
+          "participantId": "6",
+          "teamId": 200,
+          "championId": 6,
+          "role": "TOP",
+          "won": true,
+          "finalDamage": {
+            "physical": 2500,
+            "magic": 2000,
+            "true": 160
+          }
+        },
+        {
+          "participantId": "7",
+          "teamId": 200,
+          "championId": 7,
+          "role": "JUNGLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 2800,
+            "magic": 1900,
+            "true": 160
+          }
+        },
+        {
+          "participantId": "8",
+          "teamId": 200,
+          "championId": 8,
+          "role": "MIDDLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 3100,
+            "magic": 1800,
+            "true": 160
+          }
+        },
+        {
+          "participantId": "9",
+          "teamId": 200,
+          "championId": 9,
+          "role": "BOTTOM",
+          "won": true,
+          "finalDamage": {
+            "physical": 3400,
+            "magic": 1700,
+            "true": 160
+          }
+        },
+        {
+          "participantId": "10",
+          "teamId": 200,
+          "championId": 10,
+          "role": "UTILITY",
+          "won": true,
+          "finalDamage": {
+            "physical": 3700,
+            "magic": 1600,
+            "true": 160
+          }
+        }
+      ]
+    },
+    {
+      "matchId": "synthetic-8",
+      "scope": {
+        "patch": "synthetic-1",
+        "queueId": 420,
+        "platform": "SYNTHETIC",
+        "population": "solo-queue",
+        "rankSnapshotLabel": "Synthetic example. No observed rank."
+      },
+      "startedAt": "2026-10-01T07:00:00Z",
+      "durationSeconds": 1830,
+      "winnerTeamId": 200,
+      "participants": [
+        {
+          "participantId": "1",
+          "teamId": 100,
+          "championId": 1,
+          "role": "TOP",
+          "won": false,
+          "finalDamage": {
+            "physical": 1000,
+            "magic": 2500,
+            "true": 170
+          }
+        },
+        {
+          "participantId": "2",
+          "teamId": 100,
+          "championId": 2,
+          "role": "JUNGLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 1300,
+            "magic": 2400,
+            "true": 170
+          }
+        },
+        {
+          "participantId": "3",
+          "teamId": 100,
+          "championId": 3,
+          "role": "MIDDLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 1600,
+            "magic": 2300,
+            "true": 170
+          }
+        },
+        {
+          "participantId": "4",
+          "teamId": 100,
+          "championId": 4,
+          "role": "BOTTOM",
+          "won": false,
+          "finalDamage": {
+            "physical": 1900,
+            "magic": 2200,
+            "true": 170
+          }
+        },
+        {
+          "participantId": "5",
+          "teamId": 100,
+          "championId": 5,
+          "role": "UTILITY",
+          "won": false,
+          "finalDamage": {
+            "physical": 2200,
+            "magic": 2100,
+            "true": 170
+          }
+        },
+        {
+          "participantId": "6",
+          "teamId": 200,
+          "championId": 6,
+          "role": "TOP",
+          "won": true,
+          "finalDamage": {
+            "physical": 2500,
+            "magic": 2000,
+            "true": 170
+          }
+        },
+        {
+          "participantId": "7",
+          "teamId": 200,
+          "championId": 7,
+          "role": "JUNGLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 2800,
+            "magic": 1900,
+            "true": 170
+          }
+        },
+        {
+          "participantId": "8",
+          "teamId": 200,
+          "championId": 18,
+          "role": "MIDDLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 3100,
+            "magic": 1800,
+            "true": 170
+          }
+        },
+        {
+          "participantId": "9",
+          "teamId": 200,
+          "championId": 9,
+          "role": "BOTTOM",
+          "won": true,
+          "finalDamage": {
+            "physical": 3400,
+            "magic": 1700,
+            "true": 170
+          }
+        },
+        {
+          "participantId": "10",
+          "teamId": 200,
+          "championId": 10,
+          "role": "UTILITY",
+          "won": true,
+          "finalDamage": {
+            "physical": 3700,
+            "magic": 1600,
+            "true": 170
+          }
+        }
+      ]
+    },
+    {
+      "matchId": "synthetic-9",
+      "scope": {
+        "patch": "synthetic-1",
+        "queueId": 420,
+        "platform": "SYNTHETIC",
+        "population": "solo-queue",
+        "rankSnapshotLabel": "Synthetic example. No observed rank."
+      },
+      "startedAt": "2026-10-01T08:00:00Z",
+      "durationSeconds": 1920,
+      "winnerTeamId": 100,
+      "participants": [
+        {
+          "participantId": "1",
+          "teamId": 100,
+          "championId": 1,
+          "role": "TOP",
+          "won": true,
+          "finalDamage": {
+            "physical": 1000,
+            "magic": 2500,
+            "true": 180
+          }
+        },
+        {
+          "participantId": "2",
+          "teamId": 100,
+          "championId": 12,
+          "role": "JUNGLE",
+          "won": true
+        },
+        {
+          "participantId": "3",
+          "teamId": 100,
+          "championId": 3,
+          "role": "MIDDLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 1600,
+            "magic": 2300,
+            "true": 180
+          }
+        },
+        {
+          "participantId": "4",
+          "teamId": 100,
+          "championId": 4,
+          "role": "BOTTOM",
+          "won": true,
+          "finalDamage": {
+            "physical": 1900,
+            "magic": 2200,
+            "true": 180
+          }
+        },
+        {
+          "participantId": "5",
+          "teamId": 100,
+          "championId": 5,
+          "role": "UTILITY",
+          "won": true,
+          "finalDamage": {
+            "physical": 2200,
+            "magic": 2100,
+            "true": 180
+          }
+        },
+        {
+          "participantId": "6",
+          "teamId": 200,
+          "championId": 6,
+          "role": "TOP",
+          "won": false,
+          "finalDamage": {
+            "physical": 2500,
+            "magic": 2000,
+            "true": 180
+          }
+        },
+        {
+          "participantId": "7",
+          "teamId": 200,
+          "championId": 7,
+          "role": "JUNGLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 2800,
+            "magic": 1900,
+            "true": 180
+          }
+        },
+        {
+          "participantId": "8",
+          "teamId": 200,
+          "championId": 8,
+          "role": "MIDDLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 3100,
+            "magic": 1800,
+            "true": 180
+          }
+        },
+        {
+          "participantId": "9",
+          "teamId": 200,
+          "championId": 9,
+          "role": "BOTTOM",
+          "won": false,
+          "finalDamage": {
+            "physical": 3400,
+            "magic": 1700,
+            "true": 180
+          }
+        },
+        {
+          "participantId": "10",
+          "teamId": 200,
+          "championId": 10,
+          "role": "UTILITY",
+          "won": false,
+          "finalDamage": {
+            "physical": 3700,
+            "magic": 1600,
+            "true": 180
+          }
+        }
+      ]
+    },
+    {
+      "matchId": "synthetic-10",
+      "scope": {
+        "patch": "synthetic-1",
+        "queueId": 420,
+        "platform": "SYNTHETIC",
+        "population": "solo-queue",
+        "rankSnapshotLabel": "Synthetic example. No observed rank."
+      },
+      "startedAt": "2026-10-01T09:00:00Z",
+      "durationSeconds": 2010,
+      "winnerTeamId": 100,
+      "participants": [
+        {
+          "participantId": "1",
+          "teamId": 100,
+          "championId": 11,
+          "role": "TOP",
+          "won": true,
+          "finalDamage": {
+            "physical": 1000,
+            "magic": 2500,
+            "true": 190
+          }
+        },
+        {
+          "participantId": "2",
+          "teamId": 100,
+          "championId": 2,
+          "role": "JUNGLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 1300,
+            "magic": 2400,
+            "true": 190
+          }
+        },
+        {
+          "participantId": "3",
+          "teamId": 100,
+          "championId": 3,
+          "role": "MIDDLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 1600,
+            "magic": 2300,
+            "true": 190
+          }
+        },
+        {
+          "participantId": "4",
+          "teamId": 100,
+          "championId": 4,
+          "role": "BOTTOM",
+          "won": true,
+          "finalDamage": {
+            "physical": 1900,
+            "magic": 2200,
+            "true": 190
+          }
+        },
+        {
+          "participantId": "5",
+          "teamId": 100,
+          "championId": 5,
+          "role": "UTILITY",
+          "won": true,
+          "finalDamage": {
+            "physical": 2200,
+            "magic": 2100,
+            "true": 190
+          }
+        },
+        {
+          "participantId": "6",
+          "teamId": 200,
+          "championId": 6,
+          "role": "TOP",
+          "won": false,
+          "finalDamage": {
+            "physical": 2500,
+            "magic": 2000,
+            "true": 190
+          }
+        },
+        {
+          "participantId": "7",
+          "teamId": 200,
+          "championId": 7,
+          "role": "JUNGLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 2800,
+            "magic": 1900,
+            "true": 190
+          }
+        },
+        {
+          "participantId": "8",
+          "teamId": 200,
+          "championId": 8,
+          "role": "MIDDLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 3100,
+            "magic": 1800,
+            "true": 190
+          }
+        },
+        {
+          "participantId": "9",
+          "teamId": 200,
+          "championId": 9,
+          "role": "BOTTOM",
+          "won": false,
+          "finalDamage": {
+            "physical": 3400,
+            "magic": 1700,
+            "true": 190
+          }
+        },
+        {
+          "participantId": "10",
+          "teamId": 200,
+          "championId": 10,
+          "role": "UTILITY",
+          "won": false,
+          "finalDamage": {
+            "physical": 3700,
+            "magic": 1600,
+            "true": 190
+          }
+        }
+      ]
+    },
+    {
+      "matchId": "synthetic-11",
+      "scope": {
+        "patch": "synthetic-1",
+        "queueId": 420,
+        "platform": "SYNTHETIC",
+        "population": "solo-queue",
+        "rankSnapshotLabel": "Synthetic example. No observed rank."
+      },
+      "startedAt": "2026-10-01T10:00:00Z",
+      "durationSeconds": 2100,
+      "winnerTeamId": 200,
+      "participants": [
+        {
+          "participantId": "1",
+          "teamId": 100,
+          "championId": 1,
+          "role": "TOP",
+          "won": false,
+          "finalDamage": {
+            "physical": 1000,
+            "magic": 2500,
+            "true": 200
+          }
+        },
+        {
+          "participantId": "2",
+          "teamId": 100,
+          "championId": 12,
+          "role": "JUNGLE",
+          "won": false
+        },
+        {
+          "participantId": "3",
+          "teamId": 100,
+          "championId": 3,
+          "role": "MIDDLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 1600,
+            "magic": 2300,
+            "true": 200
+          }
+        },
+        {
+          "participantId": "4",
+          "teamId": 100,
+          "championId": 4,
+          "role": "BOTTOM",
+          "won": false,
+          "finalDamage": {
+            "physical": 1900,
+            "magic": 2200,
+            "true": 200
+          }
+        },
+        {
+          "participantId": "5",
+          "teamId": 100,
+          "championId": 5,
+          "role": "UTILITY",
+          "won": false,
+          "finalDamage": {
+            "physical": 2200,
+            "magic": 2100,
+            "true": 200
+          }
+        },
+        {
+          "participantId": "6",
+          "teamId": 200,
+          "championId": 6,
+          "role": "TOP",
+          "won": true,
+          "finalDamage": {
+            "physical": 2500,
+            "magic": 2000,
+            "true": 200
+          }
+        },
+        {
+          "participantId": "7",
+          "teamId": 200,
+          "championId": 7,
+          "role": "JUNGLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 2800,
+            "magic": 1900,
+            "true": 200
+          }
+        },
+        {
+          "participantId": "8",
+          "teamId": 200,
+          "championId": 18,
+          "role": "MIDDLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 3100,
+            "magic": 1800,
+            "true": 200
+          }
+        },
+        {
+          "participantId": "9",
+          "teamId": 200,
+          "championId": 9,
+          "role": "BOTTOM",
+          "won": true,
+          "finalDamage": {
+            "physical": 3400,
+            "magic": 1700,
+            "true": 200
+          }
+        },
+        {
+          "participantId": "10",
+          "teamId": 200,
+          "championId": 10,
+          "role": "UTILITY",
+          "won": true,
+          "finalDamage": {
+            "physical": 3700,
+            "magic": 1600,
+            "true": 200
+          }
+        }
+      ]
+    },
+    {
+      "matchId": "synthetic-12",
+      "scope": {
+        "patch": "synthetic-1",
+        "queueId": 420,
+        "platform": "SYNTHETIC",
+        "population": "solo-queue",
+        "rankSnapshotLabel": "Synthetic example. No observed rank."
+      },
+      "startedAt": "2026-10-01T11:00:00Z",
+      "durationSeconds": 2190,
+      "winnerTeamId": 200,
+      "participants": [
+        {
+          "participantId": "1",
+          "teamId": 100,
+          "championId": 1,
+          "role": "TOP",
+          "won": false,
+          "finalDamage": {
+            "physical": 1000,
+            "magic": 2500,
+            "true": 210
+          }
+        },
+        {
+          "participantId": "2",
+          "teamId": 100,
+          "championId": 2,
+          "role": "JUNGLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 1300,
+            "magic": 2400,
+            "true": 210
+          }
+        },
+        {
+          "participantId": "3",
+          "teamId": 100,
+          "championId": 3,
+          "role": "MIDDLE",
+          "won": false,
+          "finalDamage": {
+            "physical": 1600,
+            "magic": 2300,
+            "true": 210
+          }
+        },
+        {
+          "participantId": "4",
+          "teamId": 100,
+          "championId": 4,
+          "role": "BOTTOM",
+          "won": false,
+          "finalDamage": {
+            "physical": 1900,
+            "magic": 2200,
+            "true": 210
+          }
+        },
+        {
+          "participantId": "5",
+          "teamId": 100,
+          "championId": 5,
+          "role": null,
+          "won": false,
+          "finalDamage": {
+            "physical": 2200,
+            "magic": 2100,
+            "true": 210
+          }
+        },
+        {
+          "participantId": "6",
+          "teamId": 200,
+          "championId": 6,
+          "role": "TOP",
+          "won": true,
+          "finalDamage": {
+            "physical": 2500,
+            "magic": 2000,
+            "true": 210
+          }
+        },
+        {
+          "participantId": "7",
+          "teamId": 200,
+          "championId": 7,
+          "role": "JUNGLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 2800,
+            "magic": 1900,
+            "true": 210
+          }
+        },
+        {
+          "participantId": "8",
+          "teamId": 200,
+          "championId": 8,
+          "role": "MIDDLE",
+          "won": true,
+          "finalDamage": {
+            "physical": 3100,
+            "magic": 1800,
+            "true": 210
+          }
+        },
+        {
+          "participantId": "9",
+          "teamId": 200,
+          "championId": 9,
+          "role": "BOTTOM",
+          "won": true,
+          "finalDamage": {
+            "physical": 3400,
+            "magic": 1700,
+            "true": 210
+          }
+        },
+        {
+          "participantId": "10",
+          "teamId": 200,
+          "championId": 10,
+          "role": "UTILITY",
+          "won": true,
+          "finalDamage": {
+            "physical": 3700,
+            "magic": 1600,
+            "true": 210
+          }
+        }
+      ]
+    }
+  ],
+  "analysis": {
+    "minCellGames": 2,
+    "concentrationThreshold": 0.8,
+    "durationWindows": [
+      {
+        "label": "Under 30 minutes",
+        "minSeconds": 0,
+        "maxSeconds": 1800
+      },
+      {
+        "label": "At least 30 minutes",
+        "minSeconds": 1800,
+        "maxSeconds": null
+      }
+    ],
+    "pool": {
+      "role": "TOP",
+      "championIds": [
+        1,
+        11,
+        999
+      ]
+    },
+    "counterAvailability": {
+      "q": 0.2,
+      "k": 3
+    }
+  }
+}
