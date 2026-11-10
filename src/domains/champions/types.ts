@@ -44,6 +44,7 @@ export interface ChampionDataset {
     concentrationThreshold: number
     durationWindows: DurationWindow[]
     pool?: { role: Role; championIds: number[] }
+    player?: { playerKey: string; role: Role }
     counterAvailability?: { q: number; k: number }
   }
 }
@@ -129,12 +130,36 @@ export interface Concentration {
   poolSize: number | null
   cumulativeShare: number | null
 }
+export interface WithinRoleVariability {
+  role: Role
+  championId: number
+  relation: 'enemy' | 'ally'
+  otherRole: Role
+  candidateGames: number
+  supportedGames: number
+  supportedCells: number
+  coverage: number
+  meanWinRate: number | null
+  observedVariance: number | null
+  estimatedSamplingVariance: number | null
+  estimatedExcessSd: number | null
+  label: string
+}
+export interface PlayerHistory extends Rate {
+  role: Role
+  status: 'observed' | 'unavailable'
+  championResults: ChampionRole[]
+  concentration: Concentration
+  matches: Array<{ startedAt: string; championId: number; won: boolean; durationSeconds: number }>
+}
 export interface ChampionAnalysis {
   version: 1
   source: ChampionDataset['source']
   scope: Scope
   window: ChampionDataset['window']
   methods: {
+    version: 'rift-delta-champions-1'
+    eligibility: string
     unit: string
     intervals: string
     baseline: string
@@ -157,12 +182,14 @@ export interface ChampionAnalysis {
   enemyMatchups: PairCell[]
   allySynergies: PairCell[]
   variability: ChampionVariability[]
+  withinRoleVariability: WithinRoleVariability[]
   roleInteractions: RoleInteraction[]
   profileSimilarity: ProfileSimilarity[]
   damageComposition: DamageComposition[]
   durationResults: DurationResult[]
   concentration: Concentration[]
   poolEvidence: PoolEvidence | null
+  privatePlayerHistory: PlayerHistory | null
   counterAvailability: { q: number; k: number; probability: number; label: string } | null
   unavailableCapabilities: Array<{ capability: string; reason: string; requiredFields: string[] }>
 }

@@ -38,6 +38,7 @@ const datasetSchema = z.strictObject({
       label: text, minSeconds: nonnegative, maxSeconds: nonnegative.nullable(),
     })),
     pool: z.strictObject({ role, championIds: z.array(id).min(1) }).optional(),
+    player: z.strictObject({ playerKey: text, role }).optional(),
     counterAvailability: z.strictObject({ q: z.number().finite().min(0).max(1), k: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER) }).optional(),
   }),
 })

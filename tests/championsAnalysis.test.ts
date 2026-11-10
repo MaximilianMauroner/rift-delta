@@ -54,7 +54,6 @@ test('Wilson and odds use independent hand-calculated four-game values', () => {
   near(top.winRate, 0.75)
   near(top.wilson95![0], 0.30064184258240184)
   near(top.wilson95![1], 0.9544127391902995)
-  // Jeffreys marginals are 7/10 and 3/10. Divided enemy odds are 49/9.
   const enemy = a.enemyMatchups.find(c => c.focalChampionId === 1 && c.otherChampionId === 7)!
   near(enemy.expectedProbability, 49 / 58)
   near(enemy.association, 3 / 4 - 49 / 58)
@@ -62,7 +61,6 @@ test('Wilson and odds use independent hand-calculated four-game values', () => {
   near(reverse.expectedProbability, 9 / 58)
   near(reverse.winRate, 1 / 4)
   near(reverse.association, -enemy.association)
-  // Multiplying two 7/3 ally odds gives the same 49/9 baseline.
   const ally = a.allySynergies.find(c => c.focalChampionId === 1 && c.otherChampionId === 2)!
   near(ally.expectedProbability, 49 / 58)
   near(ally.association, 3 / 4 - 49 / 58)
@@ -92,7 +90,6 @@ test('raw weighted spread separates mean, SD, and downside and declines noise co
   })
   const s = analyzeChampions(data).variability.find(c => c.championId === 1 && c.relation === 'enemy')!
   assert.equal(s.supportedCells, 6)
-  // Four rate-1/2 cells have weight 1/5 each. Rate-1 and rate-0 cells have weight 1/10 each.
   near(s.meanWinRate, 0.5)
   near(s.weightedSd, Math.sqrt(0.05))
   near(s.downsideRms, Math.sqrt(0.025))

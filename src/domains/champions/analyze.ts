@@ -1,10 +1,12 @@
 import { compareCodeUnits } from '../../shared/codeUnitOrder.mjs'
 import type {
-  ChampionAnalysis, ChampionDataset, ChampionRole, Concentration, DamageComposition,
+  ChampionAnalysis, ChampionDataset, ChampionRole, DamageComposition,
   PairCell, Participant, PoolEvidence, ProfileSimilarity, Role, RoleInteraction,
 } from './types.ts'
 import { validateDataset } from './internal/validate.ts'
 import { expectedProbability, rate, spread } from './internal/statistics.ts'
+import { exposureConcentration, playerHistory } from './internal/preparation.ts'
+import { withinRoleVariability } from './internal/variability.ts'
 
 const roles: Role[] = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']
 const keyOf = (role: Role, championId: number) => `${role}:${championId}`
@@ -94,21 +96,6 @@ function poolEvidence(data: ChampionDataset, champions: Map<string, ChampionRole
   }
 }
 
-function concentration(champions: ChampionRole[], threshold: number): Concentration[] {
-  return roles.map(role => {
-    const counts = champions.filter(c => c.role === role).sort((a, b) => b.appearances - a.appearances || a.championId - b.championId)
-    const total = counts.reduce((sum, c) => sum + c.appearances, 0)
-    let cumulative = 0
-    let size = 0
-    for (const count of counts) {
-      if (cumulative >= threshold * total) break
-      cumulative += count.appearances
-      size++
-    }
-    return { role, appearances: total, threshold, poolSize: total ? size : null, cumulativeShare: total ? cumulative / total : null }
-  })
-}
-
 function damages(data: ChampionDataset): DamageComposition[] {
   const counts = new Map<string, { role: Role | null; championId: number; games: number; observed: number; physical: number; magic: number; true: number }>()
   for (const match of data.matches) {
@@ -188,6 +175,8 @@ export function analyzeChampions(input: unknown): ChampionAnalysis {
   return {
     version: 1, source: data.source, scope: data.scope, window: data.window,
     methods: {
+      version: 'rift-delta-champions-1',
+      eligibility: 'Normalized records include every supplied match. Document remake and early-ending selection in source.selectionDescription. The local Riot adapter requires modern timestamps and explicit early-surrender flags, and refuses flagged matches.',
       unit: 'Each champion-role and directional pair cell counts distinct games. Cells and participants share games and are not independent replicates.',
       intervals: 'Wilson 95% intervals for raw within-cell Bernoulli rates. Assumes independent games. Repeated players, selection, and time dependence can narrow coverage. No adjusted intervals.',
       baseline: 'Odds combination of Jeffreys-smoothed marginal rates p=(wins+0.5)/(games+1). Enemy odds divide, ally odds multiply. Fitted on this same sample.',
@@ -206,21 +195,23 @@ export function analyzeChampions(input: unknown): ChampionAnalysis {
       participantsWithDamage: all.filter(p => p.finalDamage !== undefined).length,
     },
     championRoles, enemyMatchups, allySynergies, variability, roleInteractions,
+    withinRoleVariability: relationTables.flatMap(({ relation, cells }) => withinRoleVariability(championRoles, cells, relation, data.analysis.minCellGames)),
     profileSimilarity: similarities(championRoles, enemyMatchups, data.analysis.minCellGames),
     damageComposition: damages(data),
     durationResults: championRoles.flatMap(c => data.analysis.durationWindows.map(w => {
       const count = durations.get(JSON.stringify([keyOf(c.role, c.championId), w.label]))
       return { role: c.role, championId: c.championId, window: w.label, minSeconds: w.minSeconds, maxSeconds: w.maxSeconds, ...rate(count?.wins ?? 0, count?.games.size ?? 0) }
     })),
-    concentration: concentration(championRoles, data.analysis.concentrationThreshold),
+    concentration: roles.map(role => exposureConcentration(championRoles, role, data.analysis.concentrationThreshold)),
     poolEvidence: poolEvidence(data, champions, enemyMatchups),
-    counterAvailability: scenario ? { ...scenario, probability: 1 - (1 - scenario.q) ** scenario.k, label: 'Hypothetical independent availability. NOT measured actual counterpick chance.' } : null,
+    privatePlayerHistory: playerHistory(data),
+    counterAvailability: scenario ? { ...scenario, probability: scenario.k === 0 ? 0 : -Math.expm1(scenario.k * Math.log1p(-scenario.q)), label: 'Hypothetical independent availability. NOT measured actual counterpick chance.' } : null,
     unavailableCapabilities: [
       { capability: 'Timeline and scaling', reason: 'Final-duration results describe selected completed games. They do not measure power growth or controlled combat.', requiredFields: ['timestampSeconds', 'all ten participants at each timestamp', 'level', 'gold', 'inventory', 'health', 'position', 'alive state', 'game state and sampling policy'] },
       { capability: 'Objective effects', reason: 'No objective event or pre-event state. Descriptive association cannot identify a causal effect.', requiredFields: ['objective event type and time', 'teamId', 'complete pre-event state', 'treatment definition', 'confounder and identification plan'] },
       { capability: 'Historical rank', reason: 'Scope labels are caller declarations. No historical rank reconstruction or rank equivalence.', requiredFields: ['contemporaneous rank snapshot time', 'queueId', 'platform', 'tier', 'division', 'LP', 'selection and linkage provenance'] },
       { capability: 'Build simulation', reason: 'Final damage totals cannot reconstruct builds or combat. No new combat simulator.', requiredFields: ['ruleset and patch', 'champion level and skill ranks', 'item inventory', 'runes', 'target state', 'combat scenario for the existing DPS engine'] },
-      { capability: 'Player histories', reason: 'Opaque player keys are accepted for future linkage but never emitted. This report contains population aggregates only.', requiredFields: ['explicit private history request', 'stable opaque playerKey', 'history selection and privacy policy'] },
+      ...(!data.analysis.player ? [{ capability: 'Player histories', reason: 'No private player request. Supply analysis.player and stable opaque keys in authorized records to enable local history. Keys are never emitted.', requiredFields: ['analysis.player with role and playerKey', 'stable opaque participant playerKey', 'authorized private history selection'] }] : []),
     ],
   }
 }

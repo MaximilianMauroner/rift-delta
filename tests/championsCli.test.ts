@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { test } from 'node:test'
 import { analyzeChampions } from '../src/domains/champions/analyze.ts'
 import { demoDataset } from '../tools/champions/demo.ts'
+import { riotFixture } from './fixtures/champions/riot.ts'
 
 const cli = resolve('tools/champions/analyze.ts')
 function command(args: string[]) {
@@ -104,4 +105,24 @@ test('CLI rejects ambiguous or duplicate flags before output', async t => {
     assert.match(result.stderr, /Usage:/)
   }
   await assert.rejects(access(output))
+})
+
+test('CLI imports Riot exports and refuses local output under public assets, including directory aliases', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'champions-riot-cli-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const input = join(directory, 'riot.json')
+  await writeFile(input, JSON.stringify(riotFixture()))
+  const result = command(['--riot-input', input, '--output', join(directory, 'report')])
+  assert.equal(result.status, 0, result.stderr)
+  const report = JSON.parse(await readFile(join(directory, 'report', 'analysis.json'), 'utf8'))
+  assert.equal(report.privatePlayerHistory.distinctGames, 2)
+  assert.equal(report.coverage.distinctGames, 2)
+  const alias = join(directory, 'public-alias')
+  await symlink(resolve('public'), alias)
+  for (const output of [resolve('public', 'champion-output-test'), join(alias, 'champion-output-test')]) {
+    const rejected = command(['--demo', '--output', output])
+    assert.equal(rejected.status, 1)
+    assert.match(rejected.stderr, /outside public assets/)
+    await assert.rejects(access(output))
+  }
 })
