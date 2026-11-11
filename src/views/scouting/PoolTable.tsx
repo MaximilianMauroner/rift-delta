@@ -31,7 +31,7 @@ function PoolRow({ row, open, onToggle }: { row: ChampionRow; open: boolean; onT
       <span className="sc-lead sc-num" data-tone={leadTone(row.lead?.mean ?? null)}>{row.lead ? signed(row.lead.mean) : '–'}</span>
       <ChevronDown className="sc-chev" size={15} aria-hidden="true" />
     </button>
-    {open ? <div className="sc-more" id={id} role="region" aria-label={`Last ${row.last.length} games on ${row.champion}`}><LastGames games={row.last} /></div> : null}
+    {open ? <div className="sc-more" id={id} role="region" aria-label={`Last ${row.last.length === 1 ? 'game' : `${row.last.length} games`} on ${row.champion}`}><LastGames games={row.last} /></div> : null}
   </li>
 }
 
@@ -39,11 +39,9 @@ export function PoolTable({ pool }: { pool: ChampionRow[] }) {
   const [open, setOpen] = useState<string | null>(pool[0]?.champion ?? null)
   return <Panel aria-labelledby="sc-pool-title">
     <PanelHeader title="What they play" titleId="sc-pool-title" />
-    {pool.length ? <>
-      <div className="sc-thead" aria-hidden="true"><span>Champion</span><span>{SCOUTING_RULES.windowDays} days</span><span>Win rate</span><span>Lane</span><span /></div>
-      <ul className="sc-pool">
-        {pool.map(row => <PoolRow key={row.champion} row={row} open={open === row.champion} onToggle={() => setOpen(open === row.champion ? null : row.champion)} />)}
-      </ul>
-    </> : <p className="sc-empty">No champion has enough games to list.</p>}
+    <div className="sc-thead" aria-hidden="true"><span>Champion</span><span>{SCOUTING_RULES.windowDays} days</span><span>Win rate</span><span>Lane</span><span /></div>
+    <ul className="sc-pool">
+      {pool.map(row => <PoolRow key={row.champion} row={row} open={open === row.champion} onToggle={() => setOpen(open === row.champion ? null : row.champion)} />)}
+    </ul>
   </Panel>
 }

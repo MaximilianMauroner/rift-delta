@@ -19,7 +19,7 @@ import { LanePanel } from './LanePanel'
 import { PoolTable } from './PoolTable'
 import { RankStrips } from './RankStrips'
 import { ScoutingHero } from './ScoutingHero'
-import { fullDate, roleWord } from './presentation'
+import { fullDate, gameCount, roleWord } from './presentation'
 import './scouting.css'
 
 function Report({ artifact, query }: { artifact: ScoutingArtifact; query: URLSearchParams }) {
@@ -44,7 +44,7 @@ function Report({ artifact, query }: { artifact: ScoutingArtifact; query: URLSea
         </Select></label>
       <label className="sc-field sc-field-grow"><span>Player</span>
         <Select aria-label="Player" value={player ? reportKey(player) : ''} disabled={!player} onChange={event => change({ player: event.target.value })}>
-          {players.map(option => <option key={reportKey(option)} value={reportKey(option)}>{option.name} ({option.team}, {option.games} games)</option>)}
+          {players.map(option => <option key={reportKey(option)} value={reportKey(option)}>{option.name} ({option.team}, {gameCount(option.games)})</option>)}
         </Select></label>
       <p className="sc-through">{artifact.through ? <>Games through <b>{fullDate(artifact.through)}</b></> : 'No counted games'}</p>
     </div>
@@ -65,7 +65,7 @@ function Report({ artifact, query }: { artifact: ScoutingArtifact; query: URLSea
         </div>
         <p className="sc-source">Oracle's Elixir games with complete paired rosters. Lane numbers stop at 15 minutes and compare only with the opposing {roleWord(role)} player. Observed games, not predictions.</p>
       </> : <Panel><DataState icon={null} title={role ? `No ${roleWord(role)} reports` : 'No scouting reports'}>
-        {role ? `No ${roleWord(role)} player has enough recent games for a report. Choose another role.` : 'No player has enough games for a report.'}
+        {role ? `No ${roleWord(role)} player has a report. Choose another role.` : 'No player has a report.'}
       </DataState></Panel>}
     </div>
   </div>
