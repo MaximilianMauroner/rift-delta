@@ -6,16 +6,12 @@ export const ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'] as const satisfi
 /** Every threshold a report depends on. The artifact stores a copy so a stale file is rejected on load. */
 export const SCOUTING_RULES = {
   source: 'complete-paired-oracles-elixir',
-  /** Games needed for a player to have a report. */
-  minGames: 20,
   /** Games a peer needs to set ranks and bands for a role. */
   minFieldGames: 60,
   /** Games with a measure needed before that measure is ranked. */
   minMetricGames: 20,
   /** Recent window, in days before the newest game on record. */
   windowDays: 90,
-  /** A report needs a game this many days or fewer before the newest game on record. */
-  activeDays: 365,
   poolRows: 8,
   formGames: 10,
   /** Gold lead at 15 minutes that counts as ahead or behind. */

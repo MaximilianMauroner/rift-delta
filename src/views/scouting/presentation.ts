@@ -7,6 +7,7 @@ import {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export const percent = (value: number) => `${Math.round(value * 100)}%`
+export const gameCount = (games: number) => `${games} ${games === 1 ? 'game' : 'games'}`
 export const winLoss = (wins: number, games: number) => `${wins}–${games - wins}`
 
 export function signed(value: number) {
@@ -109,7 +110,7 @@ export function laneShares(split: LaneSplit) {
 /** One sentence made only from counts in the report. It compares nothing and predicts nothing. */
 export function readingSentence(player: PlayerReport, roles: Record<Role, RoleBaseline>) {
   const top = player.pool.filter(row => row.recent.games > 0).slice(0, 3).map(row => row.champion)
-  const results = `${percent(player.wins / player.games)} of ${player.games} games`
+  const results = `${percent(player.wins / player.games)} of ${gameCount(player.games)}`
   const lane = laneShares(player.lane)
   const base = laneShares(roles[player.role].lane)
   const laneClause = lane && base
@@ -125,9 +126,9 @@ export function poolRowLabel(row: ChampionRow) {
   const trend = TREND_WORDS[row.trend]
   return [
     `${row.champion}${trend ? `, ${trend}` : ''}.`,
-    recent.games ? `Last 90 days: ${recent.games} games, ${recent.wins} won and ${recent.games - recent.wins} lost.` : 'No games in the last 90 days.',
-    `Win rate ${percent(all.wins / all.games)} over ${all.games} games.`,
-    row.lead ? `Lane lead at 15 minutes ${signed(row.lead.mean)} over ${row.lead.games} games.` : 'Lane lead not shown, too few lane games.',
+    recent.games ? `Last 90 days: ${gameCount(recent.games)}, ${recent.wins} won and ${recent.games - recent.wins} lost.` : 'No games in the last 90 days.',
+    `Win rate ${percent(all.wins / all.games)} over ${gameCount(all.games)}.`,
+    row.lead ? `Lane lead at 15 minutes ${signed(row.lead.mean)} over ${gameCount(row.lead.games)}.` : 'Lane lead not shown, too few lane games.',
   ].join(' ')
 }
 

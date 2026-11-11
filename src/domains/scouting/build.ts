@@ -103,7 +103,7 @@ function trendOf(firstSeen: string, cutoff: string, all: WinCount, recent: WinCo
 
 function pool(rows: readonly Row[], cutoff: string, recentRows: readonly Row[]): ChampionRow[] {
   const recentBy = groupBy(recentRows, row => row.champion)
-  return [...groupBy(rows, row => row.champion)].map(([champion, own]): ChampionRow => {
+  const all = [...groupBy(rows, row => row.champion)].map(([champion, own]): ChampionRow => {
     const recent = recentBy.get(champion) ?? []
     const all = winCount(own)
     const leads = own.flatMap(row => row.lead === null ? [] : [row.lead])
@@ -113,7 +113,10 @@ function pool(rows: readonly Row[], cutoff: string, recentRows: readonly Row[]):
       lead: leads.length >= RULES.minChampionLaneGames ? { mean: whole(mean(leads)), games: leads.length } : null,
       last: own.slice(-5).reverse().map(ref),
     }
-  }).filter(row => row.all.games >= 5 || row.recent.games >= 2)
+  })
+  // A player with few games has no champion that passes the bar, so show every champion instead of none.
+  const regular = all.filter(row => row.all.games >= 5 || row.recent.games >= 2)
+  return (regular.length ? regular : all)
     .sort((a, b) => b.recent.games - a.recent.games || b.all.games - a.all.games || compareCodeUnits(a.champion, b.champion))
     .slice(0, RULES.poolRows)
 }
@@ -158,7 +161,6 @@ function report(identity: Identity, rows: readonly Row[], cutoff: string): Playe
 }
 
 const dayMs = 86_400_000
-const daysBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / dayMs)
 
 export function buildScoutingReports(matches: readonly MatchRecord[], sourceSha256: string): ScoutingArtifact {
   // Games in one series share a placeholder time. The game number orders them when present. Otherwise the input order
@@ -208,7 +210,7 @@ export function buildScoutingReports(matches: readonly MatchRecord[], sourceSha2
   for (const [key, rows] of [...rowsBy].sort(([x], [y]) => compareCodeUnits(x, y))) {
     const identity = identities.get(key)!
     addBaseline(roles[identity.role], laneFacts(rows))
-    if (rows.length >= RULES.minGames && daysBetween(rows.at(-1)!.date, through!) <= RULES.activeDays) players.push(report(identity, rows, cutoff))
+    players.push(report(identity, rows, cutoff))
   }
   return {
     version: SCOUTING_VERSION, sourceSha256, through, since, countedGames: counted, excludedGames: sorted.length - counted, excludedByReason,

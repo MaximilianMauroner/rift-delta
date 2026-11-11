@@ -5,7 +5,7 @@ import { METRICS, type PlayerReport } from '../src/domains/scouting/report.ts'
 import {
   formatMeasure, joinNames, leadTone, ordinal, poolRowLabel, poolSegments, readingSentence, shortDate, signed, trackPosition, verdictBadge, middleHalf,
 } from '../src/views/scouting/presentation.ts'
-import { FOCAL, focalSeason } from './scoutingFixtures.ts'
+import { FOCAL, focalSeason, scoutingGame } from './scoutingFixtures.ts'
 
 const artifact = buildScoutingReports(focalSeason(), 'a'.repeat(64))
 const focal = artifact.players.find(player => player.id === FOCAL)!
@@ -73,4 +73,10 @@ test('a pool row label states its sample and what it leaves out', () => {
   const fresh = focal.pool.find(row => row.champion === 'Fresh')!
   assert.match(poolRowLabel(fresh), /new lately/)
   assert.match(poolRowLabel(fresh), /Lane lead not shown, too few lane games\.$/)
+})
+
+test('the reading of a player with one game uses singular wording and keeps the lane facts', () => {
+  const artifact = buildScoutingReports([scoutingGame({ id: 'one', date: '2026-06-01', lead: 600 })], 'a'.repeat(64))
+  const player = artifact.players.find(entry => entry.id === FOCAL)!
+  assert.equal(readingSentence(player, artifact.roles), 'Played Pick most in the last 90 days, won 100% of 1 game overall, and led by 500 or more at 15 minutes in 100% of games with lane data (mid average 50%).')
 })

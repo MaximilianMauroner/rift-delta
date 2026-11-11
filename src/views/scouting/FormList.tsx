@@ -8,7 +8,7 @@ import { leadTone, shortDate, signed } from './presentation'
 export function FormList({ form }: { form: PlayedGame[] }) {
   const largest = Math.max(1, ...form.map(game => Math.abs(game.lead ?? 0)))
   return <Panel aria-labelledby="sc-form-title">
-    <PanelHeader title={`Last ${form.length} games`} titleId="sc-form-title" actions={<Badge>Lane lead at 15 minutes</Badge>} />
+    <PanelHeader title={form.length === 1 ? 'Last game' : `Last ${form.length} games`} titleId="sc-form-title" actions={<Badge>Lane lead at 15 minutes</Badge>} />
     <ol className="sc-glist">
       {form.map((game, index) => {
         const width = game.lead === null ? 0 : Math.abs(game.lead) / largest * 100

@@ -1,14 +1,14 @@
 import { Badge } from '../../components/ui/badge'
 import { Panel, PanelBody, PanelHeader } from '../../components/ui/panel'
 import { rate, verdict, type LaneSplit, type Tally } from '../../domains/scouting/report'
-import { baselineRate, laneShares, percent, verdictBadge } from './presentation'
+import { baselineRate, gameCount, laneShares, percent, verdictBadge } from './presentation'
 
 function LaneBar({ label, split, base }: { label: string; split: LaneSplit; base?: boolean }) {
   const shares = laneShares(split)
   return <div className="sc-lrow" data-base={base || undefined}>
     <span>{label}</span>
     {shares ? <div className="sc-stack" role="img"
-      aria-label={`${label}: behind by 500 or more ${percent(shares.behind)}, within 500 ${percent(shares.even)}, ahead by 500 or more ${percent(shares.ahead)}, over ${split.games} games`}>
+      aria-label={`${label}: behind by 500 or more ${percent(shares.behind)}, within 500 ${percent(shares.even)}, ahead by 500 or more ${percent(shares.ahead)}, over ${gameCount(split.games)}`}>
       <i data-part="behind" style={{ flex: split.behind }}><b className="sc-num">{percent(shares.behind)}</b></i>
       <i data-part="even" style={{ flex: split.even }}><b className="sc-num">{percent(shares.even)}</b></i>
       <i data-part="ahead" style={{ flex: split.ahead }}><b className="sc-num">{percent(shares.ahead)}</b></i>
@@ -24,7 +24,7 @@ export function RateCell({ label, tally, base }: { label: string; tally: Tally; 
     <small>{label}</small>
     <span className="sc-fig sc-fig-sm">{tally.games ? percent(rate(tally)) : '–'}</span>
     {badge ? <Badge variant={badge.variant}>{badge.arrow ? <i aria-hidden="true">{badge.arrow}</i> : null}{badge.label}</Badge> : null}
-    <small className="sc-dim">{tally.hits} of {tally.games} games{baseRate === null ? '' : ` · average ${percent(baseRate)}`}</small>
+    <small className="sc-dim">{tally.hits} of {gameCount(tally.games)}{baseRate === null ? '' : ` · average ${percent(baseRate)}`}</small>
   </div>
 }
 

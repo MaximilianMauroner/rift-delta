@@ -77,7 +77,7 @@ function player(value: unknown, path: string) {
   ensure(ROLES.includes(raw.role as typeof ROLES[number]), `${path}.role`)
   ensure(raw.league === null || (typeof raw.league === 'string' && raw.league.trim().length > 0), `${path}.league`)
   count(raw.games, `${path}.games`)
-  ensure((raw.games as number) >= SCOUTING_RULES.minGames, `${path}.games`)
+  ensure((raw.games as number) >= 1, `${path}.games`)
   count(raw.wins, `${path}.wins`, raw.games as number)
   date(raw.last, `${path}.last`)
   const recent = record(raw.recent, `${path}.recent`, ['games', 'champions'])

@@ -22,12 +22,15 @@ test('a game is counted only when both teams are complete and every champion is 
   assert.deepEqual(artifact.excludedByReason, { 'other-provider': 1, 'incomplete-pair': 1, 'missing-team-id': 0, 'champion-identity': 2 })
 })
 
-test('a player needs twenty games and a recent game to have a report', () => {
-  const games = focalSeason()
-  assert.equal(buildScoutingReports(games.slice(-19), hash).players.length, 0)
-  assert.equal(buildScoutingReports(games, hash).players.some(player => player.id === FOCAL), true)
+test('every player with a counted game has a report, a single game and a long-gone player included', () => {
+  const single = buildScoutingReports([scoutingGame({ id: 'one', date: '2026-06-01' })], hash)
+  assert.equal(single.players.length, 10)
+  const one = single.players.find(player => player.id === FOCAL)!
+  assert.deepEqual([one.games, one.wins, one.pool.map(row => [row.champion, row.all.games]), one.form.length], [1, 1, [['Pick', 1]], 1])
   const later = scoutingGame({ id: 'later', date: '2027-07-01', teams: ['c', 'd'] })
-  assert.equal(buildScoutingReports([...games, later], hash).players.some(player => player.id === FOCAL), false)
+  const gone = buildScoutingReports([...focalSeason(), later], hash).players.find(player => player.id === FOCAL)!
+  assert.equal(gone.games, 40)
+  assert.equal(gone.last, '2026-06-10')
 })
 
 test('the pool tags each champion from its share of recent games against its share of all games', () => {
@@ -86,9 +89,9 @@ test('input order does not change the artifact when games have distinct times', 
   assert.deepEqual(buildScoutingReports([...games].reverse(), hash), buildScoutingReports(games, hash))
 })
 
-test('role baselines add up every player in the role, including players without a report', () => {
+test('role baselines add up every player in the role', () => {
   const artifact = buildScoutingReports(focalSeason().slice(0, 12), hash)
-  assert.equal(artifact.players.length, 0)
+  assert.equal(artifact.players.length, 10)
   assert.deepEqual(artifact.roles.Mid.lane, { games: 24, behind: 0, even: 24, ahead: 0 })
   assert.deepEqual(artifact.roles.Mid.deathless, { games: 24, hits: 0 })
   assert.deepEqual(artifact.roles.Top.lane, { games: 24, behind: 0, even: 24, ahead: 0 })

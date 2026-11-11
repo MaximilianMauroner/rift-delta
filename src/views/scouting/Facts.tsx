@@ -1,7 +1,7 @@
 import { Panel, PanelHeader } from '../../components/ui/panel'
 import type { PlayerReport, RoleBaseline } from '../../domains/scouting/report'
 import { RateCell } from './LanePanel'
-import { leadTone, shortDate, signed } from './presentation'
+import { gameCount, leadTone, shortDate, signed } from './presentation'
 
 export function Facts({ facts, baseline }: { facts: PlayerReport['facts']; baseline: RoleBaseline }) {
   const { best, hardest, easiest, deathless } = facts
@@ -17,7 +17,7 @@ export function Facts({ facts, baseline }: { facts: PlayerReport['facts']; basel
       {hardest ? <div className="sc-cell">
         <small>Weakest lane into</small>
         <span className="sc-fig sc-fig-text">{hardest.against}</span>
-        <small className="sc-dim">{signed(hardest.lead)} over {hardest.laneGames} games{easiest ? ` · best into ${easiest.against}, ${signed(easiest.lead)}` : ''}</small>
+        <small className="sc-dim">{signed(hardest.lead)} over {gameCount(hardest.laneGames)}{easiest ? ` · best into ${easiest.against}, ${signed(easiest.lead)}` : ''}</small>
       </div> : null}
     </div>
   </Panel>
