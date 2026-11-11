@@ -71,6 +71,14 @@ const domainDefinitions = {
     },
     producers: ['build.ts'],
   },
+  scouting: {
+    dependencies: ['rankings'],
+    entries: {
+      'report.ts': { browserRuntime: true },
+      'build.ts': {},
+    },
+    producers: ['build.ts'],
+  },
   rankings: {
     entries: {
       'types.ts': { browserRuntime: true },

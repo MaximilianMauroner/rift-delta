@@ -14,12 +14,16 @@ export const MODES: { id: Mode; label: string; icon: typeof BarChart3 }[] = [
 
 /** One title per view and one short line that says what the numbers are. */
 /** The skeleton each view shows while its data loads. */
-export const PAGE_LAYOUTS: Record<Mode, PageLayout> = { rankings: 'board', players: 'board', profiles: 'board', regions: 'regions', matches: 'ledger', tournaments: 'schedule' }
+export const PAGE_LAYOUTS: Record<Mode, PageLayout> = { rankings: 'board', players: 'board', profiles: 'board', scouting: 'board', regions: 'regions', matches: 'ledger', tournaments: 'schedule' }
 
 export const MODE_TITLES: Record<Mode, { title: string; intro: string }> = {
   profiles: {
     title: 'Style profiles',
     intro: 'Observed measures, not strength scores.',
+  },
+  scouting: {
+    title: 'Scouting report',
+    intro: 'Observed games, not predictions.',
   },
   rankings: {
     title: 'Team Power Index',
