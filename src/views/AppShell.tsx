@@ -31,7 +31,7 @@ export function ManifestRouteShell({
       <AppNavigation mode={mode} scope={scope} onGoHome={onGoHome} />
       <main id="main-content" className="flex min-w-0 flex-col" tabIndex={-1}>
         <ModeHeader mode={mode} />
-        {mode !== 'tournaments' && mode !== 'profiles' ? <div className="flex min-h-[57px] items-center border-b border-border bg-[color-mix(in_oklch,var(--surface)_76%,var(--bg))] px-[var(--page-x)] py-2 text-sm text-muted-foreground max-sm:min-h-[141px]">
+        {mode !== 'tournaments' && mode !== 'profiles' && mode !== 'scouting' ? <div className="flex min-h-[57px] items-center border-b border-border bg-[color-mix(in_oklch,var(--surface)_76%,var(--bg))] px-[var(--page-x)] py-2 text-sm text-muted-foreground max-sm:min-h-[141px]">
           Requested scope: <b className="ml-2 text-foreground">{scopeLabel(scope)}</b>
         </div> : null}
         {error ? (

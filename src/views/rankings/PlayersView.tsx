@@ -1,7 +1,8 @@
-import { AlertTriangle, MoveHorizontal, Search, Users } from 'lucide-react'
+import { AlertTriangle, ClipboardList, MoveHorizontal, Search, Users } from 'lucide-react'
 import { useMemo, useState, type RefObject } from 'react'
 import { currentHashQuery, hashEnum, hashParam, useHashSync } from '../../browser/navigation'
 import type { PlayerDirectoryState } from '../../browser/rankings/usePublicArtifacts'
+import { scoutingHref } from '../../browser/scouting/navigation'
 import { DataState } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -158,6 +159,12 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
                         <TableCell role="cell" className="player-col-name text-md font-semibold text-[var(--text-strong)]"><span className="player-identity">
                           {logo ? <img src={`${logo}?v=icon-128`} className={branding?.logoTreatment === 'invert' ? 'player-identity-mark invert' : 'player-identity-mark'} alt="" aria-hidden="true" width={20} height={20} loading="lazy" decoding="async" /> : null}
                           <span>{player.name}</span>
+                          <a
+                            href={scoutingHref(player)}
+                            aria-label={`Scouting report for ${player.name}`}
+                            title="Scouting report"
+                            className="player-scouting-link inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-[var(--faint)] hover:bg-[var(--surface-3)] hover:text-[var(--text-strong)]"
+                          ><ClipboardList className="size-4" aria-hidden="true" /></a>
                         </span></TableCell>
                         <TableCell role="cell" className="player-col-team max-w-44 whitespace-normal"><span className="player-team">
                           {logo ? <img src={`${logo}?v=icon-128`} className={branding?.logoTreatment === 'invert' ? 'invert' : undefined} alt="" aria-hidden="true" width={24} height={24} loading="lazy" decoding="async" /> : null}

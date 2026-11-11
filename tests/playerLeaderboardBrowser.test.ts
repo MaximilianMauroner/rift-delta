@@ -150,6 +150,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     assert.equal(requests.filter((path) => path === playerPath).length, 1, 'Leaving Players must keep its pending directory load')
     assert.deepEqual(await rows.locator('td:nth-child(5)').allTextContents(), ['320', '260', '230'])
     assert.deepEqual(await rows.locator('td:nth-child(6)').allTextContents(), ['31', '32', '33'])
+    assert.equal(await page.getByRole('link', { name: 'Scouting report for Cedar', exact: true }).getAttribute('href'), '#scouting?player=synthetic-Cedar%7CMid', 'Each row links to its scouting report by player id and role')
     await page.getByRole('status').filter({ hasText: 'These are not official LoL Esports rankings.' }).waitFor()
     await page.getByText(/Source synthetic-fixture/).waitFor()
     await page.getByText(/Role Power uses model .+ includes individual stats, results, opponent strength and event context/).waitFor()
