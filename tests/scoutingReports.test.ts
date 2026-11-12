@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildScoutingReports } from '../src/domains/scouting/build.ts'
-import { parseScoutingArtifact, reportKey, scoutingField, scoutingMeasures, staleDays, verdict, wilson95, type PlayerReport } from '../src/domains/scouting/report.ts'
-import { FOCAL, focalSeason, scoutingGame } from './scoutingFixtures.ts'
+import { prepareSemanticArtifact } from '../scripts/public-artifact-storage.mjs'
+import { scoutingShardPath } from '../src/domains/scouting/build.ts'
+import {
+  parseScoutingIndex, parseScoutingShard, reportKey, scoutingField, scoutingMeasures, staleDays, verdict, wilson95, type ScoutingPlayer,
+} from '../src/domains/scouting/report.ts'
+import { FOCAL, focalSeason, reportOf, scoutingGame, scoutingOf } from './scoutingFixtures.ts'
 
-const hash = 'a'.repeat(64)
-const focal = (games = focalSeason()) => buildScoutingReports(games, hash).players.find(player => player.id === FOCAL)!
+const focal = (games = focalSeason()) => reportOf(games)!
 
 test('a game is counted only when both teams are complete and every champion is read correctly', () => {
   const missing = scoutingGame({ id: 'missing', date: '2026-06-01' })
@@ -14,23 +16,28 @@ test('a game is counted only when both teams are complete and every champion is 
   duplicate.teamBRoster!.players[0]!.stats!.champion = duplicate.teamARoster!.players[0]!.stats!.champion
   const short = scoutingGame({ id: 'short', date: '2026-06-01' })
   short.teamARoster!.players.pop()
-  const artifact = buildScoutingReports([
+  const { index } = scoutingOf([
     scoutingGame({ id: 'good', date: '2026-06-01' }), scoutingGame({ id: 'other', date: '2026-06-01', provider: 'leaguepedia-cargo' }), missing, duplicate, short,
-  ], hash)
-  assert.equal(artifact.countedGames, 1)
-  assert.equal(artifact.excludedGames, 4)
-  assert.deepEqual(artifact.excludedByReason, { 'other-provider': 1, 'incomplete-pair': 1, 'missing-team-id': 0, 'champion-identity': 2 })
+  ])
+  assert.equal(index.countedGames, 1)
+  assert.equal(index.excludedGames, 4)
+  assert.deepEqual(index.excludedByReason, { 'other-provider': 1, 'incomplete-pair': 1, 'missing-team-id': 0, 'champion-identity': 2 })
 })
 
-test('every player with a counted game has a report, a single game and a long-gone player included', () => {
-  const single = buildScoutingReports([scoutingGame({ id: 'one', date: '2026-06-01' })], hash)
-  assert.equal(single.players.length, 10)
-  const one = single.players.find(player => player.id === FOCAL)!
-  assert.deepEqual([one.games, one.wins, one.pool.map(row => [row.champion, row.all.games]), one.form.length], [1, 1, [['Pick', 1]], 1])
-  const later = scoutingGame({ id: 'later', date: '2027-07-01', teams: ['c', 'd'] })
-  const gone = buildScoutingReports([...focalSeason(), later], hash).players.find(player => player.id === FOCAL)!
-  assert.equal(gone.games, 40)
-  assert.equal(gone.last, '2026-06-10')
+test('every player with a counted game is listed and has a games file, so a link can say why a report is missing', () => {
+  const { index, shards } = scoutingOf(focalSeason().slice(-19))
+  const player = index.players.find(entry => entry.id === FOCAL)!
+  assert.deepEqual([player.games, player.recent, player.url], [19, 10, `/data/${scoutingShardPath(player)}`])
+  assert.equal(shards[scoutingShardPath(player)]!.games.length, 19)
+  assert.equal(index.players.length, 10)
+})
+
+test('a new game changes the index and the files of the ten players in it, and no other file', () => {
+  const before = scoutingOf()
+  const after = scoutingOf([...focalSeason(), scoutingGame({ id: 'new', date: '2026-06-11', teams: ['c', 'd'] })])
+  const changed = Object.keys(after.shards).filter(path => JSON.stringify(after.shards[path]) !== JSON.stringify(before.shards[path]))
+  assert.deepEqual(changed.sort(), after.index.players.filter(player => /^[cd]-/.test(player.id)).map(scoutingShardPath).sort())
+  assert.equal(changed.length, 10)
 })
 
 test('the pool tags each champion from its share of recent games against its share of all games', () => {
@@ -78,47 +85,63 @@ test('games in one series keep play order from the game number, or from the inpu
   const series = (numbered: boolean) => ['Third', 'First', 'Second'].map((champion, i) => scoutingGame({
     id: `series-${champion}`, date: '2026-07-01', datetimeUtc: '2026-07-01T08:00:00Z', champion, gameNumber: numbered ? [3, 1, 2][i] : undefined,
   }))
-  const numbered = focal([...padding, ...series(true)])
-  assert.deepEqual(numbered.form.slice(0, 3).map(game => game.champion), ['Third', 'Second', 'First'])
-  const unnumbered = focal([...padding, ...series(false)])
-  assert.deepEqual(unnumbered.form.slice(0, 3).map(game => game.champion), ['Second', 'First', 'Third'])
+  assert.deepEqual(focal([...padding, ...series(true)]).form.slice(0, 3).map(game => game.champion), ['Third', 'Second', 'First'])
+  assert.deepEqual(focal([...padding, ...series(false)]).form.slice(0, 3).map(game => game.champion), ['Second', 'First', 'Third'])
 })
 
-test('input order does not change the artifact when games have distinct times', () => {
+test('input order does not change the index or any file when games have distinct times', () => {
   const games = focalSeason()
-  assert.deepEqual(buildScoutingReports([...games].reverse(), hash), buildScoutingReports(games, hash))
+  assert.deepEqual(scoutingOf([...games].reverse()), scoutingOf(games))
 })
 
 test('role baselines add up every player in the role', () => {
-  const artifact = buildScoutingReports(focalSeason().slice(0, 12), hash)
-  assert.equal(artifact.players.length, 10)
-  assert.deepEqual(artifact.roles.Mid.lane, { games: 24, behind: 0, even: 24, ahead: 0 })
-  assert.deepEqual(artifact.roles.Mid.deathless, { games: 24, hits: 0 })
-  assert.deepEqual(artifact.roles.Top.lane, { games: 24, behind: 0, even: 24, ahead: 0 })
+  const { index } = scoutingOf(focalSeason().slice(0, 12))
+  assert.deepEqual(index.roles.Mid.lane, { games: 24, behind: 0, even: 24, ahead: 0 })
+  assert.deepEqual(index.roles.Mid.deathless, { games: 24, hits: 0 })
+  assert.deepEqual(index.roles.Top.lane, { games: 24, behind: 0, even: 24, ahead: 0 })
 })
 
-test('the artifact survives a JSON round trip and the parser rejects values the builder cannot produce', () => {
-  const artifact = buildScoutingReports(focalSeason(), hash)
-  assert.deepEqual(parseScoutingArtifact(JSON.parse(JSON.stringify(artifact))), artifact)
-  const copy = () => JSON.parse(JSON.stringify(artifact))
-  // These mutations break the artifact shape on purpose, so the value is untyped.
+test('the index and a games file survive a JSON round trip, and the parser rejects values the builder cannot produce', () => {
+  const { index, shards } = scoutingOf()
+  const owner = index.players.find(player => player.id === FOCAL)!
+  const shard = shards[scoutingShardPath(owner)]!
+  const copy = <T>(value: T) => JSON.parse(JSON.stringify(value))
+  assert.deepEqual(parseScoutingIndex(copy(index)), index)
+  assert.deepEqual(parseScoutingShard(copy(shard), owner), shard)
+  // The publication pipeline stores keys in sorted order and adds these fields to every artifact it serves.
+  const published = (value: object) => JSON.parse(prepareSemanticArtifact(value).canonicalJson).content
+  assert.deepEqual(parseScoutingShard({ ...published(shard), schemaVersion: 1 }, owner), shard)
+  const served = { ...published(index), generatedAt: '2026-07-01T00:00:00Z', artifactMeta: {}, modelVersion: 'm', modelConfigHash: 'h', schemaVersion: 1 }
+  assert.deepEqual(parseScoutingIndex(served), index)
+  // These mutations break the shape on purpose, so the value is untyped.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mutations: Array<[string, (value: any) => void]> = [
-    ['version', value => { value.version = 'scouting-reports-v0' }],
+  const indexMutations: Array<[string, (value: any) => void]> = [
+    ['version', value => { value.version = 'scouting-v1' }],
     ['rules', value => { value.rules.windowDays = 30 }],
     ['unknown key', value => { value.players[0].extra = 1 }],
-    ['wins over games', value => { value.players[0].wins = value.players[0].games + 1 }],
-    ['form out of order', value => { value.players[0].form.reverse() }],
+    ['recent over games', value => { value.players[0].recent = value.players[0].games + 1 }],
     ['duplicate player', value => { value.players.push(structuredClone(value.players[0])) }],
     ['bad date', value => { value.players[0].last = '2026-13-01' }],
-    ['lane that does not add up', value => { value.players[0].lane.even += 1 }],
-    ['unknown trend', value => { value.players[0].pool[0].trend = 'hot' }],
+    ['last after through', value => { value.players[0].last = '2027-01-01' }],
+    ['lane that does not add up', value => { value.roles.Mid.lane.even += 1 }],
     ['kill participation above one', value => { value.players[0].observed.kp.mean = 1.5 }],
   ]
-  for (const [name, mutate] of mutations) {
-    const value = copy()
+  for (const [name, mutate] of indexMutations) {
+    const value = copy(index)
     mutate(value)
-    assert.throws(() => parseScoutingArtifact(value), /Invalid scouting reports/, name)
+    assert.throws(() => parseScoutingIndex(value), /Invalid scouting data/, name)
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const shardMutations: Array<[string, (value: any) => void]> = [
+    ['another player', value => { value.id = 'someone-else' }],
+    ['missing game', value => { value.games.pop() }],
+    ['out of order', value => { value.games.reverse() }],
+    ['fractional deaths', value => { value.games[0].values.deaths = 1.5 }],
+  ]
+  for (const [name, mutate] of shardMutations) {
+    const value = copy(shard)
+    mutate(value)
+    assert.throws(() => parseScoutingShard(value, owner), /Invalid scouting data/, name)
   }
 })
 
@@ -131,16 +154,16 @@ test('a verdict needs fifteen games and a whole 95% range on one side of the ave
   assert.ok(low > 0.287 && high < 0.6)
 })
 
-function reportWith(id: string, games: number, observed: PlayerReport['observed']): PlayerReport {
-  return { ...focal(), id, games, observed }
+function peer(id: string, games: number, observed: ScoutingPlayer['observed']): ScoutingPlayer {
+  return { id, name: id, role: 'Mid', teamId: 't', team: 'T', league: null, games, last: '2026-06-01', recent: 0, observed, url: `/data/${id}.json` }
 }
 
 test('ranks use only peers with enough games, put fewer deaths first and leave small samples unranked', () => {
-  const peers = [10, 20, 30, 40].map((value, i) => reportWith(`p${i}`, 80, { gd15: { mean: value, games: 80 }, deaths: { mean: 5 - i, games: 80 } }))
-  const rookie = reportWith('rookie', 30, { gd15: { mean: 99, games: 30 } })
-  const thin = reportWith('thin', 80, { gd15: { mean: 99, games: 10 } })
+  const peers = [10, 20, 30, 40].map((value, i) => peer(`p${i}`, 80, { gd15: { mean: value, games: 80 }, deaths: { mean: 5 - i, games: 80 } }))
+  const rookie = peer('rookie', 30, { gd15: { mean: 99, games: 30 } })
+  const thin = peer('thin', 80, { gd15: { mean: 99, games: 10 } })
   const field = scoutingField([...peers, rookie, thin], 'Mid')
-  const measure = (player: PlayerReport, key: string) => scoutingMeasures(player, field).find(entry => entry.metric.key === key)!
+  const measure = (player: ScoutingPlayer, key: string) => scoutingMeasures(player, field).find(entry => entry.metric.key === key)!
   assert.deepEqual([measure(peers[3]!, 'gd15').rank, measure(peers[3]!, 'gd15').of], [1, 4])
   assert.deepEqual([measure(peers[0]!, 'gd15').rank, measure(peers[0]!, 'gd15').of], [4, 4])
   assert.equal(measure(peers[3]!, 'deaths').rank, 1)

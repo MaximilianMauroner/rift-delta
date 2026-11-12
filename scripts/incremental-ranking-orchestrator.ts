@@ -9,6 +9,7 @@ import { buildExternalCausalBundle, reconcileExternalCausalBundle, REQUIRED_EXTE
 import { replayRankingState } from '../src/domains/rankings/build.ts'
 import { compareSemanticArtifactMaps, type SemanticArtifactMap } from '../src/lib/incremental/semanticParity.ts'
 import { stableDigest, stableJson, type CanonicalMatchLedger, type RankingChangeClassification } from '../src/domains/rankings/build.ts'
+import { SCOUTING_INDEX_PATH, SCOUTING_SHARD_DIR } from '../src/domains/scouting/build.ts'
 import { createRatingEventContext, createRatingReplayContext, replayRatingDates, transparentGprModelMetadata } from '../src/domains/rankings/build.ts'
 import { RATING_CHECKPOINT_SCHEMA_VERSION, encodeRatingCheckpointEnvelope, selectSafeCheckpoint } from '../src/domains/rankings/build.ts'
 import { buildRatingCheckpointEventContract, reconcileRatingCheckpointEvents } from '../src/domains/rankings/build.ts'
@@ -40,6 +41,12 @@ import { compareCodeUnits } from '../src/shared/codeUnitOrder.mjs'
 import { stableJsonSha256 } from './stable-json-digest.ts'
 
 export const RANKING_INCREMENTAL_IMPORTER_VERSION = 'community-source-import-v1'
+
+/** Artifacts an incremental refresh can only update. A retained generation without one takes a full build first. */
+const REQUIRED_GENERATION_CAPABILITIES = [
+  { urlKey: 'replayPredictionsUrl', path: `/data/${PUBLIC_ARTIFACT_PATHS.replayPredictions}`, reason: 'replay-evidence-capability-missing' },
+  { urlKey: 'scoutingIndexUrl', path: `/data/${SCOUTING_INDEX_PATH}`, reason: 'scouting-capability-missing' },
+] as const
 
 type RestoredCheckpoint = {
   candidate: IncrementalStateManifest['checkpoints'][number]
@@ -305,11 +312,10 @@ export async function buildRankingIncrementally({
   const memoryCollections: NonNullable<IncrementalBuildMetrics['memoryCollections']> = {}
   try {
     if (!restored) throw new Error('incremental-state-missing')
-    const replayPath = `/data/${PUBLIC_ARTIFACT_PATHS.replayPredictions}`
-    const replayUrl = restored.rootArtifact?.replayPredictionsUrl
-    if (typeof replayUrl !== 'string' || canonicalPublicLogicalPath(replayUrl) !== replayPath
-      || !Object.hasOwn(requiredRecord(restored.publicManifest.artifacts, 'public generation artifacts'), replayPath)) {
-      throw new Error('replay-evidence-capability-missing')
+    const retainedArtifacts = requiredRecord(restored.publicManifest.artifacts, 'public generation artifacts')
+    for (const { urlKey, path, reason } of REQUIRED_GENERATION_CAPABILITIES) {
+      const url = restored.rootArtifact?.[urlKey]
+      if (typeof url !== 'string' || canonicalPublicLogicalPath(url) !== path || !Object.hasOwn(retainedArtifacts, path)) throw new Error(reason)
     }
     let previousLedger: CanonicalMatchLedger | undefined = parseCanonicalMatchLedger(restored.canonicalLedger)
     classification = classifyRankingChange(previousLedger, ledger, ledger.compatibility)
@@ -743,6 +749,14 @@ function obsoletePublicArtifactPaths({
   for (const path of previousPaths) {
     if (!path.startsWith(tournamentPrefix) || path.endsWith('/index.json')) continue
     if (!validTournamentPaths.has(path)) removed.add(path)
+  }
+  // A player whose last game was removed has no entry in the new scouting index, so the file goes too.
+  const scoutingIndex = optionalRecord(candidateWrites.find((write) => write.relativePath === SCOUTING_INDEX_PATH)?.value)
+  if (scoutingIndex && Array.isArray(scoutingIndex.players)) {
+    const listed = new Set(scoutingIndex.players.flatMap((player) => logicalUrlPath(optionalRecord(player)?.url) ?? []))
+    for (const path of previousPaths) {
+      if (path.startsWith(`/data/${SCOUTING_SHARD_DIR}/`) && !listed.has(path)) removed.add(path)
+    }
   }
   for (const write of candidateWrites) {
     if (!write.relativePath.startsWith(`${PUBLIC_ARTIFACT_PATHS.matchHistoryShardDir}/`)
@@ -1286,6 +1300,7 @@ function dependencyInventory(
     teamDirectoryPath: '/data/entities/teams.json', regionHistoryPath: '/data/history/region-series.json',
     teamHistoryIndexPath: '/data/history/team-series/index.json', tournamentMovementIndexPath: '/data/history/tournament-moves/index.json',
     matchHistoryIndexPath: '/data/matches/index.json', replayPredictionsPath: `/data/${PUBLIC_ARTIFACT_PATHS.replayPredictions}`, scopes,
+    scoutingIndexPath: `/data/${SCOUTING_INDEX_PATH}`,
     teamHistoryPaths: Object.fromEntries([...changedTeams].map((team) => [team, historyPaths])),
     tournamentMovementPaths,
   }

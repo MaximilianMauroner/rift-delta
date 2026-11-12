@@ -1,4 +1,4 @@
-import { ROLES, reportKey, type PlayerReport, type ScoutingArtifact } from '../../domains/scouting/report'
+import { ROLES, SCOUTING_RULES, reportKey, type PlayerReport, type ScoutingIndex } from '../../domains/scouting/report'
 import type { Role } from '../../domains/rankings/types'
 import { compareCodeUnits } from '../../shared/codeUnitOrder.mjs'
 import { currentHashQuery, writeNavigationHash } from '../navigation'
@@ -11,14 +11,17 @@ export function scoutingHref(player: Pick<PlayerReport, 'id' | 'role'>) {
 /**
  * Resolve the role and player a hash query asks for, falling back to the most active player.
  * A role in the query wins over the player's own role, so the role picker can switch roles and reset the player.
+ * A linked player under the game minimum stays selected, so the page can say why there is no report.
  */
-export function scoutingSelection(artifact: ScoutingArtifact, query: URLSearchParams) {
-  const requested = artifact.players.find(player => reportKey(player) === query.get('player'))
-  const roles = ROLES.filter(role => artifact.players.some(player => player.role === role))
+export function scoutingSelection(index: ScoutingIndex, query: URLSearchParams) {
+  const requested = index.players.find(player => reportKey(player) === query.get('player'))
+  const eligible = index.players.filter(player => player.games >= SCOUTING_RULES.minGames)
+  const roles = ROLES.filter(role => eligible.some(player => player.role === role))
   const role: Role | undefined = roles.find(candidate => candidate === query.get('role')) ?? requested?.role ?? (roles.includes('Mid') ? 'Mid' : roles[0])
-  const players = artifact.players.filter(player => player.role === role)
-    .sort((a, b) => b.recent.games - a.recent.games || b.games - a.games || compareCodeUnits(reportKey(a), reportKey(b)))
-  const player = players.find(candidate => reportKey(candidate) === query.get('player')) ?? players[0]
+  const players = eligible.filter(player => player.role === role)
+    .sort((a, b) => b.recent - a.recent || b.games - a.games || compareCodeUnits(reportKey(a), reportKey(b)))
+  const player = requested?.role === role ? requested : players[0]
+  if (player && !players.includes(player)) players.unshift(player)
   return { roles, role, players, player, found: Boolean(requested) || !query.get('player') }
 }
 
@@ -30,11 +33,11 @@ export function canonicalScoutingQuery(selection: ReturnType<typeof scoutingSele
   return query
 }
 
-export function changeScoutingQuery(params: Record<string, string>, artifact: ScoutingArtifact) {
+export function changeScoutingQuery(params: Record<string, string>, index: ScoutingIndex) {
   const next = currentHashQuery()
   for (const [key, value] of Object.entries(params)) next.set(key, value)
   if ('role' in params) next.delete('player')
-  const hash = `#scouting?${canonicalScoutingQuery(scoutingSelection(artifact, next)).toString()}`
+  const hash = `#scouting?${canonicalScoutingQuery(scoutingSelection(index, next)).toString()}`
   if (hash === window.location.hash) return
   writeNavigationHash(hash, 'push')
   window.dispatchEvent(new HashChangeEvent('hashchange'))

@@ -12,6 +12,7 @@ import type { MatchRecord } from '../src/domains/rankings/types.ts'
 import type { TournamentInstanceId } from '../src/domains/rankings/evidence.ts'
 import { createPublicArtifactWritePlan, PUBLIC_ARTIFACT_PATHS } from '../src/domains/rankings/artifact-write.ts'
 import { resolveCanonicalSeries } from '../src/domains/rankings/evidence.ts'
+import { scoutingFamily } from '../src/domains/scouting/build.ts'
 import { appendRefreshStages, createRefreshMetrics } from './refresh-metrics.mjs'
 import { importRankingSourceData, type RankingSourceImport } from './rankings/source-input.ts'
 import { collectRefreshGarbage, readProcessPeakRssBytes } from './refresh-worker-memory.mjs'
@@ -153,6 +154,7 @@ const publicPlan = createPublicArtifactWritePlan(snapshot, {
   ...(options.affectedLogicalPaths ? { affectedLogicalPaths: options.affectedLogicalPaths } : {}),
   ...(options.retainedLogicalPaths ? { retainedLogicalPaths: options.retainedLogicalPaths } : {}),
   ...(options.previousArtifacts ? { previousArtifacts: options.previousArtifacts } : {}),
+  families: [scoutingFamily(snapshot.matches)],
 })
 const summaryOutput = resolve(publicDataTargetDir, PUBLIC_ARTIFACT_PATHS.manifest)
 const summarySnapshots = Object.entries(publicPlan.snapshots)

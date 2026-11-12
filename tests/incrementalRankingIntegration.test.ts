@@ -20,6 +20,7 @@ import { parseCanonicalMatchLedger } from '../src/lib/incremental/changeClassifi
 import { materializePublicArtifactPatch } from '../scripts/public-artifact-materialization.mjs'
 import { artifactReferences, assertReferenceClosure } from '../src/domains/rankings/internal/published/logicalReferences.mjs'
 import { crossMidnightReviewCases } from './fixtures/crossMidnightReviewCases.ts'
+import { scoutingGame } from './scoutingFixtures.ts'
 
 test('partial player directory preserves valid unaffected season players and diagnostics', () => {
   const merged = mergePartialPlayerDirectoryArtifact({
@@ -193,20 +194,25 @@ test('feature/mode matrix preserves disabled and daily/manual force full while c
   }
 })
 
-test('retained generations without replay evidence bootstrap before no-change and metadata-only shortcuts', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'incremental-replay-bootstrap-'))
+test('retained generations without replay evidence or scouting bootstrap before no-change and metadata-only shortcuts', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'incremental-capability-bootstrap-'))
   try {
     const source = fixtureSource(baseMatches())
     const base = await run(root, 'baseline', source, { mode: 'gated', cause: 'pending-match', enabled: false })
-    const restored = restoreFrom(base)
-    delete restored.rootArtifact!.replayPredictionsUrl
-    delete (restored.publicManifest.artifacts as Record<string, unknown>)['/data/evaluation/replay-predictions.json']
-    for (const metadata of [false, true]) {
-      const input = metadata ? { ...source, externalSources: [providerReceipt('2026-07-23T00:00:00Z', '2026-01-04')] } : source
-      const result = await run(root, `bootstrap-${metadata}`, input, { mode: 'gated', cause: 'pending-match', enabled: true, restored })
-      assert.equal(result.action, 'publish-full')
-      assert.equal(result.metrics.fallbackReason, 'replay-evidence-capability-missing')
-      assert.ok(semanticMap(result)['/data/evaluation/replay-predictions.json'])
+    for (const [urlKey, path, reason] of [
+      ['replayPredictionsUrl', '/data/evaluation/replay-predictions.json', 'replay-evidence-capability-missing'],
+      ['scoutingIndexUrl', '/data/scouting/index.json', 'scouting-capability-missing'],
+    ] as const) {
+      const restored = structuredClone(restoreFrom(base))
+      delete restored.rootArtifact![urlKey]
+      delete (restored.publicManifest.artifacts as Record<string, unknown>)[path]
+      for (const metadata of [false, true]) {
+        const input = metadata ? { ...source, externalSources: [providerReceipt('2026-07-23T00:00:00Z', '2026-01-04')] } : source
+        const result = await run(root, `bootstrap-${urlKey}-${metadata}`, input, { mode: 'gated', cause: 'pending-match', enabled: true, restored })
+        assert.equal(result.action, 'publish-full')
+        assert.equal(result.metrics.fallbackReason, reason)
+        assert.ok(semanticMap(result)[path])
+      }
     }
   } finally { await rm(root, { recursive: true, force: true }) }
 })
@@ -409,6 +415,36 @@ test('append, same-day insertion, and historical correction use whole-date repla
       const evidence = incremental.patch.changedArtifacts.find((artifact) => artifact.logicalPath === replayPath)?.value as { predictions: unknown[] } | undefined
       assert.equal(evidence?.predictions.length, matches.length, `${name} checkpoint prefix and suffix coverage`)
       await assert.rejects(access(join(root, `${name}-incremental-full.json`)), name)
+    }
+  } finally {
+    if (process.env.KEEP_INCREMENTAL_TEST_TMP !== 'true') await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('scouting player files follow appends, corrections, role changes and deletions with clean full semantics', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'incremental-scouting-'))
+  // Games with complete rosters, so every player has a scouting file. The ledger drops rosters, so only the files show these changes.
+  const scouted = (id: string, date: string, options: Parameters<typeof scoutingGame>[0] extends infer O ? Partial<O> : never = {}) => {
+    const game = scoutingGame({ id, date, ...options })
+    return match(id, date, 'Scout Event', { winner: game.winner, teamARoster: game.teamARoster, teamBRoster: game.teamBRoster })
+  }
+  const baseGames = () => [scouted('s0', '2025-12-31'), scouted('s1', '2026-01-01'), scouted('s2', '2026-01-02'), scouted('s3', '2026-01-03', { champion: 'Other' }), scouted('s4', '2026-01-04')]
+  try {
+    const base = await run(root, 'base', fixtureSource(baseGames()), { mode: 'gated', cause: 'daily-audit', enabled: true })
+    const scenarios = {
+      append: [...baseGames(), scouted('s5', '2026-01-05')],
+      correction: baseGames().map((entry) => entry.id === 's3' ? scouted('s3', '2026-01-03', { champion: 'Corrected', won: false }) : entry),
+      roleChange: baseGames().map((entry) => entry.id === 's4' ? { ...entry, teamARoster: { ...entry.teamARoster!, players: entry.teamARoster!.players.map((player) => player.role === 'Mid' ? { ...player, role: 'Top' as const } : player.role === 'Top' ? { ...player, role: 'Mid' as const } : player) } } : entry),
+      deletion: baseGames().filter((entry) => entry.id !== 's2'),
+    }
+    for (const [name, matches] of Object.entries(scenarios)) {
+      // A gated run releases rosters in place, so each run gets its own copy.
+      const incremental = await run(root, `${name}-incremental`, fixtureSource(structuredClone(matches)), { mode: 'gated', cause: 'pending-match', enabled: true, restored: restoreFrom(base) })
+      assert.equal(incremental.action, 'publish-incremental', `${name}: ${incremental.metrics.fallbackReason ?? 'no fallback reason'}`)
+      const full = await run(root, `${name}-full`, fixtureSource(structuredClone(matches)), { mode: 'gated', cause: 'daily-audit', enabled: false })
+      const scouting = (map: Record<string, unknown>) => Object.fromEntries(Object.entries(map).filter(([path]) => path.startsWith('/data/scouting/')))
+      assert.ok(Object.keys(scouting(semanticMap(full))).length > 1, `${name}: the fixture publishes player files`)
+      assert.deepEqual(scouting(semanticMap(incremental)), scouting(semanticMap(full)), name)
     }
   } finally {
     if (process.env.KEEP_INCREMENTAL_TEST_TMP !== 'true') await rm(root, { recursive: true, force: true })
