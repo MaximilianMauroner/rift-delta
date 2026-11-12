@@ -1,6 +1,6 @@
 import { diagnosticBegin, diagnosticEnd } from './benchmark-diagnostics.mjs'
 import { createHash } from 'node:crypto'
-import { hydrateArchive, ARCHIVE_PAGE_BYTES } from '../src/domains/rankings/internal/published/archive.mjs'
+import { archiveReferences, hydrateArchive, ARCHIVE_PAGE_BYTES } from '../src/domains/rankings/internal/published/archive.mjs'
 import { artifactReferences, assertReferenceClosure } from '../src/domains/rankings/internal/published/logicalReferences.mjs'
 import { createReadStream, createWriteStream } from 'node:fs'
 import { copyFile, mkdir, mkdtemp, readFile, readdir, rename, rm, stat } from 'node:fs/promises'
@@ -27,6 +27,7 @@ import { CONTENT_ADDRESSED_STORAGE_MODE, canonicalJsonFor, canonicalPublicLogica
 import { assertStateManifestAuthority, parseIncrementalStateManifest, readStoredJsonStateObject } from './incremental-state-storage.mjs'
 import { decodeRawObject, parseRawSourceReceipt, rawObjectReferenceFor } from './raw-source-storage.mjs'
 import { compareCodeUnits } from '../src/shared/codeUnitOrder.mjs'
+import { BUCKET_OBJECT_CONCURRENCY, mapBucketObjects } from './bucket-object-concurrency.mjs'
 
 export const PRESIGNED_URL_EXPIRY_SECONDS = 3600
 const IMMUTABLE_PUBLIC_CACHE_CONTROL = 'public, max-age=31536000, immutable'
@@ -340,7 +341,7 @@ export async function uploadRankingArtifacts({
     )
     await assertGenerationReadinessAuthority(client, config, receiptAuthority, publicationReceipt)
     await beforePromotionWrite?.()
-    for (const member of publicationReceipt.objects) await assertPublicationMember(client, config, member, verifiedObjects)
+    await mapBucketObjects(publicationReceipt.objects, (member) => assertPublicationMember(client, config, member, verifiedObjects))
     const finalLease = await assertBucketLease(leaseAuthority.key, leaseAuthority, {
       config,
       client,
@@ -1104,10 +1105,8 @@ export async function readActiveGenerationPublication({
     const matching = cached && Object.entries(binding).every(([key, value]) => cached[key] === value)
     // Keep this read's proofs separate from concurrent reads of another receipt.
     const scope = { ...binding, verifiedObjects: new Map(matching ? cached.verifiedObjects : undefined) }
-    for (const member of receipt.objects) {
-      const proof = await assertPublicationMember(client, binding, member, scope.verifiedObjects)
-      scope.verifiedObjects.set(proof.key, proof)
-    }
+    const proofs = await mapBucketObjects(receipt.objects, (member) => assertPublicationMember(client, binding, member, scope.verifiedObjects))
+    for (const proof of proofs) scope.verifiedObjects.set(proof.key, proof)
     verifiedPublicationClosureCache.set(client, scope)
   }
   return { found: true, receipt }
@@ -1253,8 +1252,13 @@ export async function uploadContentAddressedRawSourceGeneration(client, config, 
   const unchanged = []
   const unique = new Map()
   for (const prepared of [...generation.objects, generation.receiptPrepared]) unique.set(prepared.digest, prepared)
-  for (const prepared of unique.values()) {
-    const result = await syncContentAddressedRawObject(client, config, prepared)
+  const orderedDigests = [...unique.keys()]
+  unique.delete(generation.receiptPrepared.digest)
+  const results = await mapBucketObjects(unique.values(), (prepared) => syncContentAddressedRawObject(client, config, prepared))
+  results.push(await syncContentAddressedRawObject(client, config, generation.receiptPrepared))
+  const byDigest = new Map(results.map((result) => [result.digest, result]))
+  for (const digest of orderedDigests) {
+    const result = byDigest.get(digest)
     if (result.status === 'uploaded') uploaded.push(result)
     else unchanged.push(result)
   }
@@ -1328,11 +1332,12 @@ export async function assertRawSourceGenerationAuthority(client, config, authori
   ]
   const verifiedObjects = [{ key: authority.key, digest: authority.reference.sha256, bytes: compressed.byteLength,
     compressedBytes: compressed.byteLength, compressedSha256: createHash('sha256').update(compressed).digest('hex') }]
-  for (const reference of references) {
+  const childProofs = await mapBucketObjects(references, async (reference) => {
     const objectBytes = await readRawObjectBytes(client, config, reference)
-    verifiedObjects.push({ key: bucketKey(config, reference.key), digest: reference.sha256, bytes: objectBytes.byteLength,
-      compressedBytes: objectBytes.byteLength, compressedSha256: createHash('sha256').update(objectBytes).digest('hex') })
-  }
+    return { key: bucketKey(config, reference.key), digest: reference.sha256, bytes: objectBytes.byteLength,
+      compressedBytes: objectBytes.byteLength, compressedSha256: createHash('sha256').update(objectBytes).digest('hex') }
+  })
+  verifiedObjects.push(...childProofs)
   return { ...authority, reference: { ...authority.reference, compressedBytes: compressed.byteLength }, receipt, verifiedObjects }
 }
 
@@ -1667,11 +1672,13 @@ export async function uploadDirectory(client, config, dir, destinationPrefix, pu
   if (publishLast) {
     files.sort((left, right) => Number(relative(root, left) === publishLast) - Number(relative(root, right) === publishLast))
   }
-  const uploads = []
-  for (const file of files) {
+  const last = publishLast && relative(root, files.at(-1) ?? '') === publishLast ? files.pop() : undefined
+  const upload = (file) => {
     const relativePath = relative(root, file).split(sep).join('/')
-    uploads.push(await uploadFile(client, config, file, `${destinationPrefix}/${relativePath}`))
+    return uploadFile(client, config, file, `${destinationPrefix}/${relativePath}`)
   }
+  const uploads = await mapBucketObjects(files, upload)
+  if (last) uploads.push(await upload(last))
   return uploads
 }
 
@@ -1691,23 +1698,24 @@ export async function uploadContentAddressedPublicArtifacts(client, config, dir,
   }
   const rootManifest = JSON.parse(await readFile(join(root, 'ranking-summary.json'), 'utf8'))
   createGenerationManifest({ generationId, rootManifest, entries: [] })
-  // Process one logical artifact at a time. Do not retain the complete archive's
-  // canonical and compressed buffers until publication.
-  for (const file of files) {
-    const relativePath = relative(root, file).split(sep).join('/')
-    if (extname(relativePath).toLowerCase() !== '.json') throw new Error(`Content-addressed public artifact must be JSON: ${relativePath}`)
-    const value = JSON.parse(await readFile(file, 'utf8'))
-    const logicalPath = canonicalPublicLogicalPath(`/data/${relativePath}`)
-    const artifact = prepareSemanticArtifact(value)
-    entries.push({ logicalPath, digest: artifact.digest, bytes: artifact.bytes })
-    references.set(logicalPath, artifactReferences(value))
-    for (const member of [...(artifact.children ?? []), artifact]) {
-      if (seen.has(member.digest)) continue
-      seen.add(member.digest)
-      const result = await syncContentAddressedObject(client, config, member, onVerifiedStored)
+  // Bound prepared buffers as well as storage requests.
+  for (let offset = 0; offset < files.length; offset += BUCKET_OBJECT_CONCURRENCY) {
+    const artifacts = []
+    for (const file of files.slice(offset, offset + BUCKET_OBJECT_CONCURRENCY)) {
+      const relativePath = relative(root, file).split(sep).join('/')
+      const value = JSON.parse(await readFile(file, 'utf8'))
+      const logicalPath = canonicalPublicLogicalPath(`/data/${relativePath}`)
+      const artifact = prepareSemanticArtifact(value)
+      entries.push({ logicalPath, digest: artifact.digest, bytes: artifact.bytes })
+      references.set(logicalPath, artifactReferences(value))
+      artifacts.push(artifact)
+    }
+    const results = await syncContentAddressedArtifacts(client, config, artifacts, onVerifiedStored, seen)
+    for (const result of results) {
       if (result.status === 'unchanged') unchanged.push(result)
       else uploaded.push(result)
-      semanticLogicalBytes += member.bytes; compressedLogicalBytes += result.bytes
+      semanticLogicalBytes += result.semanticBytes
+      compressedLogicalBytes += result.bytes
     }
   }
   if (!rootManifest) throw new Error('Content-addressed publication requires ranking-summary.json')
@@ -1782,24 +1790,26 @@ export async function uploadContentAddressedPublicArtifactPatch(client, config, 
   const uploaded = []
   const unchanged = []
   const reused = []
-  for (const entry of uniqueReused.values()) {
+  const inheritedResults = await mapBucketObjects(uniqueReused.values(), async (entry) => {
+    const proofs = []
     const verified = await assertReferencedContentAddressedIntegrity(client, config, {
       logicalPath: entry.logicalPath,
       sha256: entry.digest,
       bytes: entry.bytes,
-    }, entry.logicalPath, { onVerifiedStored })
+    }, entry.logicalPath, { onVerifiedStored: onVerifiedStored ? (proof) => proofs.push(proof) : undefined })
     entry.verified = verified
+    let result
     if (!hasImmutablePublicMetadata(verified)) {
-      uploaded.push(await putContentAddressedObject(client, config, bucketKey(config, `objects/sha256/${entry.digest}`), {
+      result = await putContentAddressedObject(client, config, bucketKey(config, `objects/sha256/${entry.digest}`), {
         digest: entry.digest,
         bytes: entry.bytes,
         compressed: verified.compressed,
         compressedBytes: verified.compressed.byteLength,
       }, publicContentAddressedMetadata(entry.digest, entry.bytes), {
         reason: 'content-addressed-object-metadata-upgraded',
-      }))
+      })
     } else {
-      reused.push({
+      result = {
         status: 'reused',
         reason: 'inherited-generation-object-verified',
         key: bucketKey(config, `objects/sha256/${entry.digest}`),
@@ -1808,23 +1818,42 @@ export async function uploadContentAddressedPublicArtifactPatch(client, config, 
         contentType: PUBLIC_JSON_CONTENT_TYPE,
         contentEncoding: 'gzip',
         digest: entry.digest,
-      })
+      }
     }
+    return { result, proofs }
+  })
+  for (const { result, proofs } of inheritedResults) {
+    for (const proof of proofs) onVerifiedStored(proof)
+    if (result.status === 'reused') reused.push(result)
+    else uploaded.push(result)
   }
   diagnosticEnd(inheritedSpan, { objects: uniqueReused.size })
   const hydrateSpan = diagnosticBegin('public.inherited-hydration')
   const inheritedReferences = new Map()
-  for (const entry of uniqueReused.values()) {
+  const hydrated = await mapBucketObjects(uniqueReused.values(), async (entry) => {
+    const results = []
+    const proofs = []
     const content = JSON.parse(gunzipSync(entry.verified.compressed).toString('utf8')).content
-    inheritedReferences.set(entry.digest, artifactReferences(await hydrateArchive(content, async (reference) => {
-      const child = await assertReferencedContentAddressedIntegrity(client, config, reference, entry.logicalPath, { onVerifiedStored })
-      if (!hasImmutablePublicMetadata(child)) uploaded.push(await putContentAddressedObject(client, config,
+    const references = artifactReferences(await hydrateArchive(content, async (reference) => {
+      const child = await assertReferencedContentAddressedIntegrity(client, config, reference, entry.logicalPath, {
+        onVerifiedStored: onVerifiedStored ? (proof) => proofs.push(proof) : undefined,
+      })
+      if (!hasImmutablePublicMetadata(child)) results.push(await putContentAddressedObject(client, config,
         bucketKey(config, `objects/sha256/${reference.sha256}`), { digest: reference.sha256, bytes: reference.bytes,
           compressed: child.compressed, compressedBytes: child.compressed.byteLength }, publicContentAddressedMetadata(reference.sha256, reference.bytes)))
-      else reused.push({ status: 'reused', reason: 'inherited-archive-node-verified', key: bucketKey(config, `objects/sha256/${reference.sha256}`),
+      else results.push({ status: 'reused', reason: 'inherited-archive-node-verified', key: bucketKey(config, `objects/sha256/${reference.sha256}`),
         bytes: child.compressed.byteLength, semanticBytes: reference.bytes, contentType: PUBLIC_JSON_CONTENT_TYPE, contentEncoding: 'gzip', digest: reference.sha256 })
       return JSON.parse(gunzipSync(child.compressed).toString('utf8')).content
-    })))
+    }))
+    return { digest: entry.digest, references, results, proofs }
+  })
+  for (const entry of hydrated) {
+    for (const proof of entry.proofs) onVerifiedStored(proof)
+    inheritedReferences.set(entry.digest, entry.references)
+    for (const result of entry.results) {
+      if (result.status === 'reused') reused.push(result)
+      else uploaded.push(result)
+    }
   }
   diagnosticEnd(hydrateSpan)
   assertReferenceClosure([
@@ -1833,32 +1862,35 @@ export async function uploadContentAddressedPublicArtifactPatch(client, config, 
   ], new Set(actualPaths))
   const changedSpan = diagnosticBegin('public.changed-prepare-sync')
   const uniqueChanged = new Map()
+  const changedSeen = new Set()
+  const changedValues = [...changedByPath.values()]
   let compressedLogicalBytes = 0
-  for (const artifact of changedByPath.values()) {
-    const prepared = prepareSemanticArtifact(artifact.value)
-    compressedLogicalBytes += prepared.compressedBytes
-    const existing = uniqueChanged.get(prepared.digest)
-    if (existing) {
-      if (prepareSemanticArtifact(existing.value).canonicalJson !== prepared.canonicalJson) {
-        throw new Error(`Local semantic SHA-256 collision: ${prepared.digest}`)
+  for (let offset = 0; offset < changedValues.length; offset += BUCKET_OBJECT_CONCURRENCY) {
+    const changedPrepared = []
+    for (const artifact of changedValues.slice(offset, offset + BUCKET_OBJECT_CONCURRENCY)) {
+      const prepared = prepareSemanticArtifact(artifact.value)
+      compressedLogicalBytes += prepared.compressedBytes
+      const existing = uniqueChanged.get(prepared.digest)
+      if (existing) {
+        if (prepareSemanticArtifact(existing.value).canonicalJson !== prepared.canonicalJson) {
+          throw new Error(`Local semantic SHA-256 collision: ${prepared.digest}`)
+        }
+      } else {
+        changedPrepared.push(prepared)
       }
-    } else {
-      for (const child of prepared.children ?? []) {
-        const childResult = await syncContentAddressedObject(client, config, child, onVerifiedStored)
-        if (childResult.status === 'unchanged') unchanged.push(childResult)
-        else uploaded.push(childResult)
-      }
-      const result = await syncContentAddressedObject(client, config, prepared, onVerifiedStored)
+      const metadata = existing ?? { ...artifact, digest: prepared.digest, bytes: prepared.bytes, compressedBytes: prepared.compressedBytes }
+      uniqueChanged.set(prepared.digest, metadata)
+      entriesByPath.set(artifact.logicalPath, {
+        logicalPath: artifact.logicalPath,
+        digest: prepared.digest,
+        bytes: prepared.bytes,
+      })
+    }
+    const changedResults = await syncContentAddressedArtifacts(client, config, changedPrepared, onVerifiedStored, changedSeen)
+    for (const result of changedResults) {
       if (result.status === 'unchanged') unchanged.push(result)
       else uploaded.push(result)
     }
-    const metadata = existing ?? { ...artifact, digest: prepared.digest, bytes: prepared.bytes, compressedBytes: prepared.compressedBytes }
-    uniqueChanged.set(prepared.digest, metadata)
-    entriesByPath.set(artifact.logicalPath, {
-      logicalPath: artifact.logicalPath,
-      digest: prepared.digest,
-      bytes: prepared.bytes,
-    })
   }
   diagnosticEnd(changedSpan, { changedPaths: changedByPath.size })
   const manifest = createGenerationManifest({
@@ -1905,7 +1937,7 @@ async function syncGenerationManifest(client, config, generationId, manifest, on
       return [path, Object.fromEntries(Object.entries(entry).filter(([key]) => key !== 'generationId'))]
     }))
     const directory = prepareSemanticArtifact({ artifactKind: 'public-artifact-directory', formatVersion: 1, artifacts })
-    for (const child of [...(directory.children ?? []), directory]) directoryResults.push(await syncContentAddressedObject(client, config, child, onVerifiedStored))
+    directoryResults.push(...await syncContentAddressedArtifacts(client, config, [directory], onVerifiedStored))
     storedManifest = { ...manifest, artifacts: { [manifest.rootArtifact]: manifest.artifacts[manifest.rootArtifact] },
       artifactDirectory: { sha256: directory.digest, bytes: directory.bytes, encoding: 'gzip' } }
   }
@@ -1983,6 +2015,35 @@ async function assertGenerationManifestAuthority(client, config, authority) {
     && current.ContentType === PUBLIC_JSON_CONTENT_TYPE
     && current.ContentEncoding === undefined
   if (!matches) throw new Error('Generation manifest changed before active pointer promotion')
+}
+
+async function syncContentAddressedArtifacts(client, config, artifacts, onVerifiedStored, seen = new Set()) {
+  const jobs = new Map()
+  const levels = []
+  for (const artifact of artifacts) {
+    for (const member of [...(artifact.children ?? []), artifact]) {
+      if (seen.has(member.digest)) continue
+      seen.add(member.digest)
+      const dependencies = archiveReferences(member.semantic.content)
+      const level = dependencies.reduce((depth, reference) => Math.max(depth, (jobs.get(reference.sha256)?.level ?? -1) + 1), 0)
+      const job = { member, level, index: jobs.size }
+      jobs.set(member.digest, job)
+      const batch = levels[level] ?? []
+      levels[level] = batch
+      batch.push(job)
+    }
+  }
+  const results = new Array(jobs.size)
+  const proofs = Array.from({ length: jobs.size }, () => [])
+  // Archive parents must wait for all referenced child objects.
+  for (const level of levels) {
+    await mapBucketObjects(level, async ({ member, index }) => {
+      results[index] = await syncContentAddressedObject(client, config, member,
+        onVerifiedStored ? (proof) => proofs[index].push(proof) : undefined)
+    })
+  }
+  for (const batch of proofs) for (const proof of batch) onVerifiedStored(proof)
+  return results
 }
 
 async function syncContentAddressedObject(client, config, artifact, onVerifiedStored) {
@@ -2219,13 +2280,15 @@ export async function uploadRawSourceFiles(client, config, rawDir, manifestPath)
   const uploaded = []
   const unchanged = []
 
-  for (const file of files) {
+  const results = await mapBucketObjects(files, async (file) => {
     const filePath = resolve(file)
     if (filePath !== root && !filePath.startsWith(rootWithSeparator)) {
       throw new Error(`Raw source file is outside rawDir: ${file}`)
     }
     const relativePath = relative(root, filePath).split(sep).join('/')
-    const result = await syncRawFile(client, config, filePath, `raw/files/${relativePath}`)
+    return syncRawFile(client, config, filePath, `raw/files/${relativePath}`)
+  })
+  for (const result of results) {
     if (result.status === 'unchanged') unchanged.push(result)
     else uploaded.push(result)
   }

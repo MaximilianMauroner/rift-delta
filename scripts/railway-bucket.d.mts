@@ -200,11 +200,13 @@ export function downloadBucketDirectory(options?: Record<string, unknown>): Prom
 export function downloadBucketObject(options?: Record<string, unknown>): Promise<Record<string, unknown> & { found: boolean }>
 export function uploadDirectory(...args: unknown[]): Promise<unknown[]>
 export type SyncedArtifact = Record<string, unknown> & { key: string; bytes: number }
+export type VerifiedStoredObject = { key: string; digest: string; compressedBytes: number; compressedSha256: string }
 export function uploadContentAddressedPublicArtifacts(
   client: BucketClient,
   config: BucketStorageConfig,
   dir: string,
   generationId: string,
+  onVerifiedStored?: (proof: VerifiedStoredObject) => void,
 ): Promise<{
   uploaded: SyncedArtifact[]
   unchanged: SyncedArtifact[]
@@ -227,6 +229,7 @@ export function uploadContentAddressedPublicArtifactPatch(
   client: BucketClient,
   config: BucketStorageConfig,
   patch: PublicArtifactPatch & { generationId: string },
+  onVerifiedStored?: (proof: VerifiedStoredObject) => void,
 ): Promise<{
   uploaded: SyncedArtifact[]
   unchanged: SyncedArtifact[]

@@ -1,4 +1,5 @@
 import { diagnosticBegin, diagnosticEnd } from './benchmark-diagnostics.mjs'
+import { mapBucketObjects } from './bucket-object-concurrency.mjs'
 import { createHash } from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
@@ -196,19 +197,20 @@ export async function persistIncrementalStateBuild({
   const persistSpan = diagnosticBegin('state.persist', { checkpoints: state.checkpoints.length })
   const ledgerPrepared = prepareStateObject(state.ledger)
   const ledgerSync = await syncContentAddressedStateObject(client, config, ledgerPrepared)
-  const checkpoints = []
-  const objectResults = []
-  // Retain only references between writes, not every checkpoint's canonical
-  // string and buffer alongside the already encoded replay state.
-  for (const [index, checkpoint] of state.checkpoints.entries()) {
+  const persisted = await mapBucketObjects(state.checkpoints, async (checkpoint, index) => {
     const { candidate, prepared: object } = prepareStateCheckpoint(checkpoint, state.compatibility, index)
-    if (object) objectResults.push(await syncContentAddressedStateObject(client, config, object))
-    checkpoints.push({
-      boundary: candidate.boundary,
-      rawPrefix: candidate.rawPrefix,
-      storedObjectReference: candidate.object,
-    })
-  }
+    const result = object ? await syncContentAddressedStateObject(client, config, object) : undefined
+    return {
+      result,
+      checkpoint: {
+        boundary: candidate.boundary,
+        rawPrefix: candidate.rawPrefix,
+        storedObjectReference: candidate.object,
+      },
+    }
+  })
+  const checkpoints = persisted.map((entry) => entry.checkpoint)
+  const objectResults = persisted.flatMap((entry) => entry.result ? [entry.result] : [])
   const prepared = prepareContentAddressedState({
     generationId, runId, baseGenerationId, baseRunId,
     canonicalLedgerReference: stateObjectReferenceFor(ledgerPrepared),
@@ -227,18 +229,23 @@ export async function persistIncrementalStateBuild({
     outcome: entry.status === 'uploaded' ? 'uploaded' as const : 'unchanged' as const,
   }))
   const reportedKeys = new Set(publicationObjects.map((entry) => entry.key))
-  for (const checkpoint of prepared.manifest.checkpoints) {
+  const reusedCheckpoints = prepared.manifest.checkpoints.filter((checkpoint) => {
     const key = statePublicationKey(config, checkpoint.object.key)
-    if (reportedKeys.has(key)) continue
+    if (reportedKeys.has(key)) return false
+    reportedKeys.add(key)
+    return true
+  })
+  const reusedObjects = await mapBucketObjects(reusedCheckpoints, async (checkpoint) => {
+    const key = statePublicationKey(config, checkpoint.object.key)
     const verified = await assertStoredStateObjectIntegrity(client, config, checkpoint.object)
-    publicationObjects.push({
+    return {
       key,
       digest: checkpoint.object.sha256,
       bytes: verified.compressedBytes,
-      outcome: 'reused',
-    })
-    reportedKeys.add(key)
-  }
+      outcome: 'reused' as const,
+    }
+  })
+  publicationObjects.push(...reusedObjects)
   diagnosticEnd(persistSpan, { ledgerBytes: ledgerPrepared.bytes, ledgerCompressedBytes: ledgerPrepared.compressedBytes, newObjects: objectResults.length })
   return {
     authority: { ...manifest.authority, publicationObjects },

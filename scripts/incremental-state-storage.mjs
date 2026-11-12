@@ -1,4 +1,5 @@
 import { diagnosticBegin, diagnosticEnd } from './benchmark-diagnostics.mjs'
+import { mapBucketObjects } from './bucket-object-concurrency.mjs'
 import { createHash } from 'node:crypto'
 import { Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
@@ -180,7 +181,7 @@ export async function writeIncrementalStateManifest(client, config, preparedStat
   }
   if (verifyObjects) {
     await readStoredJsonStateObject(client, config, manifest.canonicalLedger)
-    for (const candidate of manifest.checkpoints) await assertStoredStateObject(client, config, candidate)
+    await mapBucketObjects(manifest.checkpoints, (candidate) => assertStoredStateObject(client, config, candidate))
   }
   const relativeKey = `state/generations/${safeStatePath(manifest.generationId)}.json`
   const key = stateBucketKey(config, relativeKey)
@@ -253,9 +254,7 @@ export async function assertStateManifestAuthority(client, config, authority, { 
   const verifiedObjects = []
   if (verifyObjects) {
     verifiedObjects.push(await assertStoredStateObjectIntegrity(client, config, parsed.canonicalLedger))
-    for (const candidate of parsed.checkpoints) {
-      verifiedObjects.push(await assertStoredStateObjectIntegrity(client, config, candidate.object))
-    }
+    verifiedObjects.push(...await mapBucketObjects(parsed.checkpoints, (candidate) => assertStoredStateObjectIntegrity(client, config, candidate.object)))
   }
   return { manifest: parsed, key: authority.key, etag: remote.ETag, bytes: bytes.byteLength, digest,
     ...(verifyObjects ? { verifiedObjects } : {}),
