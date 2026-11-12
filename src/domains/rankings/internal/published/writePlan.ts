@@ -172,10 +172,14 @@ export function createPublicArtifactWritePlan(
     const { index, shards } = family.create(versionedUrlForPath)
     const validateShard = family.validateShard(index)
     return [
-      ...(selected(family.indexPath) ? [write('entity', family.indexPath, index, family.validateIndex)] : []),
+      write('entity', family.indexPath, index, family.validateIndex),
       ...Object.entries(shards).map(([path, shard]) => write('entity', path, shard, validateShard)),
     ]
   })
+  // Only the family knows which files a change touches, so a selected family keeps every file and the caller compares digests.
+  const closurePaths = affectedLogicalPaths && familyWrites.length
+    ? new Set([...affectedLogicalPaths, ...familyWrites.map((entry) => entry.relativePath)])
+    : affectedLogicalPaths
   const familyUrls = Object.fromEntries(families.map((family) => [family.manifestUrlKey, versionedUrlForPath(family.indexPath)]))
   const summary = createStaticRankingSummaryData(data, {
     ...familyUrls,
@@ -227,7 +231,7 @@ export function createPublicArtifactWritePlan(
   return {
     manifest: mergedSummaryManifest,
     snapshots: summary.snapshots,
-    writes: transitiveWriteClosure(allWrites, affectedLogicalPaths, retainedLogicalPaths),
+    writes: transitiveWriteClosure(allWrites, closurePaths, retainedLogicalPaths),
     budgets: PUBLIC_ARTIFACT_BUDGETS,
   }
 }

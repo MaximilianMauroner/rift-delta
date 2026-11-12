@@ -5,8 +5,6 @@ import { affectedPublicArtifacts, assertArtifactDependencyPlanMatchesSemanticCha
 import { compareSemanticArtifactMaps } from '../src/lib/incremental/semanticParity.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
-import { scoutingShardPath } from '../src/domains/scouting/build.ts'
-import { scoutingGame } from './scoutingFixtures.ts'
 
 test('semantic parity reports missing, unexpected, digest, and generation/provenance mismatches', () => {
   const report = compareSemanticArtifactMaps({
@@ -168,25 +166,6 @@ test('partial write plans write referenced targets the retained generation lacks
     retainedLogicalPaths: retained(generatedPaths),
     previousArtifacts: { '/data/matches/index.json': { scopeIndex: { retired: { url: '/data/matches/retired.json', pages: [] } } } },
   }), /\/data\/matches\/index\.json references missing \/data\/matches\/retired\.json/)
-})
-
-test('a changed game marks the scouting index and the games file of each of its ten players, and no other games file', () => {
-  const before = scoutingGame({ id: 'g1', date: '2026-01-01' })
-  const players = [before.teamARoster!, before.teamBRoster!].flatMap((roster) => roster.players)
-  const playerPaths = Object.fromEntries([...players, { id: 'outsider', role: 'Mid' as const }]
-    .map((player) => [player.id, [scoutingShardPath(player)]]))
-  const plan = affectedPublicArtifacts({
-    changes: [{ before, after: { ...before, winner: 'Beta' } }],
-    inventory: {
-      manifestPath: 'ranking-summary.json', playerDirectoryPath: 'entities/players.json', teamDirectoryPath: 'entities/teams.json',
-      regionHistoryPath: 'history/regions.json', teamHistoryIndexPath: 'history/teams/index.json',
-      tournamentMovementIndexPath: 'history/tournaments/index.json', matchHistoryIndexPath: 'matches/index.json',
-      replayPredictionsPath: 'evaluation/replay-predictions.json', scoutingIndexPath: 'scouting/index.json',
-      scopes: [], teamHistoryPaths: {}, tournamentMovementPaths: {}, playerPaths,
-    },
-  })
-  assert.ok(plan.logicalPaths.includes('scouting/index.json'))
-  assert.deepEqual(plan.logicalPaths.filter((path) => path.startsWith('scouting/players/')), players.map((player) => scoutingShardPath(player)).toSorted())
 })
 
 function match(overrides: Partial<MatchRecord>): MatchRecord {

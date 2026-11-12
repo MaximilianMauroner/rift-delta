@@ -9,7 +9,7 @@ import { buildExternalCausalBundle, reconcileExternalCausalBundle, REQUIRED_EXTE
 import { replayRankingState } from '../src/domains/rankings/build.ts'
 import { compareSemanticArtifactMaps, type SemanticArtifactMap } from '../src/lib/incremental/semanticParity.ts'
 import { stableDigest, stableJson, type CanonicalMatchLedger, type RankingChangeClassification } from '../src/domains/rankings/build.ts'
-import { SCOUTING_INDEX_PATH, SCOUTING_SHARD_DIR, scoutingShardPath } from '../src/domains/scouting/build.ts'
+import { SCOUTING_INDEX_PATH, SCOUTING_SHARD_DIR } from '../src/domains/scouting/build.ts'
 import { createRatingEventContext, createRatingReplayContext, replayRatingDates, transparentGprModelMetadata } from '../src/domains/rankings/build.ts'
 import { RATING_CHECKPOINT_SCHEMA_VERSION, encodeRatingCheckpointEnvelope, selectSafeCheckpoint } from '../src/domains/rankings/build.ts'
 import { buildRatingCheckpointEventContract, reconcileRatingCheckpointEvents } from '../src/domains/rankings/build.ts'
@@ -1302,23 +1302,8 @@ function dependencyInventory(
     matchHistoryIndexPath: '/data/matches/index.json', replayPredictionsPath: `/data/${PUBLIC_ARTIFACT_PATHS.replayPredictions}`, scopes,
     scoutingIndexPath: `/data/${SCOUTING_INDEX_PATH}`,
     teamHistoryPaths: Object.fromEntries([...changedTeams].map((team) => [team, historyPaths])),
-    playerPaths: scoutingPlayerPaths(changes),
     tournamentMovementPaths,
   }
-}
-
-/** Each changed game rewrites the games file of every player in it, before and after the change. */
-function scoutingPlayerPaths(changes: ReturnType<typeof changesForClassification>) {
-  const paths: Record<string, string[]> = {}
-  for (const change of changes) {
-    for (const match of [change.before, change.after]) {
-      for (const player of [match?.teamARoster, match?.teamBRoster].flatMap((roster) => roster?.players ?? [])) {
-        const path = `/data/${scoutingShardPath(player)}`
-        paths[player.id] = [...new Set([...(paths[player.id] ?? []), path])]
-      }
-    }
-  }
-  return paths
 }
 
 function changeTouchesSnapshotScope(
