@@ -181,7 +181,8 @@ export async function writeIncrementalStateManifest(client, config, preparedStat
   }
   if (verifyObjects) {
     await readStoredJsonStateObject(client, config, manifest.canonicalLedger)
-    await mapBucketObjects(manifest.checkpoints, (candidate) => assertStoredStateObject(client, config, candidate))
+    // Parse one full checkpoint bundle at a time to bound replay memory.
+    for (const candidate of manifest.checkpoints) await assertStoredStateObject(client, config, candidate)
   }
   const relativeKey = `state/generations/${safeStatePath(manifest.generationId)}.json`
   const key = stateBucketKey(config, relativeKey)

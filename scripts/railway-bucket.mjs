@@ -1332,12 +1332,12 @@ export async function assertRawSourceGenerationAuthority(client, config, authori
   ]
   const verifiedObjects = [{ key: authority.key, digest: authority.reference.sha256, bytes: compressed.byteLength,
     compressedBytes: compressed.byteLength, compressedSha256: createHash('sha256').update(compressed).digest('hex') }]
-  const childProofs = await mapBucketObjects(references, async (reference) => {
+  // Decode one raw source object at a time to bound worker memory.
+  for (const reference of references) {
     const objectBytes = await readRawObjectBytes(client, config, reference)
-    return { key: bucketKey(config, reference.key), digest: reference.sha256, bytes: objectBytes.byteLength,
-      compressedBytes: objectBytes.byteLength, compressedSha256: createHash('sha256').update(objectBytes).digest('hex') }
-  })
-  verifiedObjects.push(...childProofs)
+    verifiedObjects.push({ key: bucketKey(config, reference.key), digest: reference.sha256, bytes: objectBytes.byteLength,
+      compressedBytes: objectBytes.byteLength, compressedSha256: createHash('sha256').update(objectBytes).digest('hex') })
+  }
   return { ...authority, reference: { ...authority.reference, compressedBytes: compressed.byteLength }, receipt, verifiedObjects }
 }
 

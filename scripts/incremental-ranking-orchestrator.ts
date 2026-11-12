@@ -197,20 +197,19 @@ export async function persistIncrementalStateBuild({
   const persistSpan = diagnosticBegin('state.persist', { checkpoints: state.checkpoints.length })
   const ledgerPrepared = prepareStateObject(state.ledger)
   const ledgerSync = await syncContentAddressedStateObject(client, config, ledgerPrepared)
-  const persisted = await mapBucketObjects(state.checkpoints, async (checkpoint, index) => {
+  const checkpoints = []
+  const objectResults = []
+  // Retain only references between writes, not every checkpoint's canonical
+  // string and buffer alongside the already encoded replay state.
+  for (const [index, checkpoint] of state.checkpoints.entries()) {
     const { candidate, prepared: object } = prepareStateCheckpoint(checkpoint, state.compatibility, index)
-    const result = object ? await syncContentAddressedStateObject(client, config, object) : undefined
-    return {
-      result,
-      checkpoint: {
-        boundary: candidate.boundary,
-        rawPrefix: candidate.rawPrefix,
-        storedObjectReference: candidate.object,
-      },
-    }
-  })
-  const checkpoints = persisted.map((entry) => entry.checkpoint)
-  const objectResults = persisted.flatMap((entry) => entry.result ? [entry.result] : [])
+    if (object) objectResults.push(await syncContentAddressedStateObject(client, config, object))
+    checkpoints.push({
+      boundary: candidate.boundary,
+      rawPrefix: candidate.rawPrefix,
+      storedObjectReference: candidate.object,
+    })
+  }
   const prepared = prepareContentAddressedState({
     generationId, runId, baseGenerationId, baseRunId,
     canonicalLedgerReference: stateObjectReferenceFor(ledgerPrepared),
