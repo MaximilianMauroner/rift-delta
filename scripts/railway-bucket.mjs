@@ -1105,8 +1105,11 @@ export async function readActiveGenerationPublication({
     const matching = cached && Object.entries(binding).every(([key, value]) => cached[key] === value)
     // Keep this read's proofs separate from concurrent reads of another receipt.
     const scope = { ...binding, verifiedObjects: new Map(matching ? cached.verifiedObjects : undefined) }
-    const proofs = await mapBucketObjects(receipt.objects, (member) => assertPublicationMember(client, binding, member, scope.verifiedObjects))
-    for (const proof of proofs) scope.verifiedObjects.set(proof.key, proof)
+    // A cold cache buffers and decompresses each member, including full checkpoints, so check one at a time.
+    for (const member of receipt.objects) {
+      const proof = await assertPublicationMember(client, binding, member, scope.verifiedObjects)
+      scope.verifiedObjects.set(proof.key, proof)
+    }
     verifiedPublicationClosureCache.set(client, scope)
   }
   return { found: true, receipt }
@@ -1252,13 +1255,9 @@ export async function uploadContentAddressedRawSourceGeneration(client, config, 
   const unchanged = []
   const unique = new Map()
   for (const prepared of [...generation.objects, generation.receiptPrepared]) unique.set(prepared.digest, prepared)
-  const orderedDigests = [...unique.keys()]
-  unique.delete(generation.receiptPrepared.digest)
-  const results = await mapBucketObjects(unique.values(), (prepared) => syncContentAddressedRawObject(client, config, prepared))
-  results.push(await syncContentAddressedRawObject(client, config, generation.receiptPrepared))
-  const byDigest = new Map(results.map((result) => [result.digest, result]))
-  for (const digest of orderedDigests) {
-    const result = byDigest.get(digest)
+  // An existing raw object is fully decoded, so sync one at a time to bound worker memory.
+  for (const prepared of unique.values()) {
+    const result = await syncContentAddressedRawObject(client, config, prepared)
     if (result.status === 'uploaded') uploaded.push(result)
     else unchanged.push(result)
   }
