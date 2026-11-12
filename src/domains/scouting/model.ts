@@ -1,11 +1,13 @@
 import type { Role } from '../rankings/types.ts'
 
-export const SCOUTING_VERSION = 'scouting-reports-v1'
+export const SCOUTING_VERSION = 'scouting-v2'
 export const ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'] as const satisfies readonly Role[]
 
 /** Every threshold a report depends on. The artifact stores a copy so a stale file is rejected on load. */
 export const SCOUTING_RULES = {
   source: 'complete-paired-oracles-elixir',
+  /** Games a player needs before the report is shown. Fewer games give numbers that mostly reflect chance. */
+  minGames: 20,
   /** Games a peer needs to set ranks and bands for a role. */
   minFieldGames: 60,
   /** Games with a measure needed before that measure is ranked. */
@@ -97,19 +99,60 @@ export type PlayerReport = {
 /** The same counts as a player report, over every player in a role. */
 export type RoleBaseline = { lane: LaneSplit; behind: Tally; ahead: Tally; deathless: Tally }
 
-export type ScoutingArtifact = {
+/** One counted game for one player, as played. The lane lead is `values.gd15`. */
+export type GameRow = {
+  date: string
+  champion: string
+  won: boolean
+  /** Champion of the opposing player in the same role. */
+  against: string
+  /** Name of the opposing player in the same role. */
+  opponent: string
+  values: Partial<Record<MetricKey, number>>
+}
+
+/** What the index knows about a player: enough to list, rank and link, without the games. */
+export type ScoutingPlayer = {
+  id: string
+  name: string
+  role: Role
+  teamId: string
+  team: string
+  league: string | null
+  games: number
+  /** Date of the newest game. */
+  last: string
+  /** Games inside the recent window. */
+  recent: number
+  observed: Partial<Record<MetricKey, ObservedMean>>
+  /** The player's games. */
+  url: string
+}
+
+export type ExclusionReason = 'other-provider' | 'incomplete-pair' | 'missing-team-id' | 'champion-identity'
+
+export type ScoutingIndex = {
+  artifactKind: 'scouting-index'
   version: typeof SCOUTING_VERSION
-  sourceSha256: string
   /** Date of the newest counted game. */
   through: string | null
   /** Date of the oldest counted game. */
   since: string | null
   countedGames: number
   excludedGames: number
-  excludedByReason: Record<'other-provider' | 'incomplete-pair' | 'missing-team-id' | 'champion-identity', number>
+  excludedByReason: Record<ExclusionReason, number>
   rules: typeof SCOUTING_RULES
   roles: Record<Role, RoleBaseline>
-  players: PlayerReport[]
+  players: ScoutingPlayer[]
+}
+
+/** One player's games in one role, oldest first in play order. It changes only when one of these games changes. */
+export type ScoutingShard = {
+  artifactKind: 'scouting-player'
+  version: typeof SCOUTING_VERSION
+  id: string
+  role: Role
+  games: GameRow[]
 }
 
 export function reportKey(player: Pick<PlayerReport, 'id' | 'role'>) {

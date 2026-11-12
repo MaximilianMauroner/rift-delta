@@ -193,20 +193,25 @@ test('feature/mode matrix preserves disabled and daily/manual force full while c
   }
 })
 
-test('retained generations without replay evidence bootstrap before no-change and metadata-only shortcuts', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'incremental-replay-bootstrap-'))
+test('retained generations without replay evidence or scouting bootstrap before no-change and metadata-only shortcuts', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'incremental-capability-bootstrap-'))
   try {
     const source = fixtureSource(baseMatches())
     const base = await run(root, 'baseline', source, { mode: 'gated', cause: 'pending-match', enabled: false })
-    const restored = restoreFrom(base)
-    delete restored.rootArtifact!.replayPredictionsUrl
-    delete (restored.publicManifest.artifacts as Record<string, unknown>)['/data/evaluation/replay-predictions.json']
-    for (const metadata of [false, true]) {
-      const input = metadata ? { ...source, externalSources: [providerReceipt('2026-07-23T00:00:00Z', '2026-01-04')] } : source
-      const result = await run(root, `bootstrap-${metadata}`, input, { mode: 'gated', cause: 'pending-match', enabled: true, restored })
-      assert.equal(result.action, 'publish-full')
-      assert.equal(result.metrics.fallbackReason, 'replay-evidence-capability-missing')
-      assert.ok(semanticMap(result)['/data/evaluation/replay-predictions.json'])
+    for (const [urlKey, path, reason] of [
+      ['replayPredictionsUrl', '/data/evaluation/replay-predictions.json', 'replay-evidence-capability-missing'],
+      ['scoutingIndexUrl', '/data/scouting/index.json', 'scouting-capability-missing'],
+    ] as const) {
+      const restored = structuredClone(restoreFrom(base))
+      delete restored.rootArtifact![urlKey]
+      delete (restored.publicManifest.artifacts as Record<string, unknown>)[path]
+      for (const metadata of [false, true]) {
+        const input = metadata ? { ...source, externalSources: [providerReceipt('2026-07-23T00:00:00Z', '2026-01-04')] } : source
+        const result = await run(root, `bootstrap-${urlKey}-${metadata}`, input, { mode: 'gated', cause: 'pending-match', enabled: true, restored })
+        assert.equal(result.action, 'publish-full')
+        assert.equal(result.metrics.fallbackReason, reason)
+        assert.ok(semanticMap(result)[path])
+      }
     }
   } finally { await rm(root, { recursive: true, force: true }) }
 })

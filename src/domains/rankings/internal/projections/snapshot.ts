@@ -740,6 +740,7 @@ export function createStaticRankingSummaryData(
     tournamentMovementIndexUrl = '/data/history/tournament-moves/index.json',
     matchHistoryIndexUrl,
     replayPredictionsUrl,
+    scoutingIndexUrl,
     snapshotUrlForKey = snapshotShardUrlPathForKey,
   }: {
     fullSnapshotUrl?: string
@@ -750,6 +751,7 @@ export function createStaticRankingSummaryData(
     tournamentMovementIndexUrl?: string
     matchHistoryIndexUrl?: string
     replayPredictionsUrl?: string
+    scoutingIndexUrl?: string
     snapshotUrlForKey?: (key: string) => string
   } = {},
 ): {
@@ -810,6 +812,7 @@ export function createStaticRankingSummaryData(
       tournamentMovementIndexUrl,
       ...(matchHistoryIndexUrl ? { matchHistoryIndexUrl } : {}),
       ...(replayPredictionsUrl ? { replayPredictionsUrl } : {}),
+      ...(scoutingIndexUrl ? { scoutingIndexUrl } : {}),
       teamCount: Object.keys(data.teams).length,
       snapshotIndex,
     },

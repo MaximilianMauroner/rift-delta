@@ -1,8 +1,8 @@
-import { ArrowLeft } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { currentHashQuery, hashForModeAndScope, readModeFromHash, readScopeFromHash, writeNavigationHash } from '../../browser/navigation'
 import { canonicalScoutingQuery, changeScoutingQuery, scoutingSelection } from '../../browser/scouting/navigation'
-import { useScoutingReports } from '../../browser/scouting/useScoutingReports'
+import { usePlayerGames, useScoutingIndex } from '../../browser/scouting/useScouting'
 import { DataState } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { LoadingState } from '../../components/ui/loading'
@@ -11,7 +11,8 @@ import { Select } from '../../components/ui/select'
 import { RouteErrorBoundary } from '../../components/RouteErrorBoundary'
 import { RIOT_PROJECT_NOTICE } from '../../data/legal'
 import { currentSeasonScope } from '../../domains/rankings/read'
-import { reportKey, scoutingField, scoutingMeasures, type ScoutingArtifact } from '../../domains/scouting/report'
+import { SCOUTING_RULES, reportKey, scoutingField, scoutingMeasures, scoutingReport, type ScoutingIndex, type ScoutingPlayer } from '../../domains/scouting/report'
+import type { Role } from '../../domains/rankings/types'
 import { AppNavigation } from '../AppShell'
 import { Facts } from './Facts'
 import { FormList } from './FormList'
@@ -22,12 +23,36 @@ import { ScoutingHero } from './ScoutingHero'
 import { fullDate, gameCount, roleWord } from './presentation'
 import './scouting.css'
 
-function Report({ artifact, query }: { artifact: ScoutingArtifact; query: URLSearchParams }) {
-  const selection = useMemo(() => scoutingSelection(artifact, query), [artifact, query])
+function PlayerReportView({ index, player, role }: { index: ScoutingIndex; player: ScoutingPlayer; role: Role }) {
+  const { state, retry } = usePlayerGames(index, player)
+  const report = useMemo(() => state.status === 'ready' && index.through ? scoutingReport(player, state.data, index.through) : undefined, [state, player, index])
+  const field = useMemo(() => scoutingField(index.players, role), [index, role])
+  const measures = useMemo(() => scoutingMeasures(player, field), [player, field])
+  const baseline = index.roles[role]
+  if (state.status === 'loading') return <LoadingState presentation="page" layout="board" label={`Loading the report for ${player.name}`} />
+  if (state.status !== 'ready' || !report) return <Panel><DataState icon={<AlertTriangle size={26} aria-hidden="true" />} title={`The report for ${player.name} could not be loaded`}
+    action={<Button onClick={retry}>Retry</Button>}>{state.status === 'error' ? state.message : 'The published data has no games for this player.'}</DataState></Panel>
+  return <>
+    <ScoutingHero player={report} roles={index.roles} through={index.through} measures={measures} />
+    <div className="sc-cols">
+      <div className="sc-col">
+        <PoolTable key={reportKey(report)} pool={report.pool} />
+        <FormList form={report.form} />
+      </div>
+      <div className="sc-col">
+        <LanePanel name={report.name} role={roleWord(role)} lane={report.lane} behind={report.facts.behind} ahead={report.facts.ahead} baseline={baseline} />
+        <RankStrips role={role} measures={measures} />
+        <Facts facts={report.facts} baseline={baseline} />
+      </div>
+    </div>
+    <p className="sc-source">Oracle's Elixir games with complete paired rosters. Lane numbers stop at 15 minutes and compare only with the opposing {roleWord(role)} player. Observed games, not predictions.</p>
+  </>
+}
+
+function Report({ index, query }: { index: ScoutingIndex; query: URLSearchParams }) {
+  const selection = useMemo(() => scoutingSelection(index, query), [index, query])
   const { role, roles, players, player, found } = selection
-  const field = useMemo(() => player ? scoutingField(artifact.players, player.role) : undefined, [artifact, player])
-  const measures = useMemo(() => player && field ? scoutingMeasures(player, field) : [], [player, field])
-  const change = (params: Record<string, string>) => changeScoutingQuery(params, artifact)
+  const change = (params: Record<string, string>) => changeScoutingQuery(params, index)
 
   useEffect(() => {
     if (readModeFromHash() !== 'scouting') return
@@ -35,7 +60,6 @@ function Report({ artifact, query }: { artifact: ScoutingArtifact; query: URLSea
     if (window.location.hash !== canonical) writeNavigationHash(canonical, 'replace')
   }, [selection])
 
-  const baseline = role ? artifact.roles[role] : undefined
   return <div className="sc-page">
     <div className="sc-controls">
       <label className="sc-field"><span>Role</span>
@@ -46,33 +70,23 @@ function Report({ artifact, query }: { artifact: ScoutingArtifact; query: URLSea
         <Select aria-label="Player" value={player ? reportKey(player) : ''} disabled={!player} onChange={event => change({ player: event.target.value })}>
           {players.map(option => <option key={reportKey(option)} value={reportKey(option)}>{option.name} ({option.team}, {gameCount(option.games)})</option>)}
         </Select></label>
-      <p className="sc-through">{artifact.through ? <>Games through <b>{fullDate(artifact.through)}</b></> : 'No counted games'}</p>
+      <p className="sc-through">{index.through ? <>Games through <b>{fullDate(index.through)}</b></> : 'No counted games'}</p>
     </div>
     <div className="sc-body">
       {!found && player ? <p className="sc-alert" role="status"><b>No report matches this link.</b> Showing {player.name} instead.</p> : null}
-      {player && role && baseline ? <>
-        <ScoutingHero player={player} roles={artifact.roles} through={artifact.through} measures={measures} />
-        <div className="sc-cols">
-          <div className="sc-col">
-            <PoolTable key={reportKey(player)} pool={player.pool} />
-            <FormList form={player.form} />
-          </div>
-          <div className="sc-col">
-            <LanePanel name={player.name} role={roleWord(role)} lane={player.lane} behind={player.facts.behind} ahead={player.facts.ahead} baseline={baseline} />
-            <RankStrips role={role} measures={measures} />
-            <Facts facts={player.facts} baseline={baseline} />
-          </div>
-        </div>
-        <p className="sc-source">Oracle's Elixir games with complete paired rosters. Lane numbers stop at 15 minutes and compare only with the opposing {roleWord(role)} player. Observed games, not predictions.</p>
-      </> : <Panel><DataState icon={null} title={role ? `No ${roleWord(role)} reports` : 'No scouting reports'}>
-        {role ? `No ${roleWord(role)} player has a report. Choose another role.` : 'No player has a report.'}
-      </DataState></Panel>}
+      {player && role && player.games < SCOUTING_RULES.minGames ? <Panel><DataState icon={<Users size={26} aria-hidden="true" />} title={`Too few games for a report on ${player.name}`}>
+        {player.name} has {gameCount(player.games)} in the counted data. A report needs {SCOUTING_RULES.minGames}, because fewer games mostly show chance. Choose another player.
+      </DataState></Panel>
+        : player && role ? <PlayerReportView index={index} player={player} role={role} />
+          : <Panel><DataState icon={<Users size={26} aria-hidden="true" />} title={role ? `No ${roleWord(role)} reports` : 'No scouting reports'}>
+            {role ? `No ${roleWord(role)} player has enough games for a report. Choose another role.` : 'No player has enough games for a report.'}
+          </DataState></Panel>}
     </div>
   </div>
 }
 
 export function ScoutingRoute() {
-  const { state, retry } = useScoutingReports()
+  const { state, retry } = useScoutingIndex()
   const [query, setQuery] = useState(currentHashQuery)
   useEffect(() => {
     // Not popstate. It fires before hashchange, so the canonical replace would run between them and the second read would hide the not-found notice.
@@ -93,10 +107,10 @@ export function ScoutingRoute() {
       </nav>
       <RouteErrorBoundary>
         {state.status === 'loading' ? <LoadingState presentation="page" layout="board" label="Loading scouting reports" />
-          : state.status === 'missing' ? <section className="px-[var(--page-x)] pt-4"><Panel><DataState icon={null} title="Scouting reports are not published">Scouting reports are not available yet. Use Players to see the available data.</DataState></Panel></section>
-          : state.status === 'error' ? <section className="px-[var(--page-x)] pt-4"><Panel><DataState icon={null} title="Scouting reports could not be loaded"
+          : state.status === 'missing' ? <section className="px-[var(--page-x)] pt-4"><Panel><DataState icon={<Users size={26} aria-hidden="true" />} title="Scouting reports are not published">Scouting reports are not available yet. Use Players to see the available data.</DataState></Panel></section>
+          : state.status === 'error' ? <section className="px-[var(--page-x)] pt-4"><Panel><DataState icon={<AlertTriangle size={26} aria-hidden="true" />} title="Scouting reports could not be loaded"
             action={<Button onClick={retry}>Retry</Button>}>{state.message}</DataState></Panel></section>
-            : <Report artifact={state.data} query={query} />}
+            : <Report index={state.data} query={query} />}
       </RouteErrorBoundary>
       <footer className="px-[var(--page-x)] pt-6 text-xs text-muted-foreground">{RIOT_PROJECT_NOTICE}</footer>
     </main>

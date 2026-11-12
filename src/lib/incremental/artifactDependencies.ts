@@ -29,8 +29,10 @@ export type PublicArtifactDependencyInventory = {
   tournamentMovementIndexPath: string
   matchHistoryIndexPath: string
   replayPredictionsPath: string
+  scoutingIndexPath: string
   scopes: readonly ArtifactScopeDependency[]
   teamHistoryPaths: Readonly<Record<string, readonly string[]>>
+  /** Files that hold one player's games, by player id. */
   playerPaths?: Readonly<Record<string, readonly string[]>>
   tournamentMovementPaths: Readonly<Record<string, string>>
 }
@@ -90,11 +92,14 @@ export function affectedPublicArtifacts({
     add(inventory.teamHistoryIndexPath, 'team-history-index')
     add(inventory.matchHistoryIndexPath, 'match-history-index')
     if (change.tournamentIds?.length) add(inventory.tournamentMovementIndexPath, 'tournament-movement-index')
+    add(inventory.scoutingIndexPath, 'scouting-index')
 
     for (const team of teams) {
       for (const path of inventory.teamHistoryPaths[team] ?? []) add(path, `team:${team}`)
     }
-    for (const playerId of change.playerIds ?? []) {
+    const rosterPlayerIds = matches.flatMap((match) => [match.teamARoster, match.teamBRoster]
+      .flatMap((roster) => roster?.players.map((player) => player.id) ?? []))
+    for (const playerId of new Set([...(change.playerIds ?? []), ...rosterPlayerIds])) {
       for (const path of inventory.playerPaths?.[playerId] ?? []) add(path, `player:${playerId}`)
     }
     for (const tournamentId of change.tournamentIds ?? []) {

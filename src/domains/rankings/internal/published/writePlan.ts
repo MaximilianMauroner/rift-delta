@@ -42,6 +42,21 @@ export type PublicArtifactWrite = {
   validate: (value: unknown) => unknown
 }
 
+/**
+ * A published index with one file per entry, built outside the ranking domain. The writer selects, versions and
+ * validates its writes like its own families, so incremental refreshes and reference checks cover it.
+ */
+export type PublicArtifactFamily = {
+  indexPath: string
+  shardDir: string
+  /** The manifest field that links to the index. */
+  manifestUrlKey: 'scoutingIndexUrl'
+  create: (urlForPath: (relativePath: string) => string) => { index: unknown; shards: Readonly<Record<string, unknown>> }
+  validateIndex: (value: unknown) => unknown
+  /** Validates one file against the index that links to it. */
+  validateShard: (index: unknown) => (value: unknown) => unknown
+}
+
 export type PublicArtifactWritePlan = {
   manifest: ReturnType<typeof createStaticRankingSummaryData>['manifest']
   snapshots: ReturnType<typeof createStaticRankingSummaryData>['snapshots']
@@ -108,6 +123,7 @@ export function createPublicArtifactWritePlan(
     affectedLogicalPaths,
     retainedLogicalPaths = new Set(),
     previousArtifacts,
+    families = [],
   }: {
     fullSnapshotUrl?: string
     /** Optional dependency plan; omitted for the authoritative full writer. */
@@ -116,6 +132,7 @@ export function createPublicArtifactWritePlan(
     retainedLogicalPaths?: ReadonlySet<string>
     /** Verified semantic values from the active generation, used to merge partial indexes. */
     previousArtifacts?: Readonly<Record<string, unknown>>
+    families?: readonly PublicArtifactFamily[]
   } = {},
 ): PublicArtifactWritePlan {
   const artifactVersion = runIdForArtifact({
@@ -150,7 +167,18 @@ export function createPublicArtifactWritePlan(
         matchHistoryPageUrlForKey: (key, page) => versionedUrlForPath(publicMatchHistoryPagePath(key, page)),
       })
     : undefined
+  const familyWrites = families.flatMap((family) => {
+    if (!selectedFamily(family.indexPath, family.shardDir)) return []
+    const { index, shards } = family.create(versionedUrlForPath)
+    const validateShard = family.validateShard(index)
+    return [
+      ...(selected(family.indexPath) ? [write('entity', family.indexPath, index, family.validateIndex)] : []),
+      ...Object.entries(shards).map(([path, shard]) => write('entity', path, shard, validateShard)),
+    ]
+  })
+  const familyUrls = Object.fromEntries(families.map((family) => [family.manifestUrlKey, versionedUrlForPath(family.indexPath)]))
   const summary = createStaticRankingSummaryData(data, {
+    ...familyUrls,
     fullSnapshotUrl,
     playerDirectoryUrl: versionedUrlForPath(PUBLIC_ARTIFACT_PATHS.players),
     teamDirectoryUrl: versionedUrlForPath(PUBLIC_ARTIFACT_PATHS.teams),
@@ -170,6 +198,7 @@ export function createPublicArtifactWritePlan(
   const allWrites: PublicArtifactWrite[] = [
     ...(selected(PUBLIC_ARTIFACT_PATHS.replayPredictions) ? [write('history', PUBLIC_ARTIFACT_PATHS.replayPredictions, replayEvidenceArtifact(data.replayEvidence, data.generatedAt), readReplayEvidence)] : []),
     ...(playerDirectory ? [write('entity', PUBLIC_ARTIFACT_PATHS.players, playerDirectory, parsePublicPlayerDirectory)] : []),
+    ...familyWrites,
     ...(teamDirectory ? [write('entity', PUBLIC_ARTIFACT_PATHS.teams, teamDirectory, parsePublicTeamDirectory)] : []),
     ...(selected(PUBLIC_ARTIFACT_PATHS.teamHistoryIndex) && mergedTeamHistoryIndex ? [write('history', PUBLIC_ARTIFACT_PATHS.teamHistoryIndex, mergedTeamHistoryIndex, parsePublicTeamHistoryIndex)] : []),
     ...Object.entries(teamHistory?.shards ?? {}).map(([key, shard]) => (

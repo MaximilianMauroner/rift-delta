@@ -1,8 +1,9 @@
-import { METRICS, SCOUTING_RULES, type Metric, type MetricKey, type PlayerReport, type Tally } from './model.ts'
+import { METRICS, SCOUTING_RULES, type Metric, type MetricKey, type PlayerReport, type ScoutingPlayer, type Tally } from './model.ts'
 import type { Role } from '../rankings/types.ts'
 
 export * from './model.ts'
-export { parseScoutingArtifact } from './parser.ts'
+export { parseScoutingIndex, parseScoutingShard } from './parser.ts'
+export { scoutingReport } from './compute.ts'
 
 const dayMs = 86_400_000
 
@@ -39,7 +40,7 @@ function quantile(sorted: readonly number[], q: number) {
 }
 
 /** Peers that set ranks and bands for one role. A peer needs enough games overall and with the measure. */
-export function scoutingField(players: readonly PlayerReport[], role: Role): ScoutingField {
+export function scoutingField(players: readonly ScoutingPlayer[], role: Role): ScoutingField {
   const peers = players.filter(player => player.role === role && player.games >= SCOUTING_RULES.minFieldGames)
   const field: ScoutingField = new Map()
   for (const metric of METRICS) {
@@ -68,7 +69,7 @@ export type Measure = {
   band: Band | null
 }
 
-export function scoutingMeasures(player: PlayerReport, field: ScoutingField): Measure[] {
+export function scoutingMeasures(player: Pick<PlayerReport, 'id' | 'role' | 'observed'>, field: ScoutingField): Measure[] {
   return METRICS.map(metric => {
     const observed = player.observed[metric.key]
     const entry = field.get(metric.key)

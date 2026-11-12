@@ -1,5 +1,7 @@
 import type { MatchRecord, Role } from '../src/domains/rankings/types.ts'
+import { buildScouting, scoutingShardPath } from '../src/domains/scouting/build.ts'
 import { ROLES } from '../src/domains/scouting/model.ts'
+import { scoutingReport } from '../src/domains/scouting/report.ts'
 
 export const FOCAL = 'a-2'
 
@@ -69,4 +71,17 @@ export function focalSeason(change: (options: ScoutingGameOptions) => ScoutingGa
       won: champion === 'Steady' ? true : champion === 'Riser' ? false : i % 2 === 0,
       deaths: champion === 'Steady' ? 0 : 1,
     })))
+}
+
+/** The index and player files for some games, with plain data paths as links. */
+export function scoutingOf(games: MatchRecord[] = focalSeason()) {
+  return buildScouting(games, path => `/data/${path}`)
+}
+
+/** The report the browser shows for one player, built from the same files. */
+export function reportOf(games: MatchRecord[] = focalSeason(), id = FOCAL, role: Role = 'Mid') {
+  const { index, shards } = scoutingOf(games)
+  const player = index.players.find(entry => entry.id === id && entry.role === role)
+  if (!player) return undefined
+  return scoutingReport(player, shards[scoutingShardPath(player)]!, index.through!)
 }
