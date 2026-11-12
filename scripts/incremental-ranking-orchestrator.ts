@@ -1,4 +1,5 @@
 import { diagnosticBegin, diagnosticEnd } from './benchmark-diagnostics.mjs'
+import { mapBucketObjects } from './bucket-object-concurrency.mjs'
 import { createHash } from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
@@ -227,18 +228,23 @@ export async function persistIncrementalStateBuild({
     outcome: entry.status === 'uploaded' ? 'uploaded' as const : 'unchanged' as const,
   }))
   const reportedKeys = new Set(publicationObjects.map((entry) => entry.key))
-  for (const checkpoint of prepared.manifest.checkpoints) {
+  const reusedCheckpoints = prepared.manifest.checkpoints.filter((checkpoint) => {
     const key = statePublicationKey(config, checkpoint.object.key)
-    if (reportedKeys.has(key)) continue
+    if (reportedKeys.has(key)) return false
+    reportedKeys.add(key)
+    return true
+  })
+  const reusedObjects = await mapBucketObjects(reusedCheckpoints, async (checkpoint) => {
+    const key = statePublicationKey(config, checkpoint.object.key)
     const verified = await assertStoredStateObjectIntegrity(client, config, checkpoint.object)
-    publicationObjects.push({
+    return {
       key,
       digest: checkpoint.object.sha256,
       bytes: verified.compressedBytes,
-      outcome: 'reused',
-    })
-    reportedKeys.add(key)
-  }
+      outcome: 'reused' as const,
+    }
+  })
+  publicationObjects.push(...reusedObjects)
   diagnosticEnd(persistSpan, { ledgerBytes: ledgerPrepared.bytes, ledgerCompressedBytes: ledgerPrepared.compressedBytes, newObjects: objectResults.length })
   return {
     authority: { ...manifest.authority, publicationObjects },

@@ -3,13 +3,143 @@ import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promise
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { Readable } from 'node:stream'
+import { setTimeout as delay } from 'node:timers/promises'
+import { gunzipSync } from 'node:zlib'
 import test from 'node:test'
-import { uploadContentAddressedPublicArtifactPatch, uploadContentAddressedPublicArtifacts } from '../scripts/railway-bucket.mjs'
+import { uploadContentAddressedPublicArtifactPatch, uploadContentAddressedPublicArtifacts, uploadRankingArtifacts } from '../scripts/railway-bucket.mjs'
 import { materializePublicArtifactPatch } from '../scripts/public-artifact-materialization.mjs'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
+import { prepareSemanticArtifact } from '../scripts/public-artifact-storage.mjs'
+import { archiveReferences } from '../src/domains/rankings/internal/published/archive.mjs'
 
 const config = { enabled: true, bucket: 'test', endpoint: 'https://example.invalid', region: 'auto', accessKeyId: 'x', secretAccessKey: 'y', prefix: 'rankings' }
+
+test('directory publication stores ranking-summary.json after all other files', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ranking-directory-order-'))
+  const client = memoryS3(async (command) => {
+    if (command.constructor.name !== 'PutObjectCommand') return
+    if (command.input.Key === 'rankings/data/ranking-summary.json') {
+      assert.ok(client.objects.has('rankings/data/a.json'))
+      assert.ok(client.objects.has('rankings/data/z.json'))
+    }
+    await delay(command.input.Key === 'rankings/data/a.json' ? 30 : 1)
+  })
+  try {
+    for (const path of ['a.json', 'ranking-summary.json', 'z.json']) await writeFile(join(dir, path), '{}')
+    const result = await uploadRankingArtifacts({ publicDataDir: dir, config, client })
+    assert.ok(Array.isArray(result.uploaded))
+    assert.deepEqual(result.uploaded.map((entry: unknown) => record(entry).key), [
+      'rankings/data/a.json', 'rankings/data/z.json', 'rankings/data/ranking-summary.json',
+    ])
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('public upload results and stored proofs keep input order when S3 finishes out of order', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ranking-upload-order-'))
+  const first = prepareSemanticArtifact({ artifactKind: 'fixture', value: 0 }).digest
+  const client = memoryS3(async (command) => {
+    if (command.constructor.name === 'PutObjectCommand') await delay(String(command.input.Key).endsWith(first) ? 30 : 1)
+  })
+  try {
+    const expected = new Set<string>()
+    for (let index = 0; index < 36; index += 1) {
+      const value = { artifactKind: 'fixture', value: index % 30 }
+      await writeFile(join(dir, `player-${String(index).padStart(2, '0')}.json`), JSON.stringify(value))
+      expected.add(prepareSemanticArtifact(value).digest)
+    }
+    await writeFile(join(dir, 'ranking-summary.json'), JSON.stringify(root('ordered')))
+    expected.add(prepareSemanticArtifact(root('ordered')).digest)
+    const keys = [...expected].map((digest) => `rankings/objects/sha256/${digest}`)
+    const manifestKey = 'rankings/generations/ordered/manifest.json'
+    const cold = await uploadContentAddressedPublicArtifacts(client, config, dir, 'ordered')
+    assert.deepEqual(cold.uploaded.map((entry) => entry.key), [...keys, manifestKey])
+    assert.notEqual(client.putKeys[0], keys[0])
+    assert.equal(client.putKeys.at(-1), manifestKey)
+    assert.equal(client.putKeys.length, keys.length + 1, 'duplicate digests have one storage write')
+    const proofs: string[] = []
+    const warm = await uploadContentAddressedPublicArtifacts(client, config, dir, 'ordered', (proof) => { proofs.push(proof.key) })
+    assert.deepEqual(warm.unchanged.map((entry) => entry.key), [...keys, manifestKey])
+    assert.deepEqual(proofs, keys)
+    const patchProofs: string[] = []
+    const patch = await uploadContentAddressedPublicArtifactPatch(client, config, {
+      generationId: 'ordered-patch', previousManifest: warm.manifest,
+      changedArtifacts: [
+        { logicalPath: '/data/ranking-summary.json', value: root('ordered-patch') },
+        { logicalPath: '/data/new-z.json', value: { artifactKind: 'fixture', value: 40 } },
+        { logicalPath: '/data/new-a.json', value: { artifactKind: 'fixture', value: 41 } },
+      ],
+    }, (proof) => { patchProofs.push(proof.key) })
+    assert.deepEqual(patch.reused?.map((entry) => entry.key), keys.slice(0, -1))
+    assert.deepEqual(patchProofs, keys)
+    assert.deepEqual(patch.uploaded.map((entry) => entry.digest), [
+      prepareSemanticArtifact({ artifactKind: 'fixture', value: 40 }).digest,
+      prepareSemanticArtifact({ artifactKind: 'fixture', value: 41 }).digest,
+      patch.manifestAuthority.digest,
+    ])
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('public archive parents and the generation manifest are stored after their children', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ranking-upload-children-'))
+  const client = memoryS3(async (command) => {
+    if (command.constructor.name !== 'PutObjectCommand') return
+    const key = String(command.input.Key)
+    if (!key.includes('/objects/sha256/')) return
+    const content = JSON.parse(gunzipSync(Buffer.from(command.input.Body as Uint8Array)).toString()).content
+    for (const reference of archiveReferences(content)) {
+      assert.ok(client.objects.has(`rankings/objects/sha256/${reference.sha256}`), 'referenced child is already stored')
+    }
+    await delay(1)
+  })
+  try {
+    const value = { artifactKind: 'fixture', rows: Array.from({ length: 40 }, (_, index) => ({ index, text: 'x'.repeat(40_000) })) }
+    await writeFile(join(dir, 'archive.json'), JSON.stringify(value))
+    await writeFile(join(dir, 'ranking-summary.json'), JSON.stringify(root('children')))
+    const prepared = prepareSemanticArtifact(value)
+    assert.ok((prepared.children?.length ?? 0) > 2)
+    const result = await uploadContentAddressedPublicArtifacts(client, config, dir, 'children')
+    assert.deepEqual(result.uploaded.slice(0, prepared.children?.length).map((entry) => entry.digest), prepared.children?.map((child) => child.digest))
+    assert.equal(client.putKeys.at(-1), 'rankings/generations/children/manifest.json')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('a failed public object rejects the upload and leaves the generation manifest unpublished', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ranking-upload-failure-'))
+  const firstError = new Error('first storage failure')
+  const laterError = new Error('later storage failure')
+  let attempts = 0
+  let active = 0
+  const client = memoryS3(async (command) => {
+    if (command.constructor.name !== 'GetObjectCommand') return
+    const attempt = attempts++
+    active += 1
+    try {
+      await delay(attempt === 0 ? 1 : 20)
+      throw attempt === 0 ? firstError : laterError
+    } finally {
+      active -= 1
+    }
+  })
+  try {
+    for (let index = 0; index < 40; index += 1) {
+      await writeFile(join(dir, `player-${index}.json`), JSON.stringify({ artifactKind: 'fixture', index }))
+    }
+    await writeFile(join(dir, 'ranking-summary.json'), JSON.stringify(root('failed')))
+    await assert.rejects(uploadContentAddressedPublicArtifacts(client, config, dir, 'failed'), (error) => error === firstError)
+    assert.equal(active, 0, 'all started calls settle before the caller can clean up')
+    assert.ok(attempts < 40, 'the failure stops work on remaining objects')
+    assert.equal(client.objects.has('rankings/generations/failed/manifest.json'), false)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
 
 test('partial artifact patch uploads only changed hashes and composes exact complete mapping with removals', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'ranking-patch-'))
@@ -363,7 +493,7 @@ function root(runId: string) {
 }
 
 type Stored = { bytes: Buffer; etag: string; contentType?: string; contentEncoding?: string; cacheControl?: string; metadata: Record<string, string> }
-function memoryS3() {
+function memoryS3(beforeSend?: (command: { constructor: { name: string }; input: Record<string, unknown> }) => Promise<void>) {
   const objects = new Map<string, Stored>()
   const putKeys: string[] = []
   const getKeys: string[] = []
@@ -372,6 +502,7 @@ function memoryS3() {
     objects, putKeys, getKeys,
     async send(command: unknown) {
       const details = command as { constructor: { name: string }; input: Record<string, unknown> }
+      await beforeSend?.(details)
       const name = details.constructor.name
       const input = details.input
       const key = String(input.Key)
