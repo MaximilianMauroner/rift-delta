@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { ITEMS } from "../../src/domains/dps/items.ts";
 import {
-  canonicalBuildIdentity,
   canonicalBuildKey,
   canonicalizeBuild,
   generateCandidateBuilds,
@@ -22,7 +21,7 @@ describe("optimizer build identity", () => {
   test("is order-insensitive without mutating the source build", () => {
     const build = { name: "UI order", itemIds: [3085, 3006, 3031] };
     expect(canonicalBuildKey(build)).toBe("3006,3031,3085");
-    expect(canonicalBuildIdentity([3031, 3085, 3006])).toBe("3006,3031,3085");
+    expect(canonicalBuildKey([3031, 3085, 3006])).toBe("3006,3031,3085");
     expect(sameBuildIdentity(build, { name: "Different label", itemIds: [3006, 3031, 3085] })).toBe(
       true,
     );
