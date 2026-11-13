@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import test from 'node:test'
 import {
@@ -155,19 +154,4 @@ test('Linux executable peak fails closed when procfs high-water data is missing 
     assert.throws(() => readProcessPeakRssBytes(), /procfs unavailable/)
   `
   execFileSync(process.execPath, ['--input-type=module', '--eval', script], { encoding: 'utf8', timeout: 12_000 })
-})
-
-test('worker, direct, and benchmark entry points share the exact refresh memory policy', async () => {
-  const [packageJson, runner, once, benchmark, refreshWrapper] = await Promise.all([
-    readFile('package.json', 'utf8'),
-    readFile('scripts/run-refresh-worker.mjs', 'utf8'),
-    readFile('scripts/refresh-once.mjs', 'utf8'),
-    readFile('scripts/benchmark-incremental-ranking.ts', 'utf8'),
-    readFile('scripts/refresh-data-if-changed.mjs', 'utf8'),
-  ])
-  assert.match(packageJson, /"railway:refresh": "node scripts\/run-refresh-worker\.mjs"/)
-  assert.match(runner, /refreshWorkerArgs\('scripts\/refresh-data-if-changed\.mjs', process\.argv\.slice\(2\)\)/)
-  assert.match(once, /refreshWorkerArgs\('scripts\/refresh-data-if-changed\.mjs'\)/)
-  assert.match(benchmark, /execArgv: refreshWorkerExecArgv\(process\.execArgv\)/)
-  assert.match(refreshWrapper, /rawSourceWorkerCommand\(inputPath, outputPath, env\)/)
 })

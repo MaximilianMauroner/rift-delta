@@ -12,7 +12,6 @@ export const SOURCE_SCHEMA_VERSION = "riot-match-timeline-v1";
 export const STATIC_SOURCE_SCHEMA_VERSION = "ddragon-static-v1";
 export const EXTRACTOR_VERSION = "timeline-extractor-v2";
 export const DATASET_VERSION = "26.18-euw-ranked-solo-v1";
-export const ENGINE_VERSION = "yunara-engine-v1";
 
 export interface MatchArchiveSource {
   schemaVersion: string;
@@ -128,10 +127,6 @@ export function staticArchiveObjectKey(
   return `static/patch=${patch}/version=${ddragonVersion}/source=${sourceType}/sha256=${sha256}/static-source.json.gz`;
 }
 
-export function matchSourceIdentity(matchId: string): string {
-  return `match:${matchId}`;
-}
-
 export function staticSourceIdentity(
   patch: string,
   ddragonVersion: string,
@@ -202,10 +197,6 @@ async function downloadBytes(key: string): Promise<Uint8Array> {
   return result.Body.transformToByteArray();
 }
 
-export async function readArchiveBytes(key: string): Promise<Uint8Array> {
-  return downloadBytes(key);
-}
-
 /**
  * Verify the actual stored compressed bytes, rather than trusting only HEAD metadata.
  * This function is pure so the checksum/length contract is also covered without a bucket.
@@ -272,10 +263,6 @@ export async function paginateArchivePages(
     continuationToken = next && next !== continuationToken ? next : undefined;
   } while (continuationToken);
   return objects;
-}
-
-export async function listArchiveKeys(prefix = "raw/"): Promise<string[]> {
-  return (await listArchiveObjects(prefix)).map((entry) => entry.key);
 }
 
 export async function verifyArchiveKey(

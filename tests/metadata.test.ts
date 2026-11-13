@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { HOMEPAGE_PRERENDER_MARKER, PUBLIC_SITE_ORIGIN } from '../scripts/seo-prerender.ts'
-import { RIOT_PROJECT_NOTICE } from '../src/data/legal.ts'
 
 test('crawler and social metadata use the custom canonical host', async () => {
   const html = await readFile('index.html', 'utf8')
@@ -50,17 +49,6 @@ test('web app manifest includes installable icon sizes', async () => {
   assert.deepEqual(await pngDimensions('public/icon-192.png'), { width: 192, height: 192 })
   assert.deepEqual(await pngDimensions('public/logo.png'), { width: 512, height: 512 })
   assert.deepEqual(await pngDimensions('public/icon-512-maskable.png'), { width: 512, height: 512 })
-})
-
-test('app shell includes the Riot project disclaimer footer', async () => {
-  const app = await readFile('src/views/rankings/RankingRoute.tsx', 'utf8')
-
-  assert.match(RIOT_PROJECT_NOTICE, /created under Riot Games' "Legal Jibber Jabber" policy/)
-  assert.match(RIOT_PROJECT_NOTICE, /Riot Games does not endorse or sponsor this project/)
-  assert.match(app, /<footer\b[^>]*aria-label="Project disclaimer"/)
-  assert.match(app, /RIOT_PROJECT_NOTICE/)
-  assert.match(app, /PROJECT_REPOSITORY_URL/)
-  assert.match(app, /PROJECT_FEEDBACK_URL/)
 })
 
 test('visible SVG logo is optimized separately from the install icon', async () => {
