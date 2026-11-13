@@ -63,31 +63,3 @@ export const eventTierConfig: Record<
     description: 'Qualification matches with stakes but often narrower fields.',
   },
 }
-
-export const modelFactors = [
-  {
-    key: 'context',
-    label: 'Context of play',
-    description: 'Worlds playoffs count more than MSI, playoffs, and regular season; post-Worlds preseason games are discounted except Demacia Cup.',
-  },
-  {
-    key: 'recency',
-    label: 'Recent performance',
-    description: 'Newer matches decay more slowly into the current snapshot.',
-  },
-  {
-    key: 'execution',
-    label: 'Result signal',
-    description: 'Team Elo uses win/loss only; kills, gold, and objectives are not team-rating multipliers in this version.',
-  },
-  {
-    key: 'opponent',
-    label: 'Opponent strength',
-    description: 'Beating a strong opponent moves the model more than beating a weak one.',
-  },
-  {
-    key: 'league',
-    label: 'League strength',
-    description: 'International results update league Elo, which is blended into each team power rating.',
-  },
-] as const

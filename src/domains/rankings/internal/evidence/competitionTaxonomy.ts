@@ -242,12 +242,6 @@ const leagueInferenceRules: { league: string; patterns: RegExp[] }[] = [
   { league: 'LFL', patterns: [/\blfl\b/i] },
 ]
 
-export const competitionTaxonomyModelParameters = {
-  leagueTierModelParameters,
-  currentRegionTaxonomyModelParameters,
-  leagueInferenceRules,
-} as const
-
 export function inferLeagueFromEvent(event: string) {
   const explicitRegionalLeague = explicitRegionalLeagueFromEvent(event)
   if (explicitRegionalLeague) return explicitRegionalLeague
