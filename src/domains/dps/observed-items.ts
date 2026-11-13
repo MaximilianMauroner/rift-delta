@@ -25,20 +25,6 @@ export function isCompletedLegendary(item: StaticItemShape): boolean {
   return item.fromIds.length > 0 && item.intoIds.length === 0 && item.goldTotal >= 2000;
 }
 
-export function findThirdItemTimestamp(
-  frames: Array<{ timestamp: number; inventory: number[] }>,
-  items: Map<number, StaticItemShape>,
-): number | null {
-  for (const frame of frames) {
-    const count = frame.inventory.filter((id) => {
-      const item = items.get(id);
-      return item ? isCompletedLegendary(item) : false;
-    }).length;
-    if (count >= 3) return frame.timestamp;
-  }
-  return null;
-}
-
 export interface ThirdItemAnchor {
   /** The selected one-minute participant frame used for enemy snapshots. */
   frameTimestamp: number;
