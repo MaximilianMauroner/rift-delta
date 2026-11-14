@@ -1,3 +1,4 @@
+import { writeOracleForecastFixture } from './fixtures/oracleForecastFixture.ts'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
@@ -18,7 +19,7 @@ const capture = Date.parse('2026-07-19T23:00:00Z')
 const cutoff = Date.parse('2026-07-20T10:00:00Z')
 const matches: MatchRecord[] = Array.from({ length: 3 }, (_, index) => ({ ...sampleMatches[0],
   id: `final-${index}`, sourceGameId: `final-${index}`, sourceMatchId: 'ewc-final', officialMatchId: 'ewc-final',
-  sourceProvider: 'leaguepedia-cargo', date: '2026-07-19', event: 'EWC 2026', league: 'EWC',
+  gameCompletedAtUtc: '2026-07-19T12:30:00Z', sourceProvider: 'leaguepedia-cargo', date: '2026-07-19', event: 'EWC 2026', league: 'EWC',
   region: 'International', tier: 'minor-international', phase: 'Final', bestOf: 5, bestOfBasis: 'official', winner: 'Gen.G', teamB: 'G2 Esports',
 }))
 const request: PregameSeriesRequest = {
@@ -73,8 +74,8 @@ test('exported exact state matches production after final and ignores future sch
     const manifest = join(directory, 'manifest.json')
     const requests = join(directory, 'requests.json')
     const candidate = join(directory, 'candidate.json')
-    const files = { leaguepediaJson: ['raw.json'], lolEsportsJson: ['schedule.json'] }
-    await writeFile(join(directory, 'raw.json'), JSON.stringify({ fetchedAt: new Date(capture).toISOString(), matches }))
+    const files = { oracleCsv: ['raw.csv'], lolEsportsJson: ['schedule.json'] }
+    const sourceCapture = await writeOracleForecastFixture(directory, 'raw.csv', matches.map((match, index) => ({ ...match, datetimeUtc: `2026-07-19T${12 + index}:00:00Z` })), capture)
     const schedule = { fetchedAt: new Date(capture).toISOString(), coverage: { complete: true }, events: [{
       startTime: '2026-07-19T12:00:00Z', state: 'completed', blockName: 'Final', league: { name: 'EWC', slug: 'ewc' },
       match: { id: 'ewc-final', strategy: { type: 'bestOf', count: 5 }, teams: [{ name: 'Gen.G' }, { name: 'G2 Esports' }] },
@@ -84,7 +85,7 @@ test('exported exact state matches production after final and ignores future sch
     const source = await importRankingSourceData({ manifestPath: manifest })
     const evidence = evidenceFor(source.matches, source.tournamentScheduleReferences as typeof references)
     assert.equal(evidence[0].lifecycle.status, 'completed')
-    await writeFile(requests, JSON.stringify({ evidenceMode: 'synthetic', availability: 'verified', requests: [request],
+    await writeFile(requests, JSON.stringify({ evidenceMode: 'synthetic', availability: 'verified', requests: [request], sourceFiles: [sourceCapture],
       observations: source.matches.map(match => ({ gameId: match.id, observedAt: capture, resultAvailableAt: capture })) }))
     await writeFile(candidate, JSON.stringify({ candidateId: 'parity', parentCandidateId: null, calibrationFit: null,
       transform: { temperature: 1, calibrationOrder: 'game-before-series', dependence: 0 } }))
@@ -107,7 +108,7 @@ test('exported exact state matches production after final and ignores future sch
     const explicitBytes = JSON.stringify(explicitSchedule)
     await writeFile(join(directory, 'schedule.json'), explicitBytes)
     const explicitRequests = JSON.parse(await readFile(requests, 'utf8'))
-    explicitRequests.sourceFiles = [{ path: 'schedule.json', observedAt: capture,
+    explicitRequests.sourceFiles = [sourceCapture, { path: 'schedule.json', observedAt: capture,
       sha256: createHash('sha256').update(explicitBytes).digest('hex') }]
     await writeFile(requests, JSON.stringify(explicitRequests))
     const explicitOutput = join(directory, 'explicit.jsonl')
