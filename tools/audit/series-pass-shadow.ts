@@ -42,6 +42,7 @@ function wireFrame(frame: SeriesPassFrame) {
     ...wireNumbers(frame),
     series: frame.series.map((series) => ({
       seriesId: series.seriesId, teams: series.teams, leagues: series.leagues, bestOf: series.bestOf, wins: series.wins,
+      ...(series.preserveRosterStrength ? { preserveRosterStrength: series.preserveRosterStrength } : {}),
       members: series.members.map((member) => ({
         ...wireNumbers(member), winner: member.winner,
         sides: member.sides.map((side) => ({ ...wireNumbers(side), team: side.team, league: side.league })),

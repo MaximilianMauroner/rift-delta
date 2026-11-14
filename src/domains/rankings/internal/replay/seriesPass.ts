@@ -76,6 +76,7 @@ export type SeriesPassMember = Readonly<{
 }>
 export type SeriesPassSeries = Readonly<{
   seriesId: string
+  preserveRosterStrength?: Pair<boolean>
   teams: Pair<number>
   leagues: Pair<number>
   bestOf: SeriesFormat

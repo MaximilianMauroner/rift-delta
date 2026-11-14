@@ -329,7 +329,7 @@ impl<'f> Pass<'f> {
         }
     }
 
-    fn continuity(&mut self, team: usize, observed: Option<&Roster>) {
+    fn continuity(&mut self, team: usize, observed: Option<&Roster>, preserve_strength: bool) {
         let (Some(observed), Some((_, prior))) = (observed, self.teams.last_roster.get(team))
         else {
             return;
@@ -340,8 +340,11 @@ impl<'f> Pass<'f> {
         let model = self.model;
         let initial = model.initial_team_rating;
         self.teams.continuity.set(team, continuity);
-        let retention =
-            model.roster_continuity_floor + (1.0 - model.roster_continuity_floor) * continuity;
+        let retention = if preserve_strength {
+            1.0
+        } else {
+            model.roster_continuity_floor + (1.0 - model.roster_continuity_floor) * continuity
+        };
         for ratings in [&mut self.teams.rating, &mut self.teams.execution] {
             let rating = ratings.num(team).unwrap_or(initial);
             ratings.set(team, initial + retention * (rating - initial));
@@ -369,8 +372,12 @@ impl<'f> Pass<'f> {
         let frame = self.frame;
         let last = series.members.len() - 1;
         let final_member = &series.members[last];
-        for side in &final_member.sides {
-            self.continuity(side.team, side.roster.as_ref());
+        for (side, preserve) in final_member
+            .sides
+            .iter()
+            .zip(series.preserve_roster_strength)
+        {
+            self.continuity(side.team, side.roster.as_ref(), preserve);
         }
         let continuity = final_member.sides.each_ref().map(|side| ContinuityState {
             roster_continuity: self.teams.continuity.bits(side.team),

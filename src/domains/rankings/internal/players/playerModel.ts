@@ -49,7 +49,7 @@ import {
 import { evaluationEventId } from '../queries/replayEvidence.ts'
 import { homeLeagueForMatch, sourceTraceFor } from '../evidence/matchContext.ts'
 import { canonicalSeriesForMatches, canonicalSeriesOutcomeForTeam, resolveCanonicalSeries } from '../evidence/seriesResolver.ts'
-import { isCompleteSourcedMatchup, mergeRosterObservation } from './rosters.ts'
+import { isCompleteSourcedMatchup, mergeRosterObservation, rosterFingerprint } from './rosters.ts'
 import { buildPlayerStatsPower } from './playerStatsPower.ts'
 import {
   buildCausalContextIdentity,
@@ -74,7 +74,11 @@ export type PregamePlayerRatingEdge = {
   teamBLineupCompleteness?: MatchRosterSnapshot['completeness']
   teamAFreshnessWeight: number
   teamBFreshnessWeight: number
+  teamARosterUpgrade?: RosterUpgradeProof
+  teamBRosterUpgrade?: RosterUpgradeProof
 }
+
+export type RosterUpgradeProof = Readonly<{ previous: string; played: string }>
 
 export type PlayerRatingContext = {
   teams?: Record<string, TeamProfile>
@@ -322,6 +326,7 @@ export function buildPregamePlayerRatingEdges(
   const leagueRatings = leagueRatingsFor(resolvedContext.leagueStrengths)
   const lastObservedRosterByTeam = new Map<string, MatchRosterSnapshot>()
   const lastObservedRosterByEvent = new Map<string, Map<string, MatchRosterSnapshot>>()
+  const lastPlayedRosterByTeam = new Map<string, MatchRosterSnapshot>()
   const seriesList = resolveCanonicalSeries(matches)
   const observations = seriesList.map((series, order) => ({
     series,
@@ -391,6 +396,22 @@ export function buildPregamePlayerRatingEdges(
     for (const match of series.games) {
       const teamAEdge = edgeByTeam.get(match.teamA)!
       const teamBEdge = edgeByTeam.get(match.teamB)!
+      const upgrade = (side: 'A' | 'B') => {
+        const team = side === 'A' ? match.teamA : match.teamB
+        const played = side === 'A' ? match.teamARoster : match.teamBRoster
+        const previous = lastPlayedRosterByTeam.get(team)
+        const fullEvidence = (lineup?: MatchRosterSnapshot) => lineup?.completeness === 'complete-five-role'
+          && lineup.players.length === 5 && new Set(lineup.players.map(({ role }) => role)).size === 5
+          && new Set(lineup.players.map(({ id }) => id)).size === 5
+          && lineup.players.every(({ id }) => Number.isFinite(state.ratings.get(id)) && (state.games.get(id) ?? 0) >= playerPregameMinGames)
+        if (!fullEvidence(previous) || !fullEvidence(played)) return undefined
+        const edge = (lineup: MatchRosterSnapshot | undefined) => playerEdgeForRoster(lineup, state.ratings, state.games,
+          leagueForSide(match, side, resolvedContext), leagueRatings, series.date).adjustment
+        return edge(played) > edge(previous)
+          ? { previous: rosterFingerprint(previous)!, played: rosterFingerprint(played)! } : undefined
+      }
+      const teamARosterUpgrade = upgrade('A')
+      const teamBRosterUpgrade = upgrade('B')
       edges.set(match.id, {
         teamAAdjustment: teamAEdge.adjustment,
         teamBAdjustment: teamBEdge.adjustment,
@@ -404,7 +425,14 @@ export function buildPregamePlayerRatingEdges(
         teamBLineupCompleteness: teamBEdge.roster?.completeness,
         teamAFreshnessWeight: teamAEdge.freshnessWeight,
         teamBFreshnessWeight: teamBEdge.freshnessWeight,
+        ...(teamARosterUpgrade ? { teamARosterUpgrade } : {}),
+        ...(teamBRosterUpgrade ? { teamBRosterUpgrade } : {}),
       })
+    }
+    for (const match of series.games) {
+      for (const { team, roster } of teamRosterEntries(match)) {
+        if (rosterFingerprint(roster) && roster) lastPlayedRosterByTeam.set(team, roster)
+      }
     }
   }
 
