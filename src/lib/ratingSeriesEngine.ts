@@ -129,19 +129,19 @@ export function processRatingSeriesForDate({
 }) {
   const batch = ratingBatchSnapshot(state)
   const groups = ratingSeriesGroupsForDate(matches)
+  const resultRatings = new Map(batch.ratings)
   const recorder = capture ? new SeriesPassRecorder({
     groups, matches, profiles: teams, state, lastDate, sideAdjustments, playerEdges: pregamePlayerRatingEdges,
   }) : undefined
   for (const [seriesIndex, series] of groups.entries()) {
     applyRosterContinuityForSeries(
       series.finalMatch,
-      state.ratings,
-      state.executionRatings,
+      [state.ratings, state.executionRatings, resultRatings],
       state.uncertainties,
       state.lastRosterByTeam,
       state.currentRosterContinuity,
     )
-    processRatingSeries({ series, teams, state, batch, sideAdjustments, lastDate, pregamePlayerRatingEdges, recorder, seriesIndex })
+    processRatingSeries({ series, teams, state, batch, resultRatings, sideAdjustments, lastDate, pregamePlayerRatingEdges, recorder, seriesIndex })
   }
   return recorder?.finish()
 }
@@ -347,6 +347,7 @@ function processRatingSeries({
   teams,
   state,
   batch,
+  resultRatings,
   sideAdjustments,
   lastDate,
   pregamePlayerRatingEdges,
@@ -357,6 +358,7 @@ function processRatingSeries({
   teams: Record<string, TeamProfile>
   state: RatingRunState
   batch: RatingBatchSnapshot
+  resultRatings: ReadonlyMap<string, number>
   sideAdjustments: Map<string, number>
   lastDate: string
   pregamePlayerRatingEdges: PregamePlayerRatingEdges
@@ -366,8 +368,8 @@ function processRatingSeries({
   const finalMatch = series.finalMatch
   const seriesLeagueA = homeLeagueForTeam(finalMatch, series.teamA, teams)
   const seriesLeagueB = homeLeagueForTeam(finalMatch, series.teamB, teams)
-  const seriesRatingA = batch.ratings.get(series.teamA) ?? initialTeamRating
-  const seriesRatingB = batch.ratings.get(series.teamB) ?? initialTeamRating
+  const seriesRatingA = resultRatings.get(series.teamA) ?? initialTeamRating
+  const seriesRatingB = resultRatings.get(series.teamB) ?? initialTeamRating
   const seriesRawLeagueScoreA = batch.leagueScores.get(seriesLeagueA) ?? leaguePriorFor(seriesLeagueA)
   const seriesRawLeagueScoreB = batch.leagueScores.get(seriesLeagueB) ?? leaguePriorFor(seriesLeagueB)
   const seriesLeagueScoreA = effectiveLeagueRating(seriesLeagueA, seriesRawLeagueScoreA, batch.leagueMatchCounts.get(seriesLeagueA) ?? 0)

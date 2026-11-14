@@ -11,8 +11,7 @@ import { rosterContinuity } from '../players/rosters.ts'
 
 export function applyRosterContinuityForSeries(
   match: MatchRecord,
-  ratings: Map<string, number>,
-  executionRatings: Map<string, number>,
+  ratingChannels: readonly Map<string, number>[],
   uncertainties: Map<string, number>,
   lastRosterByTeam: Map<string, MatchRosterSnapshot>,
   currentRosterContinuity: Map<string, number>,
@@ -22,8 +21,7 @@ export function applyRosterContinuityForSeries(
     team: match.teamA,
     observedRoster: match.teamARoster,
     processedTeams,
-    ratings,
-    executionRatings,
+    ratingChannels,
     uncertainties,
     lastRosterByTeam,
     currentRosterContinuity,
@@ -32,8 +30,7 @@ export function applyRosterContinuityForSeries(
     team: match.teamB,
     observedRoster: match.teamBRoster,
     processedTeams,
-    ratings,
-    executionRatings,
+    ratingChannels,
     uncertainties,
     lastRosterByTeam,
     currentRosterContinuity,
@@ -48,8 +45,7 @@ function applyRosterContinuityForTeam({
   team,
   observedRoster,
   processedTeams,
-  ratings,
-  executionRatings,
+  ratingChannels,
   uncertainties,
   lastRosterByTeam,
   currentRosterContinuity,
@@ -57,8 +53,7 @@ function applyRosterContinuityForTeam({
   team: string
   observedRoster?: MatchRosterSnapshot
   processedTeams: Set<string>
-  ratings: Map<string, number>
-  executionRatings: Map<string, number>
+  ratingChannels: readonly Map<string, number>[]
   uncertainties: Map<string, number>
   lastRosterByTeam: Map<string, MatchRosterSnapshot>
   currentRosterContinuity: Map<string, number>
@@ -71,10 +66,10 @@ function applyRosterContinuityForTeam({
 
   currentRosterContinuity.set(team, continuity)
   const retention = rosterContinuityFloor + (1 - rosterContinuityFloor) * continuity
-  const rating = ratings.get(team) ?? initialTeamRating
-  const executionRating = executionRatings.get(team) ?? initialTeamRating
-  ratings.set(team, initialTeamRating + retention * (rating - initialTeamRating))
-  executionRatings.set(team, initialTeamRating + retention * (executionRating - initialTeamRating))
+  for (const ratings of ratingChannels) {
+    const rating = ratings.get(team) ?? initialTeamRating
+    ratings.set(team, initialTeamRating + retention * (rating - initialTeamRating))
+  }
 
   if (continuity < 1) {
     const uncertainty = uncertainties.get(team) ?? maximumUncertainty
