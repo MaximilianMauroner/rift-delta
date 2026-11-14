@@ -3,7 +3,7 @@ import {
 } from '../src/domains/rankings/build.ts'
 import { createRatingRunState, type RatingRunState } from '../src/domains/rankings/internal/replay/ratingRunState.ts'
 import type { MatchRecord, MatchRosterSnapshot, TeamProfile } from '../src/domains/rankings/types.ts'
-import { processRatingSeriesForDate } from '../src/lib/ratingSeriesEngine.ts'
+import { emitPregamePredictionsForDate, processRatingSeriesForDate } from '../src/lib/ratingSeriesEngine.ts'
 
 export const profiles: Record<string, TeamProfile> = {
   Alpha: { name: 'Alpha', code: 'A', league: 'LCK', region: 'LCK' },
@@ -85,4 +85,40 @@ export function sparseDate() {
   })
   if (!capture) throw new Error('The synthetic series pass did not emit a capture')
   return capture
+}
+
+export function rosterContinuityDate(firstWinner = 'Alpha', unchanged = false) {
+  const changed = roster('Alpha')
+  changed.players = changed.players.map((player) => player.role === 'Jungle' ? { ...player, id: 'new-jungle' } : player)
+  const alphaRoster = unchanged ? roster('Alpha') : changed
+  const betaRoster = unchanged ? roster('Beta') : roster('new-Beta')
+  const matches = [
+    game('retention-1', { sourceMatchId: 'retention', bestOf: 3, gameNumber: 1,
+      teamARoster: alphaRoster, teamBRoster: betaRoster, winner: firstWinner }),
+    game('retention-2', { sourceMatchId: 'retention', bestOf: 3, gameNumber: 2, datetimeUtc: '2026-01-01T13:00:00Z',
+      teamA: 'Beta', teamB: 'Alpha', teamARoster: betaRoster, teamBRoster: alphaRoster, winner: firstWinner }),
+    game('retained-rematch', { datetimeUtc: '2026-01-01T14:00:00Z',
+      teamARoster: alphaRoster, teamBRoster: betaRoster }),
+    game('second-change', { datetimeUtc: '2026-01-01T15:00:00Z', teamB: 'Gamma',
+      teamARoster: unchanged ? roster('Alpha') : roster('next-Alpha'), teamBRoster: roster('Gamma') }),
+    game('unknown-roster', { datetimeUtc: '2026-01-01T16:00:00Z', teamB: 'Gamma',
+      teamARoster: undefined, teamBRoster: roster('Gamma', 'partial') }),
+    game('unchanged-after-change', { datetimeUtc: '2026-01-01T17:00:00Z', teamB: 'Gamma',
+      teamARoster: unchanged ? roster('Alpha') : roster('next-Alpha'), teamBRoster: roster('Gamma') }),
+  ]
+  const teams = structuredClone(profiles)
+  teams.Gamma.league = 'LCK'
+  const state = createRatingRunState([], teams)
+  for (const [team, rating] of [['Alpha', 1900], ['Beta', 1300], ['Gamma', 1500]] as const) {
+    state.ratings.set(team, rating)
+    state.executionRatings.set(team, rating)
+    state.uncertainties.set(team, 100)
+    state.lastRosterByTeam.set(team, roster(team))
+    state.currentRosterContinuity.set(team, 0)
+  }
+  const input = { matches, teams, state, sideAdjustments: new Map<string, number>(),
+    lastDate: matches[0].date, pregamePlayerRatingEdges: new Map() }
+  emitPregamePredictionsForDate(input)
+  const capture = processRatingSeriesForDate({ ...input, capture: true })!
+  return { capture, state }
 }
