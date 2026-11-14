@@ -352,7 +352,8 @@ function uniqueLeaguepediaGameLinks(oracleMatches: MatchRecord[], leaguepediaMat
     }
     for (const match of leaguepediaMatches) {
       const key = keyFor(match)
-      if (key && !reservedIdentities.has(match.sourceGameId ?? match.id) && !isResultOnlyGapFill(match)) {
+      if (key && !reservedIdentities.has(match.sourceGameId ?? match.id)
+        && (keyFor === declaredGameSlotKey || !isResultOnlyGapFill(match))) {
         appendMatch(leaguepediaByKey, key, match)
       }
     }
@@ -385,6 +386,9 @@ function declaredGameSlotKey(match: MatchRecord) {
 }
 
 function gameTimesCompatible(left: MatchRecord, right: MatchRecord) {
+  if ((isResultOnlyGapFill(left) || isResultOnlyGapFill(right))
+    && (!left.datetimeUtc || !right.datetimeUtc || !Number.isFinite(left.gameLengthSeconds)
+      || (left.gameLengthSeconds ?? 0) <= 0 || left.gameLengthSeconds !== right.gameLengthSeconds)) return false
   if (left.datetimeUtc && right.datetimeUtc) {
     // Providers can record different game-start moments, even when the exact scoreboard agrees.
     const difference = Math.abs(Date.parse(left.datetimeUtc) - Date.parse(right.datetimeUtc))
