@@ -352,7 +352,8 @@ function uniqueLeaguepediaGameLinks(oracleMatches: MatchRecord[], leaguepediaMat
     }
     for (const match of leaguepediaMatches) {
       const key = keyFor(match)
-      if (key && !reservedIdentities.has(match.sourceGameId ?? match.id) && !isResultOnlyGapFill(match)) {
+      if (key && !reservedIdentities.has(match.sourceGameId ?? match.id)
+        && (keyFor === declaredGameSlotKey || !isResultOnlyGapFill(match))) {
         appendMatch(leaguepediaByKey, key, match)
       }
     }
@@ -362,7 +363,10 @@ function uniqueLeaguepediaGameLinks(oracleMatches: MatchRecord[], leaguepediaMat
       const identities = new Set(candidates.map((candidate) => candidate.sourceGameId ?? candidate.id))
       if (identities.size !== 1) continue
       const duplicate = candidates[0]
-      const reverseCandidates = oracleCandidates.filter((candidate) => gameTimesCompatible(candidate, duplicate))
+      const identityRows = (leaguepediaByKey.get(key) ?? []).filter((candidate) =>
+        (candidate.sourceGameId ?? candidate.id) === (duplicate.sourceGameId ?? duplicate.id))
+      const reverseCandidates = oracleCandidates.filter((candidate) =>
+        identityRows.some((row) => gameTimesCompatible(candidate, row)))
       if (reverseCandidates.length === 1 && reverseCandidates[0] === match) proposed.set(match, duplicate)
     }
     const linksPerIdentity = new Map<string, number>()
@@ -385,6 +389,9 @@ function declaredGameSlotKey(match: MatchRecord) {
 }
 
 function gameTimesCompatible(left: MatchRecord, right: MatchRecord) {
+  if ((isResultOnlyGapFill(left) || isResultOnlyGapFill(right))
+    && (!left.datetimeUtc || !right.datetimeUtc || !Number.isFinite(left.gameLengthSeconds)
+      || (left.gameLengthSeconds ?? 0) <= 0 || left.gameLengthSeconds !== right.gameLengthSeconds)) return false
   if (left.datetimeUtc && right.datetimeUtc) {
     // Providers can record different game-start moments, even when the exact scoreboard agrees.
     const difference = Math.abs(Date.parse(left.datetimeUtc) - Date.parse(right.datetimeUtc))
