@@ -322,6 +322,7 @@ export type MatchRecord = {
 }
 
 export type TeamHistoryPoint = {
+  recordedSeriesWinProbability?: number
   date: string
   event: string
   opponent: string

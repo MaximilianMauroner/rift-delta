@@ -307,11 +307,7 @@ function teamRecentMatch(group: TeamMatchGroup, result: 'W' | 'L' | 'T', previou
   const wins = group.entries.filter((entry) => entry.result === 'W').length
   const losses = group.entries.length - wins
   const bestOf = bestOfForScore(wins, losses, latest.source.bestOf)
-  const observedOutcome = latest.source.seriesOutcome
-  const residual = latest.ratingUpdate?.neutralResultResidual
-  const expectedWinProbability = typeof observedOutcome === 'number' && typeof residual === 'number'
-    ? Math.max(0, Math.min(1, Number((observedOutcome - residual).toFixed(4))))
-    : undefined
+  const expectedWinProbability = latest.recordedSeriesWinProbability
 
   return {
     date: latest.date,

@@ -616,7 +616,7 @@ function compactTeamHistoryMatchPoint(group: TeamHistoryPublicMatchGroup, includ
   const bestOf = inferBestOfForScore(resultSummary.wins, resultSummary.losses, latest.source?.bestOf)
   const sourceSummary = timelineSourceSummary(group.entries, (entry) => entry.source)
   const delta = sumTimelineRatingDeltas(group.entries)
-  const modelContext = compactTeamHistoryModelContext(group.entries, result)
+  const modelContext = compactTeamHistoryModelContext(group.entries)
 
   return [
     latest.date,
@@ -640,14 +640,9 @@ function compactTeamHistoryMatchPoint(group: TeamHistoryPublicMatchGroup, includ
 
 function compactTeamHistoryModelContext(
   entries: TeamHistoryPoint[],
-  result: 'W' | 'L' | 'T' | undefined,
 ): PublicTeamHistoryModelContext | undefined {
   const update = latestInformativeRatingUpdate(entries)
-  const residual = finiteNumber(update?.neutralResultResidual)
-  const observed = result === 'W' ? 1 : result === 'L' ? 0 : result === 'T' ? 0.5 : undefined
-  const expected = typeof observed === 'number' && typeof residual === 'number'
-    ? clamp01(observed - residual)
-    : undefined
+  const expected = finiteNumber(entries.at(-1)?.recordedSeriesWinProbability)
   const components = compactTeamHistoryComponents(entries.at(-1)?.ratingComponents)
   const context: PublicTeamHistoryModelContext = {
     e: roundOptional(expected, 3, { keepZero: true }),
@@ -710,10 +705,6 @@ function roundRequired(value: number, decimals: number) {
 function omitUndefined<T extends Record<string, unknown>>(value: T): T | undefined {
   const entries = Object.entries(value).filter(([, entry]) => entry !== undefined)
   return entries.length > 0 ? Object.fromEntries(entries) as T : undefined
-}
-
-function clamp01(value: number) {
-  return Math.min(1, Math.max(0, value))
 }
 
 function isSeasonHistoryScope(filter: SnapshotFilter | undefined) {
@@ -1412,7 +1403,7 @@ export function createMatchHistoryArtifacts(
           winnerId: teamIdFor({ team: canonicalTeamNameFor(match.winner), region: data.teams[canonicalTeamNameFor(match.winner)]?.region, code: data.teams[canonicalTeamNameFor(match.winner)]?.code }),
           ...(picks ? { picks } : {}),
           impact: finalGame && (impactA || impactB)
-            ? { unit: 'series-applied', ...(impactA ? { teamA: impactA.delta, expectedTeamA: impactA.expected, eventWeight: impactA.eventWeight } : {}), ...(impactB ? { teamB: impactB.delta } : {}) }
+            ? { unit: 'series-applied', ...(impactA ? { teamA: impactA.delta, ...(impactA.expected !== undefined ? { expectedTeamA: impactA.expected } : {}), eventWeight: impactA.eventWeight } : {}), ...(impactB ? { teamB: impactB.delta } : {}) }
             : { unit: 'held' },
           source: {
             provider: match.sourceProvider ?? 'seed',
@@ -1568,12 +1559,11 @@ function matchImpactLookup(standings: TeamStanding[]) {
     }
     for (const [seriesId, points] of groups) {
       const update = latestInformativeRatingUpdate(points)
-      const observed = points.filter((point) => point.result === 'W').length > points.length / 2 ? 1 : 0
-      const residual = finiteNumber(update?.neutralResultResidual)
+      const expected = finiteNumber(points.at(-1)?.recordedSeriesWinProbability)
       const displayDelta = sumTimelineRatingDeltas(points)
       lookup.set(`${canonicalTeamNameFor(standing.team)}\u0000${seriesId}`, {
         delta: Number(displayDelta.toFixed(1)),
-        ...(typeof residual === 'number' ? { expected: Number((observed - residual).toFixed(3)) } : {}),
+        ...(typeof expected === 'number' ? { expected: Number(expected.toFixed(3)) } : {}),
         ...(typeof update?.eventWeight === 'number' ? { eventWeight: Number(update.eventWeight.toFixed(3)) } : {}),
       })
     }
@@ -2523,9 +2513,8 @@ function rollingUpsetWin(
       const latest = group.entries.at(-1)
       if (!latest || latest.source.seriesState !== 'completed' || latest.source.seriesOutcome !== 1) return []
       if (!permitted.has(`${latest.date}\u0000${latest.event}\u0000${latest.opponent}`)) return []
-      const residual = latest.ratingUpdate?.neutralResultResidual
-      if (typeof residual !== 'number') return []
-      const expectedWinProbability = Number((1 - residual).toFixed(4))
+      const expectedWinProbability = latest.recordedSeriesWinProbability
+      if (expectedWinProbability === undefined) return []
       if (!Number.isFinite(expectedWinProbability) || expectedWinProbability < 0 || expectedWinProbability > 1) return []
       return [{
         date: latest.date,
