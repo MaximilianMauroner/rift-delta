@@ -1,5 +1,5 @@
+import { writeOracleForecastFixture } from './fixtures/oracleForecastFixture.ts'
 import assert from 'node:assert/strict'
-import { createHash } from 'node:crypto'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -20,11 +20,11 @@ async function fixture() {
   const candidate = join(directory, 'candidate.json')
   const raw = { fetchedAt: capture, matches: sampleMatches.slice(0, 2).map((match, index) => ({ ...match,
     id: `availability-${index}`, bestOf: 1 })) }
-  const files = { leaguepediaJson: ['raw.json'], lolEsportsJson: [] as string[], oracleCsv: [] as string[] }
-  await writeFile(join(directory, 'raw.json'), JSON.stringify(raw))
+  const files = { leaguepediaJson: [] as string[], lolEsportsJson: [] as string[], oracleCsv: ['raw.csv'] }
+  const sourceCapture = await writeOracleForecastFixture(directory, 'raw.csv', raw.matches, Date.parse(capture))
   await writeFile(manifest, JSON.stringify({ files }))
   const source = await importRankingSourceData({ manifestPath: manifest })
-  const requestFile: ForecastRequestFile = { evidenceMode: 'synthetic', availability: 'verified',
+  const requestFile: ForecastRequestFile = { evidenceMode: 'synthetic', availability: 'verified', sourceFiles: [sourceCapture],
     observations: source.matches.map(match => ({ gameId: match.id, observedAt: Date.parse(match.date) + 3600_000,
       resultAvailableAt: Date.parse(match.date) + 3600_000 })), requests: [{
       seriesId: 'availability-series', eventId: 'availability-event', homeTeamId: 'gen', awayTeamId: 't1',
@@ -36,7 +36,7 @@ async function fixture() {
   await writeFile(candidate, JSON.stringify({ candidateId: 'availability', parentCandidateId: null,
     calibrationFit: null, transform: { temperature: 1, calibrationOrder: 'game-before-series', dependence: 0 } }))
   let run = 0
-  return { directory, raw, files, requestFile, async export() {
+  return { directory, raw, files, requestFile, candidate, async export() {
     await writeFile(manifest, JSON.stringify({ files }))
     await writeFile(requests, JSON.stringify(requestFile))
     const output = join(directory, `forecast-${run++}.jsonl`)
@@ -76,8 +76,8 @@ test('future raw revisions are filtered before duplicate selection and retain ba
     const baseline = await f.export()
     const revision = { fetchedAt: future, matches: f.raw.matches.map(match => ({ ...match,
       winner: match.winner === match.teamA ? match.teamB : match.teamA, bestOf: 5 })) }
-    await writeFile(join(f.directory, 'revision.json'), JSON.stringify(revision))
-    f.files.leaguepediaJson.unshift('revision.json')
+    f.requestFile.sourceFiles![1] = await writeOracleForecastFixture(f.directory, 'revision.csv', revision.matches, Date.parse(revision.fetchedAt))
+    f.files.oracleCsv.unshift('revision.csv')
     const later = Date.parse('2026-03-02T10:00:00Z')
     const request = f.requestFile.requests[0]
     f.requestFile.requests.unshift({ ...request, seriesId: 'later-series', asOf: later,
@@ -88,7 +88,7 @@ test('future raw revisions are filtered before duplicate selection and retain ba
     assert.notEqual(result.receipts[0].modelStateHash, baseline.receipts[0].modelStateHash)
     assert.ok(result.receipts[0].sourceObservedAt.includes(Date.parse(future)))
     revision.matches[0].teamAKills += 20
-    await writeFile(join(f.directory, 'revision.json'), JSON.stringify(revision))
+    f.requestFile.sourceFiles![1] = await writeOracleForecastFixture(f.directory, 'revision.csv', revision.matches, Date.parse(revision.fetchedAt))
     const changed = await f.export()
     assert.equal(changed.states.trim().split('\n')[1], baseline.states.trim())
   } finally { await rm(f.directory, { recursive: true, force: true }) }
@@ -97,27 +97,21 @@ test('future raw revisions are filtered before duplicate selection and retain ba
 test('unobserved raw enrichment cannot change prior state even in an available snapshot', async () => {
   const f = await fixture()
   try {
-    const csv = ['gameid,date,year,league,split,playoffs,position,side,teamname,result,kills,totalgold',
-      ...f.raw.matches.flatMap(match => [
-        `${match.id},${match.date},2026,LCK,Spring,0,team,blue,${match.teamA},${Number(match.winner === match.teamA)},${match.teamAKills},${match.teamAGold}`,
-        `${match.id},${match.date},2026,LCK,Spring,0,team,red,${match.teamB},${Number(match.winner === match.teamB)},${match.teamBKills},${match.teamBGold}`,
-      ])].join('\n')
-    const path = join(f.directory, 'oracle.csv')
-    await writeFile(path, csv)
-    f.files.oracleCsv.push('oracle.csv')
-    f.requestFile.sourceFiles = [{ path: 'oracle.csv', observedAt: Date.parse(capture),
-      sha256: createHash('sha256').update(csv).digest('hex') }]
-    const oracle = await importRankingSourceData({ oracleCsvPaths: [path] })
-    f.requestFile.observations.push(...oracle.matches.map(match => ({ gameId: match.id,
+    f.files.leaguepediaJson.push('enrichment.json')
+    const path = join(f.directory, 'enrichment.json')
+    await writeFile(path, JSON.stringify(f.raw))
+    const enrichment = await importRankingSourceData({ leaguepediaJsonPaths: [path] })
+    f.requestFile.observations.push(...enrichment.matches.map(match => ({ gameId: match.id,
       observedAt: Date.parse(match.date) + 3600_000, resultAvailableAt: Date.parse(match.date) + 3600_000 })))
     const baseline = await f.export()
     f.raw.matches[0].bestOf = 5
-    f.requestFile.observations[0].observedAt = Date.parse(future)
-    await writeFile(join(f.directory, 'raw.json'), JSON.stringify(f.raw))
+    const observation = f.requestFile.observations.find(row => row.gameId === enrichment.matches[0].id)!
+    observation.observedAt = Date.parse(future)
+    await writeFile(path, JSON.stringify(f.raw))
     const unavailable = await f.export()
     assert.equal(unavailable.states, baseline.states)
     assert.equal(unavailable.receipts[0].homeSeriesWinProbability, baseline.receipts[0].homeSeriesWinProbability)
-    f.requestFile.observations[0].observedAt = cutoff - 1
+    observation.observedAt = cutoff - 1
     const available = await f.export()
     assert.ok(available.receipts[0].sourceObservedAt.includes(cutoff - 1))
     assert.notEqual(available.states, baseline.states)
@@ -128,12 +122,13 @@ test('unobserved raw enrichment cannot change prior state even in an available s
 test('verified export requires source capture evidence and binds explicit evidence to bytes', async () => {
   const f = await fixture()
   try {
-    await writeFile(join(f.directory, 'raw.json'), JSON.stringify({ matches: f.raw.matches }))
+    const captures = f.requestFile.sourceFiles
+    delete f.requestFile.sourceFiles
     await assert.rejects(f.export(), /Missing source file capture/)
-    f.requestFile.sourceFiles = [{ path: 'raw.json', observedAt: Date.parse(capture),
-      sha256: createHash('sha256').update(await readFile(join(f.directory, 'raw.json'))).digest('hex') }]
+    f.requestFile.sourceFiles = captures
     assert.equal((await f.export()).receipts[0].eligible, true)
-    await writeFile(join(f.directory, 'raw.json'), JSON.stringify(f.raw))
+    const rawPath = join(f.directory, 'raw.csv')
+    await writeFile(rawPath, (await readFile(rawPath, 'utf8')) + '\n')
     await assert.rejects(f.export(), /Invalid source file capture/)
     f.requestFile.availability = 'historical-limited'
     f.requestFile.evidenceMode = 'retrospective'
@@ -143,30 +138,28 @@ test('verified export requires source capture evidence and binds explicit eviden
   } finally { await rm(f.directory, { recursive: true, force: true }) }
 })
 
-test('late Oracle rows cannot replace earlier Leaguepedia games during reconciliation', async () => {
-  const f = await fixture()
-  try {
-    const baseline = await f.export()
-    const csv = ['gameid,date,year,league,split,playoffs,position,side,teamname,result,kills,totalgold',
-      ...f.raw.matches.flatMap(match => [
-        `${match.id},${match.date},2026,LCK,Spring,0,team,blue,${match.teamA},0,5,50000`,
-        `${match.id},${match.date},2026,LCK,Spring,0,team,red,${match.teamB},1,30,70000`,
-      ])].join('\n')
-    const path = join(f.directory, 'oracle.csv')
-    await writeFile(path, csv)
-    f.files.oracleCsv.push('oracle.csv')
-    f.requestFile.sourceFiles = [{ path: 'oracle.csv', observedAt: Date.parse(future),
-      sha256: createHash('sha256').update(csv).digest('hex') }]
-    const oracle = await importRankingSourceData({ oracleCsvPaths: [path] })
-    assert.equal(oracle.matches.length, 2)
-    f.requestFile.observations.push(...oracle.matches.map(match => ({ gameId: match.id,
-      observedAt: Date.parse(match.date) + 3600_000, resultAvailableAt: Date.parse(match.date) + 3600_000 })))
-    const late = await f.export()
-    assert.equal(late.states, baseline.states)
-    assert.equal(late.receipts[0].homeSeriesWinProbability, baseline.receipts[0].homeSeriesWinProbability)
-    f.requestFile.sourceFiles[0].observedAt = Date.parse(capture)
-    const available = await f.export()
-    assert.notEqual(available.states, baseline.states)
-    assert.ok(available.states.includes('oe-availability-0'))
-  } finally { await rm(f.directory, { recursive: true, force: true }) }
-})
+for (const modelKind of ['ranking', 'simple-elo'] as const) {
+  test(`${modelKind} strict export rejects Leaguepedia without completion until a captured Oracle source is available`, async () => {
+    const f = await fixture()
+    try {
+      await writeFile(f.candidate, JSON.stringify({ modelKind, candidateId: modelKind === 'simple-elo' ? 'simple-elo-v1' : 'availability',
+        parentCandidateId: null, calibrationFit: null, transform: { temperature: 1, calibrationOrder: 'game-before-series', dependence: 0 } }))
+      f.files.oracleCsv = []
+      f.files.leaguepediaJson.push('raw.json')
+      await writeFile(join(f.directory, 'raw.json'), JSON.stringify(f.raw))
+      const leaguepedia = await importRankingSourceData({ leaguepediaJsonPaths: [join(f.directory, 'raw.json')] })
+      assert.ok(leaguepedia.matches.every(match => match.gameCompletedAtUtc === undefined))
+      f.requestFile.observations.push(...leaguepedia.matches.map(match => ({ gameId: match.id,
+        observedAt: Date.parse(match.date) + 3600_000, resultAvailableAt: Date.parse(match.date) + 3600_000 })))
+      await assert.rejects(f.export(), /No available prior-date ranking input|No completed causal Elo history/)
+      const sourceCapture = await writeOracleForecastFixture(f.directory, 'oracle.csv', f.raw.matches, Date.parse(future))
+      f.files.oracleCsv.push('oracle.csv')
+      f.requestFile.sourceFiles = [sourceCapture]
+      await assert.rejects(f.export(), /No available prior-date ranking input|No completed causal Elo history/)
+      sourceCapture.observedAt = Date.parse(capture)
+      const available = await f.export()
+      assert.equal(available.receipts[0].eligible, true)
+      assert.ok(available.states.includes('oe-availability-0'))
+    } finally { await rm(f.directory, { recursive: true, force: true }) }
+  })
+}

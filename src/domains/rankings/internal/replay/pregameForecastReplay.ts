@@ -71,7 +71,8 @@ function validateInputs(inputs: readonly AvailableRankingGame[]) {
 function availableInputs(inputs: readonly AvailableRankingGame[], request: PregameSeriesRequest, cutoffDate: string, availability: Availability) {
   return inputs.filter(({ match, observedAt, resultAvailableAt }) => match.date < cutoffDate && (availability === 'historical-limited'
     ? resultAvailableAt === null || resultAvailableAt <= request.asOf
-    : resultAvailableAt !== null && resultAvailableAt <= request.asOf && observedAt <= request.asOf))
+    : resultAvailableAt !== null && resultAvailableAt <= request.asOf && observedAt <= request.asOf
+      && Date.parse(match.gameCompletedAtUtc ?? '') <= request.asOf))
 }
 
 function replayHistory(usable: readonly AvailableRankingGame[], lifecycles: readonly AvailableTournamentLifecycle[]) {

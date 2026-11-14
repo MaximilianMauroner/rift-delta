@@ -1,3 +1,4 @@
+import { writeOracleForecastFixture } from './fixtures/oracleForecastFixture.ts'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
@@ -19,7 +20,7 @@ const request: PregameSeriesRequest = {
   league: 'LCK', region: 'LCK', tier: 'regional-regular',
 }
 const history: AvailableRankingGame[] = sampleMatches.slice(0, 2).map((match, index) => ({
-  match: { ...match, id: `batch-game-${index}`, sourceProvider: 'leaguepedia-cargo', sourceGameId: `source-game-${index}` },
+  match: { ...match, gameCompletedAtUtc: `${match.date}T00:30:00Z`, id: `batch-game-${index}`, sourceProvider: 'leaguepedia-cargo', sourceGameId: `source-game-${index}` },
   observedAt: Date.parse(match.date) + 3600_000, resultAvailableAt: Date.parse(match.date) + 3600_000,
 }))
 const stateHash = (replay: ReturnType<typeof replayPregameSeriesState>) => createHash('sha256')
@@ -130,16 +131,16 @@ test('export batches same-date requests and does not reuse previous candidate or
   const directory = await mkdtemp(join(tmpdir(), 'pregame-batch-'))
   try {
     const manifestPath = join(directory, 'manifest.json')
-    const rawPath = join(directory, 'raw.json')
+    const rawPath = join(directory, 'raw.csv')
     const requestsPath = join(directory, 'requests.json')
     const candidatePath = join(directory, 'candidate.json')
     const raw = { fetchedAt: '2026-02-09T00:00:00Z', matches: structuredClone(history.map(row => row.match)) }
-    await writeFile(rawPath, JSON.stringify(raw))
-    await writeFile(manifestPath, JSON.stringify({ generatedAt: raw.fetchedAt, files: { leaguepediaJson: ['raw.json'] } }))
+    const sourceCapture = await writeOracleForecastFixture(directory, 'raw.csv', raw.matches, Date.parse(raw.fetchedAt))
+    await writeFile(manifestPath, JSON.stringify({ generatedAt: raw.fetchedAt, files: { oracleCsv: ['raw.csv'] } }))
     const source = await importRankingSourceData({ manifestPath })
     const inputs = source.matches.map(match => ({ match, observedAt: Date.parse(match.date) + 3600_000, resultAvailableAt: Date.parse(match.date) + 3600_000 }))
     const requests = [request, { ...request, seriesId: 'another-series', bestOf: 5 }]
-    await writeFile(requestsPath, JSON.stringify({ evidenceMode: 'synthetic', availability: 'verified', requests,
+    await writeFile(requestsPath, JSON.stringify({ evidenceMode: 'synthetic', availability: 'verified', requests, sourceFiles: [sourceCapture],
       observations: inputs.map(row => ({ gameId: row.match.id, observedAt: row.observedAt, resultAvailableAt: row.resultAvailableAt })) }))
     const candidate = { candidateId: 'first', parentCandidateId: null, calibrationFit: null,
       transform: { temperature: 1, calibrationOrder: 'game-before-series', dependence: 0 } }
@@ -163,7 +164,10 @@ test('export batches same-date requests and does not reuse previous candidate or
     assert.notEqual(second[0].configurationHash, first[0].configurationHash)
     assert.notEqual(second[0].homeSeriesWinProbability, first[0].homeSeriesWinProbability)
     raw.matches[0].winner = 'T1'
-    await writeFile(rawPath, JSON.stringify(raw))
+    const changedCapture = await writeOracleForecastFixture(directory, 'raw.csv', raw.matches, Date.parse(raw.fetchedAt))
+    const requestFile = JSON.parse(await readFile(requestsPath, 'utf8'))
+    requestFile.sourceFiles = [changedCapture]
+    await writeFile(requestsPath, JSON.stringify(requestFile))
     const changed = await exportPregameSeries(manifestPath, requestsPath, candidatePath, join(directory, 'changed.jsonl'))
     assert.notEqual(changed[0].modelStateHash, second[0].modelStateHash)
     assert.notEqual(changed[0].inputDigests.find(row => row.path === rawPath)?.sha256, second[0].inputDigests.find(row => row.path === rawPath)?.sha256)
@@ -178,7 +182,7 @@ test('shared history preserves observed rosters and cross-league priors', () => 
     teamARoster: { sourceProvider: 'oracles-elixir', observedAt: row.match.date, completeness: 'complete-five-role', players: rosters[row.match.teamA] },
     teamBRoster: { sourceProvider: 'oracles-elixir', observedAt: row.match.date, completeness: 'complete-five-role', players: rosters[row.match.teamB] },
   } }))
-  inputs.push({ match: { ...sampleMatches[2], sourceProvider: 'leaguepedia-cargo', sourceGameId: 'lec-history' },
+  inputs.push({ match: { ...sampleMatches[2], gameCompletedAtUtc: `${sampleMatches[2].date}T00:30:00Z`, sourceProvider: 'leaguepedia-cargo', sourceGameId: 'lec-history' },
     observedAt: Date.parse('2026-02-02'), resultAvailableAt: Date.parse('2026-02-02') })
   const requests: PregameSeriesRequest[] = [
     { ...request, awaySourceTeam: 'G2 Esports', awayTeamId: 'g2', league: 'MSI', region: 'International', event: 'MSI 2026', tier: 'msi-bracket' },

@@ -103,6 +103,7 @@ export function replaySimpleEloSeriesBatch(inputs: readonly AvailableRankingGame
   for (const { request, index, cutoffDate } of ordered) {
     const usable = inputs.filter(({ match, observedAt, resultAvailableAt }) => match.date < cutoffDate
       && (availability === 'verified' ? resultAvailableAt !== null && resultAvailableAt <= request.asOf && observedAt <= request.asOf
+        && Date.parse(match.gameCompletedAtUtc ?? '') <= request.asOf
         : resultAvailableAt === null || resultAvailableAt <= request.asOf))
     if (!cached || cached.cutoffDate !== cutoffDate || cached.usable.length !== usable.length
       || usable.some((row, i) => row !== cached!.usable[i])) {

@@ -125,11 +125,10 @@ export async function exportPregameSeries(manifestPath: string, requestsPath: st
       })
       continue
     }
-    const lifecycleTargets = verified ? [targets.reduce((earliest, target) => target.asOf < earliest.asOf ? target : earliest)] : targets
-    const lifecycles = lifecycleTargets.flatMap(request => deriveTournamentInstances({
+    const lifecycles = targets.flatMap(request => deriveTournamentInstances({
       matches: inputs.filter(row => row.match.date < new Date(request.asOf).toISOString().slice(0, 10)
         && (row.resultAvailableAt === null ? !verified : row.resultAvailableAt <= request.asOf)
-        && (!verified || row.observedAt <= request.asOf)).map(row => row.match),
+        && (!verified || (row.observedAt <= request.asOf && Date.parse(row.match.gameCompletedAtUtc ?? '') <= request.asOf))).map(row => row.match),
       scheduleReferences: source.tournamentScheduleReferences.filter(reference => {
         const observedAt = Date.parse(reference.retrievedAt ?? '')
         return Number.isFinite(observedAt) && observedAt <= request.asOf
