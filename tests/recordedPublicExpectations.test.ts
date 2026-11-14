@@ -85,11 +85,14 @@ for (const bestOf of [1, 2, 3, 5] as const) {
       assert.equal(recent.expectedWinProbability, expected)
       assert.equal(standing.history.at(-1)!.recordedSeriesWinProbability, expected)
       assert.equal(history.series[teamStandingKey(standing)].points.at(-1)![3]!.model!.e, Math.round(expected * 1000) / 1000)
+      assert.equal(history.series[teamStandingKey(standing)].points.at(-1)![3]!.model!.r,
+        standing.history.at(-1)!.ratingUpdate.neutralResultResidual)
     }
     const entries = Object.values(createMatchHistoryArtifacts(data).pages[data.defaultSnapshotKey]).flatMap((page) => page.matches)
     const applied = entries.find((entry) => entry.date === '2026-01-02' && entry.impact.unit === 'series-applied')!
     assert.equal(applied.teamA.name, 'Alpha')
     assert.equal(applied.impact.expectedTeamA, Number(first.teamBSeriesWinProbability.toFixed(3)))
+    assert.equal(applied.impact.expectedTeamB, Number(first.teamASeriesWinProbability.toFixed(3)))
     assert.equal(snapshot.standings.find((standing) => standing.team === 'Alpha')!.rollingMovement!.biggestUpsetWin!.expectedWinProbability,
       first.teamBSeriesWinProbability)
     assert.equal('predictions' in summary.manifest, false)
@@ -128,5 +131,8 @@ test('old history omits all public probabilities even when result residuals rema
     assert.ok(history.series[teamStandingKey(standing)].points.every((point) => point[3]?.model?.e === undefined))
   }
   const entries = Object.values(createMatchHistoryArtifacts(data).pages[data.defaultSnapshotKey]).flatMap((page) => page.matches)
-  for (const entry of entries) assert.equal('expectedTeamA' in entry.impact, false)
+  for (const entry of entries) {
+    assert.equal('expectedTeamA' in entry.impact, false)
+    assert.equal('expectedTeamB' in entry.impact, false)
+  }
 })

@@ -646,6 +646,7 @@ function compactTeamHistoryModelContext(
   const components = compactTeamHistoryComponents(entries.at(-1)?.ratingComponents)
   const context: PublicTeamHistoryModelContext = {
     e: roundOptional(expected, 3, { keepZero: true }),
+    r: roundOptional(update?.neutralResultResidual, 3, { keepZero: true }),
     w: roundOptional(update?.eventWeight, 3, { keepZero: true }),
     ...(components ? { c: components } : {}),
   }
@@ -1403,7 +1404,7 @@ export function createMatchHistoryArtifacts(
           winnerId: teamIdFor({ team: canonicalTeamNameFor(match.winner), region: data.teams[canonicalTeamNameFor(match.winner)]?.region, code: data.teams[canonicalTeamNameFor(match.winner)]?.code }),
           ...(picks ? { picks } : {}),
           impact: finalGame && (impactA || impactB)
-            ? { unit: 'series-applied', ...(impactA ? { teamA: impactA.delta, ...(impactA.expected !== undefined ? { expectedTeamA: impactA.expected } : {}), eventWeight: impactA.eventWeight } : {}), ...(impactB ? { teamB: impactB.delta } : {}) }
+            ? { unit: 'series-applied', ...(impactA ? { teamA: impactA.delta, ...(impactA.expected !== undefined ? { expectedTeamA: impactA.expected } : {}), eventWeight: impactA.eventWeight } : {}), ...(impactB ? { teamB: impactB.delta, ...(impactB.expected !== undefined ? { expectedTeamB: impactB.expected } : {}) } : {}) }
             : { unit: 'held' },
           source: {
             provider: match.sourceProvider ?? 'seed',

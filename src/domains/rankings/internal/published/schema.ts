@@ -820,6 +820,7 @@ function assertPublicMatchHistoryEntry(value: unknown, label: string) {
   assertOptionalNumber(value.impact.teamA, `${label} impact teamA`)
   assertOptionalNumber(value.impact.teamB, `${label} impact teamB`)
   assertOptionalNumber(value.impact.expectedTeamA, `${label} impact expectedTeamA`)
+  assertOptionalNumber(value.impact.expectedTeamB, `${label} impact expectedTeamB`)
   assertOptionalNumber(value.impact.eventWeight, `${label} impact eventWeight`)
   assertObject(value.source, `${label} source`)
   assertEnum(value.source.provider, ['oracles-elixir', 'leaguepedia-cargo', 'seed'], `${label} source provider`)
