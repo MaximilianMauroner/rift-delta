@@ -46,6 +46,7 @@ import {
   eventWeightForMatch,
   type EventWeightContext,
 } from '../replay/eventWeighting.ts'
+import { evaluationEventId } from '../queries/replayEvidence.ts'
 import { homeLeagueForMatch, sourceTraceFor } from '../evidence/matchContext.ts'
 import { canonicalSeriesForMatches, canonicalSeriesOutcomeForTeam, resolveCanonicalSeries } from '../evidence/seriesResolver.ts'
 import { isCompleteSourcedMatchup, mergeRosterObservation } from './rosters.ts'
@@ -320,6 +321,7 @@ export function buildPregamePlayerRatingEdges(
   const edges = new Map<string, PregamePlayerRatingEdge>()
   const leagueRatings = leagueRatingsFor(resolvedContext.leagueStrengths)
   const lastObservedRosterByTeam = new Map<string, MatchRosterSnapshot>()
+  const lastObservedRosterByEvent = new Map<string, Map<string, MatchRosterSnapshot>>()
   const seriesList = resolveCanonicalSeries(matches)
   const observations = seriesList.map((series, order) => ({
     series,
@@ -342,19 +344,26 @@ export function buildPregamePlayerRatingEdges(
       }
       applySourcedPlayerUpdates(observed.games, state, preUpdateRatings, resolvedContext, leagueRatings)
       for (const match of observed.games) {
+        const eventKey = evaluationEventId(match)
+        const eventRosters = lastObservedRosterByEvent.get(eventKey) ?? new Map<string, MatchRosterSnapshot>()
+        lastObservedRosterByEvent.set(eventKey, eventRosters)
         for (const { team, roster } of teamRosterEntries(match)) {
           if (!roster) continue
-          lastObservedRosterByTeam.set(team, mergeRosterObservation(lastObservedRosterByTeam.get(team), {
+          const priorTeamRoster = lastObservedRosterByTeam.get(team)
+          const observation = {
             ...roster,
             evidenceBasis: roster.evidenceBasis ?? 'scored-series',
             sourceSeriesId: observed.id,
-          })!)
+          }
+          eventRosters.set(team, mergeRosterObservation(eventRosters.get(team) ?? priorTeamRoster, observation)!)
+          lastObservedRosterByTeam.set(team, mergeRosterObservation(priorTeamRoster, observation)!)
         }
       }
     }
     const firstMatch = series.games[0]!
-    const teamARoster = lastObservedRosterByTeam.get(firstMatch.teamA)
-    const teamBRoster = lastObservedRosterByTeam.get(firstMatch.teamB)
+    const eventRosters = lastObservedRosterByEvent.get(evaluationEventId(firstMatch))
+    const teamARoster = eventRosters?.get(firstMatch.teamA) ?? lastObservedRosterByTeam.get(firstMatch.teamA)
+    const teamBRoster = eventRosters?.get(firstMatch.teamB) ?? lastObservedRosterByTeam.get(firstMatch.teamB)
     const edgeByTeam = new Map([
       [firstMatch.teamA, {
         ...playerEdgeForRoster(
