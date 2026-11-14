@@ -87,7 +87,7 @@ export function sparseDate() {
   return capture
 }
 
-export function rosterContinuityDate(firstWinner = 'Alpha', unchanged = false) {
+export function rosterContinuityDate(firstWinner = 'Alpha', unchanged = false, prepare?: (state: RatingRunState) => void) {
   const changed = roster('Alpha')
   changed.players = changed.players.map((player) => player.role === 'Jungle' ? { ...player, id: 'new-jungle' } : player)
   const alphaRoster = unchanged ? roster('Alpha') : changed
@@ -116,9 +116,19 @@ export function rosterContinuityDate(firstWinner = 'Alpha', unchanged = false) {
     state.lastRosterByTeam.set(team, roster(team))
     state.currentRosterContinuity.set(team, 0)
   }
+  prepare?.(state)
   const input = { matches, teams, state, sideAdjustments: new Map<string, number>(),
     lastDate: matches[0].date, pregamePlayerRatingEdges: new Map() }
   emitPregamePredictionsForDate(input)
   const capture = processRatingSeriesForDate({ ...input, capture: true })!
   return { capture, state }
+}
+
+export function seedRosterContinuityContext(state: RatingRunState) {
+  state.momentums.set('Alpha', 17)
+  state.momentums.set('Beta', -8)
+  state.momentums.set('Gamma', 3)
+  state.leagueScores.set('LCK', 1600)
+  state.leagueMatchCounts.set('LCK', 20)
+  state.rosterPriorOffsets.set('Alpha', 13)
 }

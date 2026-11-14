@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { neutralWinProbability } from '../src/domains/rankings/internal/queries/winProbability.ts'
-import { rosterContinuityDate } from './seriesPassFixtures.ts'
+import { effectiveLeagueRating } from '../src/domains/rankings/internal/policy/leagueTiers.ts'
+import { powerRating } from '../src/domains/rankings/internal/replay/ratingCalculations.ts'
+import { rosterContinuityDate, seedRosterContinuityContext } from './seriesPassFixtures.ts'
 
 test('series result expectations retain frozen strength across roster changes and repeated same-day teams', () => {
   const { capture } = rosterContinuityDate()
@@ -12,6 +14,9 @@ test('series result expectations retain frozen strength across roster changes an
   assert.deepEqual(capture.frame.series[0].members.at(-1)!.sides.map(({ team }) => team), [beta, alpha])
   assert.equal(changed.continuity[1].rosterContinuity, 0.78)
   assert.equal(changed.continuity[0].rosterContinuity, 0)
+  assert.deepEqual(changed.input.uncertainty, [100, 100])
+  assert.equal(changed.continuity[0].uncertainty, 140)
+  assert.equal(changed.continuity[1].uncertainty, 108.8)
   assert.deepEqual(changed.input.currentPowerRating, [1860.4, 1390])
   assert.deepEqual(rematch.input.currentPowerRating, changed.input.currentPowerRating)
   const retainedTwice = 1500 + 0.55 * (1860.4 - 1500)
@@ -54,4 +59,18 @@ test('unchanged complete rosters preserve result expectations and ignore stale c
     assert.deepEqual(series.input.currentPowerRating, [1900, index < 2 ? 1300 : 1500])
   }
   assert.deepEqual(capture.expected.series[0].input.rosterContinuity, [1, 1])
+})
+
+test('retained result ratings keep the frozen league, roster prior and momentum context', () => {
+  const { capture } = rosterContinuityDate('Alpha', false, seedRosterContinuityContext)
+  const [changed, rematch, secondChange, unknown, unchanged] = capture.expected.series
+  const league = effectiveLeagueRating('LCK', 1600, 20)
+  assert.notEqual(league, 1500)
+  assert.deepEqual(changed.input.currentPowerRating, [powerRating(1860.4, league) + 17, powerRating(1390, league) - 8])
+  assert.deepEqual(rematch.input.currentPowerRating, changed.input.currentPowerRating)
+  const retainedTwice = 1500 + 0.55 * (1860.4 - 1500)
+  const laterPower = [powerRating(retainedTwice, league) + 17, powerRating(1500, league) + 3]
+  assert.deepEqual(secondChange.input.currentPowerRating, laterPower)
+  assert.deepEqual(unknown.input.currentPowerRating, [laterPower[0] + 13, laterPower[1]])
+  assert.deepEqual(unchanged.input.currentPowerRating, laterPower)
 })
