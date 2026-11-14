@@ -229,6 +229,22 @@ test('result-only slot links require unique candidates in both directions and in
   }
 })
 
+test('duplicate physical identities with overlapping clocks stay ambiguous in every input order', () => {
+  const sources = resultOnlySources()
+  const first = { ...sources.oracleMatches[1], datetimeUtc: '2026-01-15T08:56:00Z' }
+  const second = { ...first, id: 'later-oracle', sourceGameId: 'later-oracle', datetimeUtc: '2026-01-15T09:04:00Z' }
+  const early = { ...sources.leaguepediaMatches[1], datetimeUtc: first.datetimeUtc }
+  const overlap = { ...early, datetimeUtc: '2026-01-15T09:00:00Z' }
+  for (const oracleMatches of [[first, second], [second, first]]) {
+    for (const leaguepediaMatches of [[early, overlap], [overlap, early]]) {
+      const merged = mergeCommunityMatchSources({ oracleMatches, leaguepediaMatches })
+      for (const oracle of oracleMatches) {
+        assert.deepEqual(merged.find(match => match.sourceGameId === oracle.sourceGameId), oracle)
+      }
+    }
+  }
+})
+
 test('result-only slot links respect exact-stat reservations in both input orders', () => {
   const sources = importedSources()
   sources.oracleMatches.push({ ...sources.oracleMatches[1], id: 'oracle-extra', sourceGameId: 'opaque-extra', teamAGold: 57966 })

@@ -363,7 +363,10 @@ function uniqueLeaguepediaGameLinks(oracleMatches: MatchRecord[], leaguepediaMat
       const identities = new Set(candidates.map((candidate) => candidate.sourceGameId ?? candidate.id))
       if (identities.size !== 1) continue
       const duplicate = candidates[0]
-      const reverseCandidates = oracleCandidates.filter((candidate) => gameTimesCompatible(candidate, duplicate))
+      const identityRows = (leaguepediaByKey.get(key) ?? []).filter((candidate) =>
+        (candidate.sourceGameId ?? candidate.id) === (duplicate.sourceGameId ?? duplicate.id))
+      const reverseCandidates = oracleCandidates.filter((candidate) =>
+        identityRows.some((row) => gameTimesCompatible(candidate, row)))
       if (reverseCandidates.length === 1 && reverseCandidates[0] === match) proposed.set(match, duplicate)
     }
     const linksPerIdentity = new Map<string, number>()
