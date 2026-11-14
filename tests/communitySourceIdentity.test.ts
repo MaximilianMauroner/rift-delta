@@ -113,7 +113,7 @@ test('different winners, competitions, missing slots, and distant clocks do not 
   }
 })
 
-test('a result-only row cannot supply a slot-based series identity', () => {
+test('a result-only row without a known duration cannot supply a slot-based series identity', () => {
   const sources = importedSources(oracleCsv.replace('57965', '57966'))
   sources.leaguepediaMatches[1] = importLeaguepediaSnapshot({ matches: [{ ...leaguepediaGames[1],
     teamAKills: 0, teamBKills: 0, teamAGold: 0, teamBGold: 0,
@@ -121,6 +121,129 @@ test('a result-only row cannot supply a slot-based series identity', () => {
   const merged = mergeCommunityMatchSources(sources)
   assert.equal(merged.length, 2)
   assert.equal(merged.find((match) => match.sourceGameId === 'LOLTMNT03_336246')?.sourceMatchId, undefined)
+})
+
+function resultOnlySources() {
+  const sources = importedSources(oracleCsv.replace('57965', '57966'))
+  sources.leaguepediaMatches[1] = {
+    ...sources.leaguepediaMatches[1], dataCompleteness: 'match-result-only',
+    teamAKills: 0, teamBKills: 0, teamAGold: 0, teamBGold: 0, gameLengthSeconds: 1469,
+  }
+  return sources
+}
+
+for (const datetimeUtc of ['2026-01-15T08:56:00Z', '2026-01-15T09:01:47Z']) {
+  test(`a unique result-only slot with known duration supplies identity at ${datetimeUtc}`, () => {
+    const sources = resultOnlySources()
+    sources.leaguepediaMatches[1].datetimeUtc = datetimeUtc
+    const original = structuredClone(sources)
+    const merged = mergeCommunityMatchSources(sources)
+    assert.equal(merged.length, 2)
+    const retained = merged.find((match) => match.sourceGameId === 'LOLTMNT03_336246')
+    assert.deepEqual(retained, { ...original.oracleMatches[1], sourceMatchId: leaguepediaGames[1].id })
+    const series = resolveCanonicalSeries(merged)
+    assert.equal(series.length, 1)
+    assert.equal(series[0].games.length, 2)
+    assert.deepEqual([series[0].winsA, series[0].winsB], [2, 0])
+    assert.equal(series[0].state, 'completed')
+    assert.deepEqual(sources, original)
+  })
+}
+
+for (const [label, oracleOverrides, leaguepediaOverrides] of [
+  ['missing Oracle duration', { gameLengthSeconds: undefined }, {}],
+  ['missing Leaguepedia duration', {}, { gameLengthSeconds: undefined }],
+  ['missing both durations', { gameLengthSeconds: undefined }, { gameLengthSeconds: undefined }],
+  ['different durations', {}, { gameLengthSeconds: 1470 }],
+  ['zero durations', { gameLengthSeconds: 0 }, { gameLengthSeconds: 0 }],
+  ['negative durations', { gameLengthSeconds: -1 }, { gameLengthSeconds: -1 }],
+  ['infinite durations', { gameLengthSeconds: Infinity }, { gameLengthSeconds: Infinity }],
+  ['NaN durations', { gameLengthSeconds: NaN }, { gameLengthSeconds: NaN }],
+  ['missing Oracle slot', { gameNumber: undefined }, {}],
+  ['missing Leaguepedia slot', {}, { sourceGameId: 'opaque-leaguepedia' }],
+  ['missing Oracle clock', { datetimeUtc: undefined }, {}],
+  ['missing Leaguepedia clock', {}, { datetimeUtc: undefined }],
+  ['invalid Oracle clock', { datetimeUtc: 'invalid' }, {}],
+  ['invalid Leaguepedia clock', {}, { datetimeUtc: 'invalid' }],
+  ['later clock beyond five minutes', {}, { datetimeUtc: '2026-01-15T09:01:47.001Z' }],
+  ['earlier clock beyond five minutes', {}, { datetimeUtc: '2026-01-15T08:51:46.999Z' }],
+  ['different winner', {}, { winner: 'DRX' }],
+  ['different teams', {}, { teamB: 'T1' }],
+  ['different league', {}, { league: 'LPL' }],
+  ['different season', {}, { season: 2025 }],
+  ['different date', {}, { date: '2026-01-16' }],
+] as const) {
+  test(`a result-only slot cannot supply identity with ${label}`, () => {
+    const sources = resultOnlySources()
+    sources.oracleMatches[1] = { ...sources.oracleMatches[1], ...oracleOverrides }
+    sources.leaguepediaMatches[1] = { ...sources.leaguepediaMatches[1], ...leaguepediaOverrides }
+    const merged = mergeCommunityMatchSources(sources)
+    const retained = merged.find((match) => match.sourceGameId === 'LOLTMNT03_336246')
+    assert.deepEqual(retained, sources.oracleMatches[1])
+  })
+}
+
+test('scored slot links still allow either or both durations to be missing', () => {
+  for (const missing of ['oracle', 'leaguepedia', 'both']) {
+    const sources = importedSources(oracleCsv.replace('57965', '57966'))
+    sources.leaguepediaMatches[1].gameLengthSeconds = 1469
+    if (missing !== 'leaguepedia') sources.oracleMatches[1].gameLengthSeconds = undefined
+    if (missing !== 'oracle') sources.leaguepediaMatches[1].gameLengthSeconds = undefined
+    const merged = mergeCommunityMatchSources(sources)
+    assert.equal(merged.length, 2)
+    assert.equal(merged.find((match) => match.sourceGameId === 'LOLTMNT03_336246')?.sourceMatchId, leaguepediaGames[1].id)
+  }
+})
+
+test('result-only Oracle rows cannot anchor a scored Leaguepedia identity', () => {
+  const sources = importedSources()
+  sources.oracleMatches[1].dataCompleteness = 'match-result-only'
+  sources.leaguepediaMatches[1].gameLengthSeconds = 1469
+  const merged = mergeCommunityMatchSources(sources)
+  assert.equal(merged.find((match) => match.sourceGameId === 'LOLTMNT03_336246')?.sourceMatchId, undefined)
+})
+
+test('the result-only marker prevents exact-stat identity without known duration', () => {
+  const sources = importedSources()
+  sources.leaguepediaMatches[1].dataCompleteness = 'match-result-only'
+  const merged = mergeCommunityMatchSources(sources)
+  assert.deepEqual(merged.find((match) => match.sourceGameId === 'LOLTMNT03_336246'), sources.oracleMatches[1])
+})
+
+test('result-only slot links require unique candidates in both directions and input orders', () => {
+  for (const ambiguousProvider of ['oracle', 'leaguepedia']) {
+    const sources = resultOnlySources()
+    if (ambiguousProvider === 'oracle') {
+      sources.oracleMatches.push({ ...sources.oracleMatches[1], id: 'oracle-rematch', sourceGameId: 'opaque-rematch', teamAGold: 57967 })
+    } else {
+      sources.leaguepediaMatches.push({ ...sources.leaguepediaMatches[1], id: 'leaguepedia-rematch', sourceGameId: 'LCK/2026 Season/Cup_Rematch_2' })
+    }
+    for (const oracleMatches of [sources.oracleMatches, [...sources.oracleMatches].reverse()]) {
+      for (const leaguepediaMatches of [sources.leaguepediaMatches, [...sources.leaguepediaMatches].reverse()]) {
+        const merged = mergeCommunityMatchSources({ oracleMatches, leaguepediaMatches })
+        for (const oracle of oracleMatches.filter((match) => match.gameNumber === 2)) {
+          assert.deepEqual(merged.find((match) => match.sourceGameId === oracle.sourceGameId), oracle, ambiguousProvider)
+        }
+      }
+    }
+  }
+})
+
+test('result-only slot links respect exact-stat reservations in both input orders', () => {
+  const sources = importedSources()
+  sources.oracleMatches.push({ ...sources.oracleMatches[1], id: 'oracle-extra', sourceGameId: 'opaque-extra', teamAGold: 57966 })
+  const resultOnly = { ...resultOnlySources().leaguepediaMatches[1], id: 'leaguepedia-extra', sourceGameId: 'LCK/2026 Season/Cup_Extra_2' }
+  sources.leaguepediaMatches.push(resultOnly)
+  for (const oracleMatches of [sources.oracleMatches, [...sources.oracleMatches].reverse()]) {
+    for (const leaguepediaMatches of [sources.leaguepediaMatches, [...sources.leaguepediaMatches].reverse()]) {
+      const merged = mergeCommunityMatchSources({ oracleMatches, leaguepediaMatches })
+      assert.equal(merged.length, 3)
+      assert.equal(merged.find((match) => match.sourceGameId === 'LOLTMNT03_336246')?.sourceMatchId, leaguepediaGames[1].id)
+      assert.deepEqual(merged.find((match) => match.sourceGameId === 'opaque-extra'), {
+        ...sources.oracleMatches[2], sourceMatchId: resultOnly.sourceGameId,
+      })
+    }
+  }
 })
 
 function midnightSweep(firstDate: string, nextDate: string, seriesId = '2026Worlds_PlayIn_Round1_1') {
@@ -141,6 +264,35 @@ function midnightSweep(firstDate: string, nextDate: string, seriesId = '2026Worl
 }
 
 for (const [firstDate, nextDate] of [['2026-10-15', '2026-10-16'], ['2026-12-31', '2027-01-01']]) {
+  test(`result-only identities preserve scored games in one series across ${firstDate} and ${nextDate}`, () => {
+    const games = midnightSweep(firstDate, nextDate)
+    const oracleMatches = games.map((match, index) => ({
+      ...match, sourceProvider: 'oracles-elixir' as const, sourceMatchId: undefined,
+      sourceGameId: `opaque-midnight-${index}`, gameNumber: index + 1, gameLengthSeconds: 1800 + index,
+    }))
+    const leaguepediaMatches = games.map((match, index) => ({
+      ...match, sourceMatchId: undefined, dataCompleteness: 'match-result-only' as const,
+      teamAKills: 0, teamBKills: 0, teamAGold: 0, teamBGold: 0, gameLengthSeconds: 1800 + index,
+    }))
+    const original = structuredClone({ oracleMatches, leaguepediaMatches })
+    for (const ordered of [leaguepediaMatches, [...leaguepediaMatches].reverse()]) {
+      const merged = mergeCommunityMatchSources({ oracleMatches, leaguepediaMatches: ordered })
+      assert.equal(merged.length, 3)
+      for (const [index, oracle] of oracleMatches.entries()) {
+        assert.deepEqual(merged.find((match) => match.sourceGameId === oracle.sourceGameId), {
+          ...oracle, sourceMatchId: games[index].sourceGameId, date: firstDate, season: Number(firstDate.slice(0, 4)),
+        })
+      }
+      const series = resolveCanonicalSeries(merged)
+      assert.equal(series.length, 1)
+      assert.equal(series[0].date, firstDate)
+      assert.equal(series[0].games.length, 3)
+      assert.deepEqual([series[0].winsA, series[0].winsB], [0, 3])
+      assert.equal(series[0].state, 'completed')
+    }
+    assert.deepEqual({ oracleMatches, leaguepediaMatches }, original)
+  })
+
   test(`explicit source series remains one 0-3 sweep across ${firstDate} and ${nextDate}`, () => {
     const games = midnightSweep(firstDate, nextDate)
     for (const ordered of [games, [...games].reverse()]) {
