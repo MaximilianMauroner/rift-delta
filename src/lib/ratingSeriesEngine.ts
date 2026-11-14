@@ -132,13 +132,15 @@ export function processRatingSeriesForDate({
     groups, matches, profiles: teams, state, lastDate, sideAdjustments, playerEdges: pregamePlayerRatingEdges,
   }) : undefined
   for (const [seriesIndex, series] of groups.entries()) {
-    applyRosterContinuityForSeries(
+    const preserved = applyRosterContinuityForSeries(
       series.finalMatch,
       [state.ratings, state.executionRatings, resultRatings],
       state.uncertainties,
       state.lastRosterByTeam,
       state.currentRosterContinuity,
+      pregamePlayerRatingEdges.get(series.finalMatch.id),
     )
+    recorder?.recordRosterRetention(seriesIndex, preserved)
     processRatingSeries({ series, teams, state, batch, resultRatings, sideAdjustments, lastDate, pregamePlayerRatingEdges, recorder, seriesIndex })
   }
   return recorder?.finish()

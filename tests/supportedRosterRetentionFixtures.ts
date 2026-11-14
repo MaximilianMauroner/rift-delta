@@ -18,7 +18,8 @@ export function retentionHistory(incomingStrength = 0.9): MatchRecord[] {
       game(`old-${index}`, { date, datetimeUtc: `${date}T12:00:00Z`, gameCompletedAtUtc: `${date}T12:30:00Z`,
         teamARoster: ratedRoster('old', date), teamBRoster: ratedRoster('Beta', date) }),
       game(`incoming-${index}`, { date, datetimeUtc: `${date}T14:00:00Z`, gameCompletedAtUtc: `${date}T14:30:00Z`,
-        teamA: 'Gamma', teamB: 'Zulu', winner: 'Gamma', teamARoster: ratedRoster('incoming', date, incomingStrength),
+        teamA: 'Gamma', teamB: 'Zulu', teamAHomeLeague: 'LCK', teamBHomeLeague: 'LCK', winner: 'Gamma',
+        teamARoster: ratedRoster('incoming', date, incomingStrength),
         teamBRoster: ratedRoster('Zulu', date) }),
     ]
   }).flat()

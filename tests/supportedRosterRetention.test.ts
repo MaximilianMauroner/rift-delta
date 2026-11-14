@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { powerRating } from '../src/domains/rankings/internal/replay/ratingCalculations.ts'
 import { ratedRoster, retentionHistory, retentionTargets, supportedRetentionDate } from './supportedRosterRetentionFixtures.ts'
+import { observe } from './seriesPassFixtures.ts'
 
 test('a proven stronger played lineup keeps live, execution and frozen result strength with the roster uncertainty penalty', () => {
   const { capture } = supportedRetentionDate()
@@ -19,6 +20,16 @@ test('a proven stronger played lineup keeps live, execution and frozen result st
   assert.equal(upgradeAgain.continuity[0].executionRating, downgrade.members[0].sides[0].executionRating)
 })
 
+test('full production replay preserves proven upgrade strength before applying series results', () => {
+  const { captures } = observe([...retentionHistory(), ...retentionTargets()])
+  const target = captures.find(({ frame }) => frame.utcDate === '2026-01-20')!
+  const alpha = target.frame.teams.find(({ team }) => team === 'Alpha')!
+  const upgrade = target.expected.series[0].continuity[1]
+  assert.equal(upgrade.rating, alpha.rating)
+  assert.equal(upgrade.executionRating, alpha.executionRating)
+  assert.ok(upgrade.uncertainty! > alpha.uncertainty!)
+})
+
 for (const [name, strength] of [['weaker', 0.1], ['equal', 0.5]] as const) {
   test(`${name} prior player scores retain the continuity shrink`, () => {
     const { capture } = supportedRetentionDate(retentionHistory(strength))
@@ -26,6 +37,18 @@ for (const [name, strength] of [['weaker', 0.1], ['equal', 0.5]] as const) {
     assert.equal(capture.expected.series[0].continuity[1].executionRating, 1665)
   })
 }
+
+test('equal nonzero prior player edges still shrink strength', () => {
+  const history = retentionHistory()
+  for (const row of history) {
+    if (row.teamA === 'Alpha') row.teamARoster = ratedRoster('old', row.date, 0.9)
+  }
+  const targets = retentionTargets()
+  for (const row of targets) for (const lineup of [row.teamARoster!, row.teamBRoster!]) lineup.observedAt = '2026-01-08'
+  const { capture } = supportedRetentionDate(history, targets)
+  assert.ok(capture.frame.series[0].members[0].sides[0].playerAdjustment! > 0)
+  assert.equal(capture.expected.series[0].continuity[1].rating, 1720)
+})
 
 for (const missing of ['old', 'incoming'] as const) {
   for (const coverage of ['all', 'one'] as const) {
@@ -38,7 +61,10 @@ for (const missing of ['old', 'incoming'] as const) {
           }
         }
       }
-      assert.equal(supportedRetentionDate(history).capture.expected.series[0].continuity[1].rating, 1720)
+      const { capture } = supportedRetentionDate(history)
+      assert.equal(capture.expected.series[0].continuity[1].rating, 1720)
+      const downgrade = capture.expected.series[2].members[0].sides[0]
+      assert.equal(capture.expected.series[3].continuity[0].rating, 1500 + 0.55 * (downgrade.rating! - 1500))
     })
   }
 }
@@ -65,7 +91,10 @@ test('target and future performance cannot supply missing prior player evidence'
   const future = retentionHistory().map(row => ({ ...row, id: `future-${row.id}`, sourceMatchId: `future-${row.id}`,
     date: '2026-01-21', datetimeUtc: '2026-01-21T12:00:00Z', gameCompletedAtUtc: '2026-01-21T12:30:00Z' }))
   for (const history of [[], future]) {
-    assert.equal(supportedRetentionDate(history, targets).capture.expected.series[0].continuity[1].rating, 1720)
+    const { capture } = supportedRetentionDate(history, targets)
+    assert.equal(capture.expected.series[0].continuity[1].rating, 1720)
+    assert.equal(capture.expected.series[3].continuity[0].rating,
+      1500 + 0.55 * (capture.expected.series[2].members[0].sides[0].rating! - 1500))
   }
 })
 
