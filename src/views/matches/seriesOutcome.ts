@@ -36,13 +36,12 @@ export function seriesWinner(match: Pick<PublicMatchHistoryEntry, 'seriesWinsA' 
  */
 export function seriesRatingChange(match: PublicMatchHistoryEntry): SeriesRatingChange {
   if (match.impact.unit === 'held') return { kind: 'held' }
-  const { teamA, teamB, expectedTeamA, eventWeight } = match.impact
+  const { teamA, teamB, expectedTeamA, expectedTeamB, eventWeight } = match.impact
   if (!hasConsistentImpactDirection(match) || typeof teamA !== 'number' || typeof teamB !== 'number') return { kind: 'missing' }
   const winner = seriesWinner(match)
   const chanceSide = winner ?? 'A'
-  const chance = typeof expectedTeamA === 'number' && Number.isFinite(expectedTeamA)
-    ? chanceSide === 'A' ? expectedTeamA : 1 - expectedTeamA
-    : undefined
+  const expected = chanceSide === 'A' ? expectedTeamA : expectedTeamB
+  const chance = typeof expected === 'number' && Number.isFinite(expected) ? expected : undefined
   return {
     kind: 'applied',
     teamA,

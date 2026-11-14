@@ -590,6 +590,7 @@ export type PublicMatchHistoryImpact = {
   teamA?: number
   teamB?: number
   expectedTeamA?: number
+  expectedTeamB?: number
   eventWeight?: number
 }
 

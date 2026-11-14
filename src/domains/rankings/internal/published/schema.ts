@@ -307,11 +307,7 @@ function teamRecentMatch(group: TeamMatchGroup, result: 'W' | 'L' | 'T', previou
   const wins = group.entries.filter((entry) => entry.result === 'W').length
   const losses = group.entries.length - wins
   const bestOf = bestOfForScore(wins, losses, latest.source.bestOf)
-  const observedOutcome = latest.source.seriesOutcome
-  const residual = latest.ratingUpdate?.neutralResultResidual
-  const expectedWinProbability = typeof observedOutcome === 'number' && typeof residual === 'number'
-    ? Math.max(0, Math.min(1, Number((observedOutcome - residual).toFixed(4))))
-    : undefined
+  const expectedWinProbability = latest.recordedSeriesWinProbability
 
   return {
     date: latest.date,
@@ -824,6 +820,7 @@ function assertPublicMatchHistoryEntry(value: unknown, label: string) {
   assertOptionalNumber(value.impact.teamA, `${label} impact teamA`)
   assertOptionalNumber(value.impact.teamB, `${label} impact teamB`)
   assertOptionalNumber(value.impact.expectedTeamA, `${label} impact expectedTeamA`)
+  assertOptionalNumber(value.impact.expectedTeamB, `${label} impact expectedTeamB`)
   assertOptionalNumber(value.impact.eventWeight, `${label} impact eventWeight`)
   assertObject(value.source, `${label} source`)
   assertEnum(value.source.provider, ['oracles-elixir', 'leaguepedia-cargo', 'seed'], `${label} source provider`)

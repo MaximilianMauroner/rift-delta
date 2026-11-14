@@ -126,7 +126,7 @@ export function processRatingSeriesForDate({
   capture?: boolean
 }) {
   const batch = ratingBatchSnapshot(state)
-  const groups = ratingSeriesGroupsForDate(matches)
+  const groups = ratingSeriesGroupsForDate(matches, state.predictions)
   const resultRatings = new Map(batch.ratings)
   const recorder = capture ? new SeriesPassRecorder({
     groups, matches, profiles: teams, state, lastDate, sideAdjustments, playerEdges: pregamePlayerRatingEdges,
@@ -996,6 +996,7 @@ function homeLeagueForTeam(match: MatchRecord, team: string, teams: Record<strin
 }
 
 type RatingSeriesGroup = {
+  recordedPrediction?: PregamePrediction
   key: string
   matches: MatchRecord[]
   finalMatch: MatchRecord
@@ -1013,9 +1014,10 @@ type RatingSeriesGroup = {
   state: CanonicalSeries['state']
 }
 
-function ratingSeriesGroupsForDate(matches: MatchRecord[]): RatingSeriesGroup[] {
+function ratingSeriesGroupsForDate(matches: MatchRecord[], predictions: PregamePrediction[]): RatingSeriesGroup[] {
   return resolveCanonicalSeries(matches).map((series) => ({
     key: series.id,
+    recordedPrediction: predictions.findLast((prediction) => prediction.id === series.games[0].id),
     matches: series.games,
     finalMatch: series.finalMatch,
     teamA: series.teamA,
@@ -1067,6 +1069,7 @@ function appendHistory(
   histories: Map<string, TeamHistoryPoint[]>,
   series: RatingSeriesGroup,
 ) {
+  const prediction = series.recordedPrediction
   histories.set(team, [
     ...(histories.get(team) ?? []),
     {
@@ -1079,6 +1082,11 @@ function appendHistory(
       sideAdjustment,
       ratingComponents: components,
       ratingUpdate: update,
+      ...(prediction ? {
+        recordedSeriesWinProbability: team === prediction.teamA
+          ? prediction.teamASeriesWinProbability
+          : prediction.teamBSeriesWinProbability,
+      } : {}),
       rank,
       delta: Math.round(delta),
       tier: match.tier,

@@ -21,7 +21,7 @@ function series(overrides: Partial<PublicMatchHistoryEntry>): PublicMatchHistory
     teamA: { id: 'gen', name: 'Gen.G', code: 'GEN' },
     teamB: { id: 'bro', name: 'HANJIN BRION', code: 'BRO' },
     winnerId: 'bro',
-    impact: { unit: 'series-applied', teamA: -45, teamB: 46, expectedTeamA: 0.78, eventWeight: 1.643 },
+    impact: { unit: 'series-applied', teamA: -45, teamB: 46, expectedTeamA: 0.78, expectedTeamB: 0.22, eventWeight: 1.643 },
     source: { provider: 'leaguepedia-cargo' },
     ...overrides,
   }
@@ -42,6 +42,20 @@ test('reports the pre-match chance of the series winner and flags upsets', () =>
 test('hides the rating change when the deltas contradict the winner', () => {
   assert.deepEqual(seriesRatingChange(series({ impact: { unit: 'series-applied', teamA: 45, teamB: -46, expectedTeamA: 0.1 } })), { kind: 'missing' })
   assert.deepEqual(seriesRatingChange(series({ impact: { unit: 'held' } })), { kind: 'held' })
+})
+
+test('Bo2 winner uses its own recorded probability for the chance and upset flag', () => {
+  const change = seriesRatingChange(series({ bestOf: 2, seriesWinsB: 2,
+    impact: { unit: 'series-applied', teamA: -45, teamB: 46, expectedTeamA: 0.64, expectedTeamB: 0.04 } }))
+  assert.equal(change.kind === 'applied' && change.chance, 0.04)
+  assert.equal(change.kind === 'applied' && change.upset, true)
+})
+
+test('missing winner probability is omitted instead of complemented from the other team', () => {
+  const change = seriesRatingChange(series({
+    impact: { unit: 'series-applied', teamA: -45, teamB: 46, expectedTeamA: 0.64 } }))
+  assert.equal(change.kind === 'applied' && change.chance, undefined)
+  assert.equal(change.kind === 'applied' && change.upset, false)
 })
 
 test('caps the delta bar and keeps small changes visible', () => {
