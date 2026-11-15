@@ -36,9 +36,9 @@ function PoolRow({ row, open, onToggle }: { row: ChampionRow; open: boolean; onT
 }
 
 export function PoolTable({ pool }: { pool: ChampionRow[] }) {
-  const [open, setOpen] = useState<string | null>(null)
+  const [open, setOpen] = useState<string | null>(pool[0]?.champion ?? null)
   return <Panel aria-labelledby="sc-pool-title">
-    <PanelHeader title="What they play" titleId="sc-pool-title" description="Win rate uses all games. Lane lead uses games with lane data." />
+    <PanelHeader title="What they play" titleId="sc-pool-title" />
     <div className="sc-thead" aria-hidden="true"><span>Champion</span><span>{SCOUTING_RULES.windowDays} days</span><span>Win rate</span><span>Lane</span><span /></div>
     <ul className="sc-pool">
       {pool.map(row => <PoolRow key={row.champion} row={row} open={open === row.champion} onToggle={() => setOpen(open === row.champion ? null : row.champion)} />)}

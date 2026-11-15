@@ -27,7 +27,7 @@ export function RankStrips({ role, measures }: { role: Role; measures: Measure[]
         <span className="sc-rl">{measure.metric.label}</span>
         <b className="sc-rv sc-num">{formatMeasure(measure.metric, measure.value)}</b>
         <Strip measure={measure} />
-        <span className="sc-rr">{measure.rank === null ? <span className="sc-unranked">Not ranked</span>
+        <span className="sc-rr">{measure.rank === null ? <span className="sc-dim" aria-label="Not ranked">{'–'}</span>
           : measure.rank <= 3 ? <Badge variant="rank">{ordinal(measure.rank)}</Badge> : <span className="sc-rk sc-num">{ordinal(measure.rank)}</span>}</span>
       </li>)}
     </ul>
