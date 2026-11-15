@@ -40,10 +40,6 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
   useHashSync('players', { player: filters.search, role: filters.role === 'All' ? '' : filters.role })
   const directory = state.status === 'ready' ? state.data : undefined
   const players = useMemo(() => playerLeaderboardForScope(directory, filter), [directory, filter])
-  const scoreRange = useMemo(() => {
-    const values = players.map((player) => player.leaderboardScore.value)
-    return values.length ? { min: Math.min(...values), max: Math.max(...values) } : undefined
-  }, [players])
   const statsPowerVersion = players.find((player) => player.statsPower)?.statsPower?.version
   const scoreLabel = statsPowerVersion ? 'Stats Power' : 'Role Power'
   const search = filters.search.trim().toLowerCase()
@@ -87,13 +83,6 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
         </label>
       </div>
 
-      {visible.length > 0 ? (
-        <div className="players-reading-tools">
-          {methodDisclosure}
-          <p className="players-scroll-cue"><MoveHorizontal size={16} aria-hidden="true" /><span>Scroll for more stats</span></p>
-        </div>
-      ) : null}
-
       {state.status === 'idle' || state.status === 'loading' ? (
         <LoadingState label="Loading player rankings" presentation="rows" rowCount={6} />
       ) : state.status === 'error' || state.status === 'missing' ? (
@@ -110,14 +99,12 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
         </Card>
       ) : (
         <>
-          <p className="players-count flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-muted-foreground" role="status">
-            <span>{formatNumber(visible.length)} of {formatNumber(players.length)} players in {scopeLabel}. Ranks stay tied to this scope when filtered.</span>
-            {scoreRange && visible.length > 0 ? (
-              <span className="player-score-key" title="Markers show position in the full scope's score range. Filters keep the same scale.">
-                Scope range {formatDecimal(scoreRange.min)} to {formatDecimal(scoreRange.max)}
-              </span>
-            ) : null}
-          </p>
+          <div className="players-summary">
+            <p className="players-count text-xs text-muted-foreground" role="status">
+              <strong>{formatNumber(visible.length)} of {formatNumber(players.length)} players</strong> in {scopeLabel}. Ranks stay tied to this scope when filtered.
+            </p>
+            {methodDisclosure}
+          </div>
           {visible.length === 0 ? (
             <Card role="status" className="players-empty-result">
               <DataState icon={<Search size={26} aria-hidden="true" />} title="No players match these filters" action={<Button variant="outline" onClick={() => setFilters({ ...filters, search: '', role: 'All' })}>Clear filters</Button>}>
@@ -125,7 +112,11 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
               </DataState>
             </Card>
           ) : (
-            <Card className="players-board min-w-0 overflow-hidden p-0">
+            <Card className="players-board min-w-0 gap-0 overflow-hidden p-0">
+              <div className="players-reading-tools">
+                <p className="players-scouting-cue"><ClipboardList size={16} aria-hidden="true" /><span>Select a player to open their scouting report.</span></p>
+                <p className="players-scroll-cue"><MoveHorizontal size={16} aria-hidden="true" /><span>Scroll for all columns</span></p>
+              </div>
               <Table role="table" data-stat-games={Boolean(statsPowerVersion)} aria-label="Player rankings" tabIndex={0} className="players-table focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--focus)]">
                 <caption className="sr-only">Player rankings for {scopeLabel}, ordered by {scoreLabel}, highest first. Equal scores share a rank.{statsPowerVersion ? ' Stat games count games with usable role stats in this scope, including previous teams.' : ''} Games count games credited to the displayed team where available, otherwise all rated games.</caption>
                 <TableHeader role="rowgroup">
@@ -149,41 +140,34 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
                     const branding = teamBrandingFor(player.team)
                     const logo = branding?.logo && branding.logoTreatment !== 'code' ? branding.logo : undefined
                     const scoreText = player.leaderboardScore.kind === 'stats-power' ? formatDecimal(player.leaderboardScore.value) : formatRating(player.leaderboardScore.value)
-                    const decimalIndex = scoreText.lastIndexOf('.')
-                    const scorePosition = scoreRange && scoreRange.max !== scoreRange.min
-                      ? 100 * (player.leaderboardScore.value - scoreRange.min) / (scoreRange.max - scoreRange.min)
-                      : 50
                     return (
                       <TableRow role="row" key={player.id}>
-                        <TableCell role="cell" className="player-col-rank pl-4 font-mono text-muted-foreground tabular-nums">{player.leaderboardRank}</TableCell>
-                        <TableCell role="cell" className="player-col-name text-md font-semibold text-[var(--text-strong)]"><span className="player-identity">
-                          {logo ? <img src={`${logo}?v=icon-128`} className={branding?.logoTreatment === 'invert' ? 'player-identity-mark invert' : 'player-identity-mark'} alt="" aria-hidden="true" width={20} height={20} loading="lazy" decoding="async" /> : null}
-                          <span>{player.name}</span>
+                        <TableCell role="cell" className="player-col-rank pl-4 text-muted-foreground tabular-nums">{player.leaderboardRank}</TableCell>
+                        <TableCell role="cell" className="player-col-name">
                           <a
                             href={scoutingHref(player)}
                             aria-label={`Scouting report for ${player.name}`}
                             title="Scouting report"
-                            className="player-scouting-link inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-[var(--faint)] hover:bg-[var(--surface-3)] hover:text-[var(--text-strong)]"
-                          ><ClipboardList className="size-4" aria-hidden="true" /></a>
-                        </span></TableCell>
+                            className="player-scouting-link"
+                          ><span>{player.name}</span><ClipboardList size={14} aria-hidden="true" /></a>
+                        </TableCell>
                         <TableCell role="cell" className="player-col-team max-w-44 whitespace-normal"><span className="player-team">
                           {logo ? <img src={`${logo}?v=icon-128`} className={branding?.logoTreatment === 'invert' ? 'invert' : undefined} alt="" aria-hidden="true" width={24} height={24} loading="lazy" decoding="async" /> : null}
                           <span>{player.team}</span>
                         </span></TableCell>
                         <TableCell role="cell" className="player-col-role text-muted-foreground"><span className="player-role">{player.role}</span></TableCell>
-                        <TableCell role="cell" className="player-col-score text-right font-mono font-semibold text-[var(--text-strong)] tabular-nums">
-                          <span className="player-score-position" aria-hidden="true"><i style={{ left: `${scorePosition}%` }} /></span>
-                          <span className="player-score-figure"><span>{decimalIndex < 0 ? scoreText : scoreText.slice(0, decimalIndex)}</span><span>{decimalIndex < 0 ? '' : scoreText.slice(decimalIndex)}</span></span>
+                        <TableCell role="cell" className="player-col-score text-right font-semibold text-[var(--text-strong)] tabular-nums">
+                          <span className="player-score-figure">{scoreText}</span>
                           {statsPowerVersion && player.leaderboardScore.kind === 'role-power' ? <span className="block text-2xs font-normal text-muted-foreground">Role Power</span> : null}
                           {player.statsPower?.priorOnly ? <span className="block text-2xs font-normal text-muted-foreground">League anchor</span> : null}
                         </TableCell>
                         {statsPowerVersion ? (
                           <>
-                            <TableCell role="cell" className="player-col-stat-games text-right font-mono text-muted-foreground tabular-nums">{formatNumber(player.statsPower?.sampleGames)}</TableCell>
-                            <TableCell role="cell" className="player-col-role-power text-right font-mono text-muted-foreground tabular-nums">{formatRating(player.rating)}</TableCell>
+                            <TableCell role="cell" className="player-col-stat-games text-right text-muted-foreground tabular-nums">{formatNumber(player.statsPower?.sampleGames)}</TableCell>
+                            <TableCell role="cell" className="player-col-role-power text-right text-muted-foreground tabular-nums">{formatRating(player.rating)}</TableCell>
                           </>
                         ) : null}
-                        <TableCell role="cell" className="player-col-games pr-4 text-right font-mono text-muted-foreground tabular-nums">{formatNumber(player.teamGames ?? player.games)}</TableCell>
+                        <TableCell role="cell" className="player-col-games pr-4 text-right text-muted-foreground tabular-nums">{formatNumber(player.teamGames ?? player.games)}</TableCell>
                       </TableRow>
                     )
                   })}
@@ -193,7 +177,7 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
           )}
         </>
       )}
-      {visible.length === 0 ? methodDisclosure : null}
+      {players.length === 0 ? methodDisclosure : null}
       {directory ? (
         <p className="players-source break-words text-xs leading-relaxed text-muted-foreground">
           Source {directory.sourceProvider}.{' '}
