@@ -24,10 +24,10 @@ test('without a request the most active player in Mid is chosen, and a role in t
   assert.equal(top.player?.role, 'Top')
 })
 
-test('an unknown player falls back to the default and says it was not found', () => {
+test('an unknown player stays unavailable until another player is selected', () => {
   const selection = scoutingSelection(artifact, new URLSearchParams({ player: 'nobody|Mid' }))
   assert.equal(selection.found, false)
-  assert.equal(selection.player?.role, 'Mid')
+  assert.equal(selection.player, undefined)
 })
 
 test('a linked player under the game minimum stays selected and is offered in the picker, so the page can say why', () => {
@@ -37,4 +37,12 @@ test('a linked player under the game minimum stays selected and is offered in th
   assert.equal(selection.players[0]?.id, 'e-2')
   const fallback = scoutingSelection(index, new URLSearchParams())
   assert.equal(fallback.players.some(player => player.id === 'e-2'), false)
+})
+
+test('a linked player with too few games keeps their role in the picker', () => {
+  const rare = { ...artifact.players.find(player => player.role === 'Top')!, games: 3 }
+  const index = { ...artifact, players: [...artifact.players.filter(player => player.role !== 'Top'), rare] }
+  const selection = scoutingSelection(index, new URLSearchParams({ player: `${rare.id}|Top` }))
+  assert.equal(selection.player?.id, rare.id)
+  assert.ok(selection.roles.includes('Top'))
 })

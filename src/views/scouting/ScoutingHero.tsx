@@ -4,7 +4,7 @@ import { Badge } from '../../components/ui/badge'
 import { Panel } from '../../components/ui/panel'
 import { SCOUTING_RULES, STALE_DAYS, staleDays, type Measure, type PlayerReport, type RoleBaseline } from '../../domains/scouting/report'
 import type { Role } from '../../domains/rankings/types'
-import { gameCount, leadTone, ordinal, percent, poolSegments, readingSentence, shortDate, signed, winLoss } from './presentation'
+import { fullDate, gameCount, leadTone, ordinal, percent, poolSegments, readingSentence, signed, winLoss } from './presentation'
 
 function PoolStrip({ player }: { player: PlayerReport }) {
   const segments = poolSegments(player)
@@ -38,7 +38,7 @@ export function ScoutingHero({ player, roles, through, measures }: { player: Pla
       </div>
       <p className="sc-reading">{readingSentence(player, roles)}</p>
     </div>
-    {stale > STALE_DAYS ? <p className="sc-alert" role="status"><b>Last game {shortDate(player.last)}.</b> {stale} days before the newest record, so recent numbers may be old.</p> : null}
+    {stale > STALE_DAYS ? <p className="sc-alert" role="status"><b>Last game {fullDate(player.last)}.</b> {stale} days before the newest record, so recent numbers may be old.</p> : null}
     <PoolStrip player={player} />
     <dl className="sc-ribbon">
       <div><dt>Win rate</dt><dd className="sc-fig">{percent(player.wins / player.games)}</dd><small>{gameCount(player.games)}</small></div>

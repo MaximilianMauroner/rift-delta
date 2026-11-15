@@ -103,7 +103,13 @@ test('Scouting report loads its index and one player file from the published gen
 
     await page.goto(`http://127.0.0.1:${address.port}/#scouting?player=nobody%7CMid`)
     await page.getByText('No report matches this link.').waitFor()
+    assert.equal(await hash(), '#scouting?player=nobody|Mid')
+    await page.reload()
+    await page.getByText('No report matches this link.').waitFor()
+    assert.equal(await hash(), '#scouting?player=nobody|Mid')
+    await page.getByRole('combobox', { name: 'Player', exact: true }).selectOption(`${FOCAL}|Mid`)
     await heading('Focal')
+    await page.getByText(/Recent 90-day window ends 10 Jun 2026/).waitFor()
     assert.deepEqual(errors, [])
   } finally {
     await browser?.close()
