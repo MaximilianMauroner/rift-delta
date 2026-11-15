@@ -79,7 +79,7 @@ export function PlayerRankingCard({
               Player Rankings
               <CountBadge>No ranked players</CountBadge>
             </h3>
-            <p>No players qualify for rankings in {playerScopeLabel}.</p>
+            <p>No ranked player data in {playerScopeLabel}.</p>
           </div>
         </div>
       </aside>

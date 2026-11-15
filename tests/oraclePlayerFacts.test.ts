@@ -5,7 +5,7 @@ import { buildPlayerModel } from '../src/domains/rankings/internal/replay/model.
 import { buildCanonicalMatchLedger, classifyRankingChange } from '../src/lib/incremental/changeClassifier.ts'
 import { reportOf } from './scoutingFixtures.ts'
 
-function oracleGames() {
+function oracleGames(duplicate?: 'same-team' | 'opponents') {
   const columns = ['gameid', 'date', 'year', 'league', 'position', 'side', 'teamname', 'teamid', 'playerid', 'playername', 'champion', 'result', 'kills', 'deaths', 'assists']
   const rows = [columns.join(',')]
   for (let game = 1; game <= 20; game++) {
@@ -14,7 +14,9 @@ function oracleGames() {
       const add = (row: Record<string, string>) => rows.push(columns.map(key => row[key] ?? '').join(','))
       add({ ...values, position: 'team', result })
       for (const [index, position] of ['top', 'jng', 'mid', 'bot', 'sup'].entries()) {
-        add({ ...values, position, playerid: `${team}-${index}`, playername: `${team}-${index}`, champion: `${team}-champion-${index}`,
+        const playerid = duplicate === 'same-team' && team === 'a' && index === 3 ? 'a-2'
+          : duplicate === 'opponents' && team === 'b' && index === 2 ? 'a-2' : `${team}-${index}`
+        add({ ...values, position, playerid, playername: `${team}-${index}`, champion: `${team}-champion-${index}`,
           result: '', kills: '1', deaths: team === 'a' && index === 2 ? (game === 20 ? '0' : '') : '1', assists: '2' })
       }
     }
@@ -35,6 +37,14 @@ test('Oracle missing player results and deaths do not turn wins into losses or u
   const player = buildPlayerModel(matches, {}).find(entry => entry.id === 'a-2')!
   assert.deepEqual(player.diagnostics?.kda, { value: 3, games: 1, missing: 19 })
   assert.equal(player.diagnostics?.wins, 20)
+})
+
+test('a repeated player identity cannot be scored twice in one game', () => {
+  for (const duplicate of ['same-team', 'opponents'] as const) {
+    const matches = oracleGames(duplicate)
+    assert.equal(matches[0]!.teamARoster!.completeness, 'partial')
+    assert.equal(buildPlayerModel(matches, {}).length, 0)
+  }
 })
 
 test('Oracle treats invalid KDA numbers as missing and retains true zeroes', () => {

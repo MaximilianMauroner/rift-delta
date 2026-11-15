@@ -31,7 +31,7 @@ export const MODE_TITLES: Record<Mode, { title: string; intro: string }> = {
   },
   players: {
     title: 'Player rankings',
-    intro: 'Players ranked by the score shown for this scope. Higher is stronger.',
+    intro: 'Scores compare available player data. Open Method for details.',
   },
   regions: {
     title: 'Region power',

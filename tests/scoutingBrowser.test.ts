@@ -109,7 +109,7 @@ test('Scouting report loads its index and one player file from the published gen
     assert.equal(await hash(), '#scouting?player=nobody|Mid')
     await page.getByRole('combobox', { name: 'Player', exact: true }).selectOption(`${FOCAL}|Mid`)
     await heading('Focal')
-    await page.getByText(/Recent 90-day window ends 10 Jun 2026/).waitFor()
+    await page.getByText(/Games through 10 Jun 2026\. Recent stats cover the 90 days ending then/).waitFor()
     assert.deepEqual(errors, [])
   } finally {
     await browser?.close()

@@ -65,7 +65,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
     <details className="players-method">
       <summary>Method</summary>
       <div className="grid gap-1.5 text-xs leading-relaxed text-muted-foreground">
-        {statsPowerVersion ? <p>Stats Power gives newer games more weight, with a 90-day half-life. Inactivity alone does not lower Stats Power. Rows without a stat score show Role Power.</p> : null}
+        {statsPowerVersion ? <p>Stats Power compares selected stats within each role. It does not measure overall player ability. Newer games get more weight, with a 90-day half-life. Inactivity alone does not lower Stats Power. Rows without a stat score show Role Power.</p> : null}
         <p>Role Power includes individual stats, results, opponent strength and event context.</p>
         <p>{teamAttribution} Games count games credited to that team where available, otherwise all rated games.</p>
       </div>
@@ -173,6 +173,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                     const branding = teamBrandingFor(player.team)
                     const logo = branding?.logo && branding.logoTreatment !== 'code' ? branding.logo : undefined
                     const scoreText = player.leaderboardScore.kind === 'stats-power' ? formatDecimal(player.leaderboardScore.value) : formatRating(player.leaderboardScore.value)
+                    const evidenceThrough = player.leaderboardScore.kind === 'stats-power' ? player.statsPower?.evidenceThrough : player.latestObservedAt
                     const decimalIndex = scoreText.lastIndexOf('.')
                     const scorePosition = scoreRange && scoreRange.max !== scoreRange.min
                       ? 100 * (player.leaderboardScore.value - scoreRange.min) / (scoreRange.max - scoreRange.min)
@@ -197,6 +198,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                         <TableCell role="cell" className="player-col-score text-right font-mono font-semibold text-[var(--text-strong)] tabular-nums">
                           <span className="player-score-position" aria-hidden="true"><i style={{ left: `${scorePosition}%` }} /></span>
                           <span className="player-score-figure"><span>{decimalIndex < 0 ? scoreText : scoreText.slice(0, decimalIndex)}</span><span>{decimalIndex < 0 ? '' : scoreText.slice(decimalIndex)}</span></span>
+                          {evidenceThrough ? <span className="player-score-evidence block text-2xs font-normal text-muted-foreground">Through {formatDate(evidenceThrough)}</span> : null}
                           {statsPowerVersion && player.leaderboardScore.kind === 'role-power' ? <span className="block text-2xs font-normal text-muted-foreground">Role Power</span> : null}
                           {player.statsPower?.priorOnly ? <span className="block text-2xs font-normal text-muted-foreground">League anchor</span> : null}
                         </TableCell>

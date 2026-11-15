@@ -71,7 +71,7 @@ function Report({ index, query }: { index: ScoutingIndex; query: URLSearchParams
           {!player ? <option value="" disabled>Choose a player</option> : null}
           {players.map(option => <option key={reportKey(option)} value={reportKey(option)}>{option.name} ({option.team}, {gameCount(option.games)})</option>)}
         </Select></label>
-      <p className="sc-through">{index.through ? <>Games through <b>{fullDate(index.through)}</b>. Recent 90-day window ends {fullDate(index.through)}.</> : 'No counted games'}</p>
+      <p className="sc-through">{index.through ? <>Games through <b>{fullDate(index.through)}</b>. Recent stats cover the 90 days ending then.</> : 'No counted games'}</p>
     </div>
     <div className="sc-body">
       {!found ? <Panel><DataState icon={<Users size={26} aria-hidden="true" />} title="No report matches this link.">Choose another player or role.</DataState></Panel>

@@ -280,7 +280,7 @@ test('the player disclosure describes qualified career rows beside the sourced r
     loadState: { status: 'ready' },
     playerScopeLabel: '2026',
   }))
-  assert.match(empty, /No players qualify for rankings in 2026/)
+  assert.match(empty, /No ranked player data in 2026/)
 })
 
 test('completion times order sourced games when start times are unavailable', () => {

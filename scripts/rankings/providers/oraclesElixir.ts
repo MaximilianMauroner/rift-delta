@@ -132,6 +132,13 @@ function normalizeGame(
     ? Date.parse(datetimeUtc) + duration * 1000 : NaN)
   const format = bestOfForGame(first, playoffs)
   const gameNumber = numberValue(first, 'game')
+  const teamARoster = rosterForSide(rows, 'blue', date, winner === blueTeam)
+  const teamBRoster = rosterForSide(rows, 'red', date, winner === redTeam)
+  const bluePlayers = new Set(teamARoster?.players.map((player) => player.id))
+  if (teamARoster && teamBRoster?.players.some((player) => bluePlayers.has(player.id))) {
+    teamARoster.completeness = 'partial'
+    teamBRoster.completeness = 'partial'
+  }
 
   return {
     id: `oe-${gameId}`,
@@ -155,8 +162,8 @@ function normalizeGame(
     teamBRegion: redRegion,
     teamASide: 'blue',
     teamBSide: 'red',
-    teamARoster: rosterForSide(rows, 'blue', date, winner === blueTeam),
-    teamBRoster: rosterForSide(rows, 'red', date, winner === redTeam),
+    teamARoster,
+    teamBRoster,
     teamAPicks: picksForSide(rows, 'blue'),
     teamBPicks: picksForSide(rows, 'red'),
     patch,
@@ -321,7 +328,8 @@ function roleForOraclePosition(position: string): Role | undefined {
 
 function rosterCompleteness(players: RosterPlayerAppearance[]): RosterCompleteness {
   const roles = new Set(players.map((player) => player.role))
-  return players.length === 5 && ['Top', 'Jungle', 'Mid', 'Bot', 'Support'].every((role) => roles.has(role as Role))
+  return players.length === 5 && new Set(players.map((player) => player.id)).size === 5
+    && ['Top', 'Jungle', 'Mid', 'Bot', 'Support'].every((role) => roles.has(role as Role))
     ? 'complete-five-role'
     : 'partial'
 }
