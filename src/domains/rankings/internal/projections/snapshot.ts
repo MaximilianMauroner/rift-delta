@@ -1851,19 +1851,22 @@ function currentLineupsForMatches(data: StaticRankingData, players: CompactPlaye
 }
 
 function observedLineupGameIsLater(left: ObservedLineupGame, right: ObservedLineupGame): boolean {
+  let sameStart = false
   if (left.match.datetimeUtc && right.match.datetimeUtc) {
     const timeDifference = Date.parse(left.match.datetimeUtc) - Date.parse(right.match.datetimeUtc)
     if (timeDifference !== 0) return timeDifference > 0
+    sameStart = true
   }
+  const leftGame = gameNumberFor(left.match)
+  const rightGame = gameNumberFor(right.match)
+  const gameOrder = left.seriesId !== undefined && left.seriesId === right.seriesId
+    && leftGame !== Number.MAX_SAFE_INTEGER && rightGame !== Number.MAX_SAFE_INTEGER ? leftGame - rightGame : 0
+  if (sameStart && gameOrder !== 0) return gameOrder > 0
   if (left.match.gameCompletedAtUtc && right.match.gameCompletedAtUtc) {
     const timeDifference = Date.parse(left.match.gameCompletedAtUtc) - Date.parse(right.match.gameCompletedAtUtc)
     if (timeDifference !== 0) return timeDifference > 0
   }
-  const leftGame = gameNumberFor(left.match)
-  const rightGame = gameNumberFor(right.match)
-  return left.seriesId !== undefined && left.seriesId === right.seriesId
-    && leftGame !== Number.MAX_SAFE_INTEGER && rightGame !== Number.MAX_SAFE_INTEGER
-    && leftGame > rightGame
+  return gameOrder > 0
 }
 
 function wholeDaysBetween(start: string, end: string) {

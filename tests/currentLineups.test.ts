@@ -6,6 +6,7 @@ import { PlayerRankingCard } from '../src/views/rankings/PlayerDisclosure.tsx'
 import { createPlayerDirectory, createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { compactStanding, parsePublicPlayerDirectory, teamIdFor } from '../src/domains/rankings/internal/published/schema.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
+import { importOraclesElixirCsv } from '../scripts/rankings/providers/oraclesElixir.ts'
 import type { MatchRecord, MatchRosterSnapshot, Role, TeamProfile } from '../src/domains/rankings/types.ts'
 
 const roles: Role[] = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
@@ -292,6 +293,22 @@ test('completion times order sourced games when start times are unavailable', ()
   assert.equal(lineup?.starters.find((player) => player.role === 'Mid')?.playerId, 'reserve-Mid')
 })
 
+test('completion times remain authoritative for a series without start times', () => {
+  const date = '2026-01-24'
+  const early = match('timed-game2', date, {
+    sourceMatchId: 'timed-series',
+    gameCompletedAtUtc: `${date}T10:35:00Z`,
+  })
+  const late = match('timed-game1', date, {
+    sourceMatchId: 'timed-series',
+    gameCompletedAtUtc: `${date}T12:35:00Z`,
+    teamARoster: substitution(date),
+  })
+  const lineup = createPlayerDirectory(build([...history(), late, early])).currentLineups[alphaId]
+
+  assert.equal(lineup?.starters.find((player) => player.role === 'Mid')?.playerId, 'reserve-Mid')
+})
+
 test('source game suffixes order substitutions even with equal differently formatted series timestamps', () => {
   const date = '2026-01-24'
   const early = match('ordered-game1', date, {
@@ -307,6 +324,29 @@ test('source game suffixes order substitutions even with equal differently forma
   })
   const lineup = createPlayerDirectory(build([...history(), late, early])).currentLineups[alphaId]
 
+  assert.equal(lineup?.starters.find((player) => player.role === 'Mid')?.playerId, 'reserve-Mid')
+})
+
+test('imported series game order wins over duration-derived completion times for a shared start', () => {
+  const columns = ['gameid', 'date', 'year', 'league', 'game', 'gamelength', 'position', 'side', 'teamname', 'playerid', 'playername', 'result']
+  const rows = [columns.join(',')]
+  for (const [game, duration] of [[1, 2400], [2, 1800]]) {
+    for (const [side, team, result] of [['Blue', 'Alpha', '1'], ['Red', 'Beta', '0']]) {
+      const common = { gameid: `series_game_${game}`, date: '2026-01-24 12:00:00', year: '2026', league: 'LCK', game, gamelength: duration, side, teamname: team, result }
+      const add = (row: Record<string, string | number>) => rows.push(columns.map((key) => row[key] ?? '').join(','))
+      add({ ...common, position: 'team' })
+      for (const [index, position] of ['top', 'jng', 'mid', 'bot', 'sup'].entries()) {
+        const id = team === 'Alpha' && index === 2 && game === 2 ? 'reserve-Mid' : `${team}-${index}`
+        add({ ...common, position, playerid: id, playername: id })
+      }
+    }
+  }
+  const imported = importOraclesElixirCsv(rows.join('\n')).matches
+  assert.equal(imported.length, 2)
+  assert.equal(imported[0].datetimeUtc, imported[1].datetimeUtc)
+  assert.ok(imported[0].gameCompletedAtUtc! > imported[1].gameCompletedAtUtc!)
+
+  const lineup = createPlayerDirectory(build(imported)).currentLineups[alphaId]
   assert.equal(lineup?.starters.find((player) => player.role === 'Mid')?.playerId, 'reserve-Mid')
 })
 
