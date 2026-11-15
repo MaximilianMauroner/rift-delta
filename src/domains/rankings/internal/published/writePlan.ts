@@ -50,7 +50,7 @@ export type PublicArtifactFamily = {
   indexPath: string
   shardDir: string
   /** The manifest field that links to the index. */
-  manifestUrlKey: 'scoutingIndexUrl'
+  manifestUrlKey: 'scoutingIndexUrl' | 'tournamentReportIndexUrl'
   create: (urlForPath: (relativePath: string) => string) => { index: unknown; shards: Readonly<Record<string, unknown>> }
   validateIndex: (value: unknown) => unknown
   /** Validates one file against the index that links to it. */

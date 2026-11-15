@@ -5,7 +5,7 @@ import { mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { replaceDirectory } from './replace-directory.ts'
-import { createStaticRankingData } from '../src/domains/rankings/build.ts'
+import { retainTournamentReportInput, tournamentReportFamily, type TournamentReportInput, createStaticRankingData } from '../src/domains/rankings/build.ts'
 import type { PlayerLifecycleEvent, PlayerLifecycleReleaseEvent } from '../src/domains/rankings/types.ts'
 import type { RankingModelOutput } from '../src/domains/rankings/build.ts'
 import type { MatchRecord } from '../src/domains/rankings/types.ts'
@@ -36,6 +36,7 @@ export type StaticSnapshotBuildOptions = {
   replacePublicDirectory?: boolean
   env?: NodeJS.ProcessEnv
   sourceData?: RankingSourceImport
+  tournamentReportInput?: TournamentReportInput
   importedMatchCount?: number
   releaseImportAuditBeforeSnapshot?: boolean
   compactPlayerDirectory?: boolean
@@ -73,6 +74,7 @@ const sourceData = options.sourceData ?? await importRankingSourceData({
 })
 const { importedMatches, matches, teams } = sourceData
 const importedMatchCount = options.importedMatchCount ?? importedMatches.length
+const tournamentReportInput = options.tournamentReportInput ?? retainTournamentReportInput(importedMatches, sourceData.mergedTeams)
 const generatedAt = options.generatedAt ?? new Date().toISOString()
 const playerLifecycleEvents: Array<PlayerLifecycleEvent & { rssBytes: number }> = []
 const playerReleaseCollections: Array<PlayerLifecycleReleaseEvent & ReturnType<typeof collectRefreshGarbage>> = []
@@ -154,7 +156,11 @@ const publicPlan = createPublicArtifactWritePlan(snapshot, {
   ...(options.affectedLogicalPaths ? { affectedLogicalPaths: options.affectedLogicalPaths } : {}),
   ...(options.retainedLogicalPaths ? { retainedLogicalPaths: options.retainedLogicalPaths } : {}),
   ...(options.previousArtifacts ? { previousArtifacts: options.previousArtifacts } : {}),
-  families: [scoutingFamily(snapshot.matches)],
+  families: [scoutingFamily(snapshot.matches), tournamentReportFamily({
+    observed: tournamentReportInput, ratedMatches: matches, ratedTeams: teams,
+    dataMode: sourceData.dataMode,
+    modelVersion: snapshot.model.version, modelConfigHash: snapshot.model.configHash,
+  })],
 })
 const summaryOutput = resolve(publicDataTargetDir, PUBLIC_ARTIFACT_PATHS.manifest)
 const summarySnapshots = Object.entries(publicPlan.snapshots)

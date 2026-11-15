@@ -123,6 +123,19 @@ const {
 } = await import(refreshScriptPath) as unknown as RefreshModule
 const { bucketKey, getBucketObject, safeObjectPath, safeRequestedObjectPath, uploadRankingArtifacts } = await import(bucketScriptPath) as unknown as BucketModule
 
+test('the cheap source check detects unrated-only Worlds stat corrections', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'worlds-source-fingerprint-'))
+  try {
+    const path = join(tempDir, 'retained-worlds-fixture.csv')
+    const before = 'gameid,league,teamname,golddiffat15\nfixture-unrated,WLDs,Vivo Keyd Stars,100\n'
+    await writeFile(path, before)
+    const first = await createSourceFingerprint({ files: { oracleCsv: [path] } })
+    await writeFile(path, before.replace(',100\n', ',777\n'))
+    const second = await createSourceFingerprint({ files: { oracleCsv: [path] } })
+    assert.notEqual(first.fingerprint, second.fingerprint)
+  } finally { await rm(tempDir, { recursive: true, force: true }) }
+})
+
 test('full-audit injected functions run only for eligible daily and manual full refreshes', async () => {
   const common = {
     fullSnapshotPath: '/tmp/ranking-full.json',
