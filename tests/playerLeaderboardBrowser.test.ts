@@ -148,7 +148,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await navigation.getByRole('link', { name: 'Players', exact: true }).click()
     await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
     assert.equal(requests.filter((path) => path === playerPath).length, 1, 'Leaving Players must keep its pending directory load')
-    assert.deepEqual(await rows.locator('td:nth-child(5)').allTextContents(), ['320', '260', '230'])
+    assert.deepEqual(await rows.locator('td:nth-child(3)').allTextContents(), ['320', '260', '230'])
     assert.deepEqual(await rows.locator('td:nth-child(6)').allTextContents(), ['31', '32', '33'])
     assert.equal(await page.getByRole('link', { name: 'Scouting report for Cedar', exact: true }).getAttribute('href'), '#scouting?player=synthetic-Cedar%7CMid', 'Each row links to its scouting report by player id and role')
     await page.getByRole('status').filter({ hasText: 'These are not official LoL Esports rankings.' }).waitFor()
@@ -248,7 +248,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.getByRole('combobox', { name: 'Season', exact: true }).selectOption('2025')
     await expectPlayers(page, ['Echo', 'Foxtrot', 'Delta'])
     assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '1', '3'], 'Equal Stats Power shares a rank')
-    assert.deepEqual(await rows.locator('td:nth-child(5)').allTextContents(), ['104.5', '104.5', '101.2'])
+    assert.deepEqual(await rows.locator('td:nth-child(3)').allTextContents(), ['104.5', '104.5', '101.2'])
     assert.deepEqual(await rows.locator('td:nth-child(6)').allTextContents(), ['22', '25', '18'], 'Stat games stay separate from games')
     assert.deepEqual(await rows.locator('td:nth-child(7)').allTextContents(), ['300', '200', '400'], 'Role Power stays visible')
     assert.deepEqual(await rows.locator('td:nth-child(8)').allTextContents(), ['12', '13', '11'], 'Credited-team games stay separate from raw stat games')
@@ -271,6 +271,11 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     }
     await page.setViewportSize({ width: 320, height: 900 })
     const table = page.getByRole('table', { name: 'Player rankings' })
+    assert.equal(await table.evaluate((element) => {
+      const viewport = element.parentElement!.getBoundingClientRect()
+      const score = element.querySelector('.player-col-score')!.getBoundingClientRect()
+      return score.left >= viewport.left && score.right <= viewport.right
+    }), true, 'The primary score is visible before scrolling')
     await table.focus()
     await table.press('ArrowRight')
     await page.waitForFunction(() => (document.querySelector('table[aria-label="Player rankings"]')?.parentElement?.scrollLeft ?? 0) > 0)

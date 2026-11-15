@@ -630,15 +630,7 @@ table.ranking-table.board-grid tbody td {
   }
 }
 
-@font-face {
-  font-family: 'Inter Variable';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 100 900;
-  src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2-variations');
-}
-
-.players-view { gap: 16px; padding-top: 20px; font-family: 'Inter Variable', var(--sans); }
+.players-view { gap: 16px; padding-top: 20px; }
 .players-filters { padding-block: 4px; }
 .players-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 16px; }
 .players-count { line-height: 1.6; }
@@ -705,9 +697,11 @@ table.ranking-table.board-grid tbody td {
   .players-empty-result > div { padding-block: 24px; }
   .players-reading-tools { padding-inline: 12px; }
   .players-method > summary { min-height: 44px; }
-  .players-table { min-width: 604px; }
-  .players-table[data-stat-games="true"] { min-width: 792px; }
-  .players-table .player-col-name { width: 140px; }
+  .players-table { min-width: 556px; }
+  .players-table[data-stat-games="true"] { min-width: 744px; }
+  .players-table .player-col-rank { width: 48px; padding-inline: 8px; }
+  .players-table .player-col-name { width: 116px; }
+  .players-table .player-col-score { width: 92px; }
   .players-table .player-col-team { width: 128px; }
   .players-filters { display: grid; grid-template-columns: minmax(0, 1fr) 108px; gap: 10px; padding-block: 0; }
   .players-filters > label { min-width: 0; }

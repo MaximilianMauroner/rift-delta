@@ -123,9 +123,9 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
                   <TableRow role="row">
                     <TableHead role="columnheader" scope="col" className="player-col-rank pl-4">Rank</TableHead>
                     <TableHead role="columnheader" scope="col" className="player-col-name">Player</TableHead>
+                    <TableHead role="columnheader" scope="col" className="player-col-score text-right" aria-sort="descending">{scoreLabel}</TableHead>
                     <TableHead role="columnheader" scope="col" className="player-col-team">Team</TableHead>
                     <TableHead role="columnheader" scope="col" className="player-col-role">Role</TableHead>
-                    <TableHead role="columnheader" scope="col" className="player-col-score text-right" aria-sort="descending">{scoreLabel}</TableHead>
                     {statsPowerVersion ? (
                       <>
                         <TableHead role="columnheader" scope="col" className="player-col-stat-games text-right">Stat games</TableHead>
@@ -151,16 +151,16 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
                             className="player-scouting-link"
                           ><span>{player.name}</span><ClipboardList size={14} aria-hidden="true" /></a>
                         </TableCell>
-                        <TableCell role="cell" className="player-col-team max-w-44 whitespace-normal"><span className="player-team">
-                          {logo ? <img src={`${logo}?v=icon-128`} className={branding?.logoTreatment === 'invert' ? 'invert' : undefined} alt="" aria-hidden="true" width={24} height={24} loading="lazy" decoding="async" /> : null}
-                          <span>{player.team}</span>
-                        </span></TableCell>
-                        <TableCell role="cell" className="player-col-role text-muted-foreground"><span className="player-role">{player.role}</span></TableCell>
                         <TableCell role="cell" className="player-col-score text-right font-semibold text-[var(--text-strong)] tabular-nums">
                           <span className="player-score-figure">{scoreText}</span>
                           {statsPowerVersion && player.leaderboardScore.kind === 'role-power' ? <span className="block text-2xs font-normal text-muted-foreground">Role Power</span> : null}
                           {player.statsPower?.priorOnly ? <span className="block text-2xs font-normal text-muted-foreground">League anchor</span> : null}
                         </TableCell>
+                        <TableCell role="cell" className="player-col-team max-w-44 whitespace-normal"><span className="player-team">
+                          {logo ? <img src={`${logo}?v=icon-128`} className={branding?.logoTreatment === 'invert' ? 'invert' : undefined} alt="" aria-hidden="true" width={24} height={24} loading="lazy" decoding="async" /> : null}
+                          <span>{player.team}</span>
+                        </span></TableCell>
+                        <TableCell role="cell" className="player-col-role text-muted-foreground"><span className="player-role">{player.role}</span></TableCell>
                         {statsPowerVersion ? (
                           <>
                             <TableCell role="cell" className="player-col-stat-games text-right text-muted-foreground tabular-nums">{formatNumber(player.statsPower?.sampleGames)}</TableCell>

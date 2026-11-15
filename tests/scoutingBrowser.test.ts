@@ -62,7 +62,10 @@ test('Scouting report loads its index and one player file from the published gen
     const heading = (name: string) => page.getByRole('heading', { level: 1, name, exact: true }).waitFor()
     const hash = () => page.evaluate(() => decodeURIComponent(location.hash))
 
-    await page.goto(`http://127.0.0.1:${address.port}/#scouting?player=${encodeURIComponent(`${FOCAL}|Mid`)}`)
+    await page.goto(`http://127.0.0.1:${address.port}/#players?scope=all`)
+    const reportLink = page.getByRole('link', { name: 'Scouting report for Focal', exact: true })
+    assert.equal(await reportLink.getAttribute('href'), `#scouting?player=${encodeURIComponent(`${FOCAL}|Mid`)}`)
+    await reportLink.click()
     await heading('Focal')
     assert.equal(await hash(), `#scouting?role=Mid&player=${FOCAL}|Mid`, 'The hash holds exactly the selection')
     assert.equal(await page.getByRole('link', { name: 'Players', exact: true }).first().getAttribute('aria-current'), 'page', 'Players stays the active tab')
