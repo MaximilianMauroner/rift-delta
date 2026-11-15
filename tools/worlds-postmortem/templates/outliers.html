@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Worlds sample player report</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --page-max: 60rem;
+        --page-gutter: clamp(12px, 3vw, 32px);
+        --page-text: #202348;
+        --b-muted: #5d6480;
+        --b-surface: #f0f1fb;
+        --b-line: #d6d9ee;
+        --b-accent: #5049af;
+        --b-blue: #286da4;
+      }
+      :root:has(style#t3-theme) {
+        --page-max: none;
+        --page-gutter: 4px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --page-text: #ebebff;
+          --b-muted: #b5b9d5;
+          --b-surface: #252944;
+          --b-line: #434b6c;
+          --b-accent: #b4a9ff;
+          --b-blue: #85c9f2;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: var(--page-gutter);
+        color: var(--foreground, var(--page-text));
+        font-family: var(
+          --font-sans,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif
+        );
+        line-height: 1.45;
+        background: transparent;
+      }
+      .page {
+        max-width: var(--page-max);
+        margin-inline: auto;
+        container-type: inline-size;
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+      h1 {
+        font-size: clamp(2rem, 5vw, 3.2rem);
+        line-height: 1.03;
+        letter-spacing: -0.045em;
+        max-width: 15ch;
+      }
+      h2 {
+        font-size: 1.3rem;
+        letter-spacing: -0.025em;
+      }
+      h3 {
+        font-size: 1.05rem;
+      }
+      .intro {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 1rem;
+        margin: 1rem 0 1.2rem;
+      }
+      .intro p {
+        max-width: 24rem;
+        color: var(--muted-foreground, var(--b-muted));
+        font-size: 0.9rem;
+      }
+      .notice {
+        border-left: 3px solid var(--primary, var(--b-accent));
+        padding: 0.35rem 0.8rem;
+        margin: 0 0 1rem;
+        font-size: 0.85rem;
+        color: var(--muted-foreground, var(--b-muted));
+      }
+      .notice strong {
+        color: var(--foreground, var(--page-text));
+      }
+      .chart {
+        background: var(--card, var(--b-surface));
+        border-radius: 1rem;
+        padding: clamp(1rem, 3vw, 1.5rem);
+      }
+      .chart-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: end;
+      }
+      .chart-head p,
+      .subtle {
+        color: var(--muted-foreground, var(--b-muted));
+        font-size: 0.82rem;
+      }
+      .axis,
+      .player {
+        display: grid;
+        grid-template-columns: 9rem minmax(0, 1fr) 2.5rem;
+        gap: 0.65rem;
+        align-items: center;
+      }
+      .axis {
+        margin-top: 1rem;
+        color: var(--muted-foreground, var(--b-muted));
+        font-size: 0.72rem;
+      }
+      .ticks {
+        display: flex;
+        justify-content: space-between;
+      }
+      .rows {
+        margin-top: 0.2rem;
+      }
+      .player {
+        min-height: 44px;
+        width: 100%;
+        border: 0;
+        border-bottom: 1px solid var(--border, var(--b-line));
+        padding: 0.36rem 0;
+        background: none;
+        color: inherit;
+        text-align: left;
+        font: inherit;
+        cursor: pointer;
+      }
+      .player:last-child {
+        border: 0;
+      }
+      .player:hover,
+      .player[aria-pressed="true"] {
+        color: var(--primary, var(--b-accent));
+      }
+      .player[aria-pressed="true"] .person {
+        font-weight: 750;
+      }
+      .person {
+        font-size: 0.88rem;
+        white-space: nowrap;
+      }
+      .person em {
+        display: block;
+        font-size: 0.68rem;
+        font-style: normal;
+        color: var(--foreground, var(--page-text));
+        font-weight: 600;
+      }
+      .person small {
+        font-size: 0.72rem;
+        font-weight: 400;
+        color: var(--muted-foreground, var(--b-muted));
+        margin-left: 0.3rem;
+      }
+      .rail {
+        height: 1.15rem;
+        position: relative;
+        background: linear-gradient(
+          to right,
+          transparent 0,
+          transparent 24.7%,
+          var(--border, var(--b-line)) 25%,
+          transparent 25.3%,
+          transparent 49.7%,
+          var(--border, var(--b-line)) 50%,
+          transparent 50.3%,
+          transparent 74.7%,
+          var(--border, var(--b-line)) 75%,
+          transparent 75.3%
+        );
+      }
+      .rail:before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: var(--border, var(--b-line));
+      }
+      .dot {
+        position: absolute;
+        top: 50%;
+        left: calc(var(--score) * 1%);
+        width: 0.72rem;
+        height: 0.72rem;
+        border-radius: 50%;
+        background: var(--primary, var(--b-accent));
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 0 3px var(--card, var(--b-surface));
+      }
+      .vanguard .dot {
+        background: var(--chart-2, var(--b-blue));
+      }
+      .player[aria-pressed="true"] .dot {
+        outline: 2px solid currentColor;
+        outline-offset: 3px;
+      }
+      .score {
+        font-weight: 750;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .legend {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 0.75rem;
+        font-size: 0.75rem;
+        color: var(--muted-foreground, var(--b-muted));
+      }
+      .legend i {
+        display: inline-block;
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 50%;
+        background: var(--primary, var(--b-accent));
+        margin-right: 0.3rem;
+      }
+      .legend .v {
+        background: var(--chart-2, var(--b-blue));
+      }
+      .detail {
+        padding: 1.4rem 0;
+        border-bottom: 1px solid var(--border, var(--b-line));
+      }
+      .detail-top {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .teams {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+      }
+      button.team {
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 0.45rem 0.75rem;
+        border: 1px solid var(--border, var(--b-line));
+        border-radius: 2rem;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+      }
+      button.team[aria-pressed="true"] {
+        background: var(--primary, var(--b-accent));
+        color: var(--card, #fff);
+        border-color: transparent;
+      }
+      button:focus-visible {
+        outline: 3px solid var(--chart-3, #d48628);
+        outline-offset: 3px;
+      }
+      .detail-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-top: 1rem;
+      }
+      .name-line {
+        display: flex;
+        gap: 0.6rem;
+        align-items: baseline;
+        flex-wrap: wrap;
+      }
+      .name-line h3 {
+        font-size: 1.65rem;
+        letter-spacing: -0.04em;
+      }
+      .name-line strong {
+        color: var(--primary, var(--b-accent));
+        font-size: 1.25rem;
+      }
+      .assessment {
+        margin-top: 0.35rem;
+        max-width: 32rem;
+      }
+      .context {
+        margin-top: 0.55rem;
+        font-size: 0.85rem;
+        color: var(--muted-foreground, var(--b-muted));
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.7rem 1rem;
+        margin: 0;
+      }
+      .stats div {
+        border-top: 1px solid var(--border, var(--b-line));
+        padding-top: 0.35rem;
+      }
+      .stats dt {
+        font-size: 0.74rem;
+        color: var(--muted-foreground, var(--b-muted));
+      }
+      .stats dd {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0;
+      }
+      .games {
+        margin-top: 1rem;
+        font-size: 0.8rem;
+        color: var(--muted-foreground, var(--b-muted));
+      }
+      .games strong {
+        color: var(--foreground, var(--page-text));
+      }
+      .method {
+        padding: 1.2rem 0 2rem;
+        display: grid;
+        grid-template-columns: 10rem 1fr;
+        gap: 1rem;
+        font-size: 0.82rem;
+        color: var(--muted-foreground, var(--b-muted));
+      }
+      .method h2 {
+        color: var(--foreground, var(--page-text));
+        font-size: 1rem;
+      }
+      .method p + p {
+        margin-top: 0.6rem;
+      }
+      .noscript {
+        margin-top: 0.7rem;
+        font-size: 0.82rem;
+      }
+      @container (max-width:580px) {
+        .intro {
+          display: block;
+        }
+        .intro p {
+          margin-top: 0.6rem;
+        }
+        .axis,
+        .player {
+          grid-template-columns: 6.7rem minmax(0, 1fr) 2rem;
+          gap: 0.35rem;
+        }
+        .person {
+          font-size: 0.78rem;
+        }
+        .person small {
+          display: block;
+          margin: 0;
+          font-size: 0.67rem;
+        }
+        .detail-top {
+          display: block;
+        }
+        .teams {
+          margin-top: 0.7rem;
+        }
+        .detail-body {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+        .method {
+          grid-template-columns: 1fr;
+          gap: 0.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header>
+        <div class="intro">
+          <h1>Who stood out at Worlds?</h1>
+          <p>
+            A small tournament sample, viewed player by player. Select a row to
+            see the evidence behind its score.
+          </p>
+        </div>
+        <p class="notice">
+          <strong>Illustrative data.</strong> Teams, players, results and scores
+          are fictional. This sample covers 20 games across two teams, with 10
+          games per team.
+        </p>
+      </header>
+      <section class="chart" aria-labelledby="chart-title">
+        <div class="chart-head">
+          <div>
+            <h2 id="chart-title">All 10 players</h2>
+            <p>Sample impact score, 0 to 100. Higher is better.</p>
+          </div>
+        </div>
+        <div class="axis" aria-hidden="true">
+          <span>Player and role</span
+          ><span class="ticks"
+            ><span>0</span><span>25</span><span>50</span><span>75</span
+            ><span>100</span></span
+          ><span>Score</span>
+        </div>
+        <div class="rows" id="rows">
+          <button
+            class="player aurora"
+            data-player="Crest"
+            aria-label="Crest, Top, Aurora, player, score 78 out of 100"
+            aria-pressed="false"
+            style="--score: 78"
+          >
+            <span class="person">Crest <small>Top · Aurora</small></span
+            ><span class="rail"><span class="dot"></span></span
+            ><span class="score">78</span>
+          </button>
+          <button
+            class="player aurora"
+            data-player="Drift"
+            aria-label="Drift, Jungle, Aurora, player, score 84 out of 100"
+            aria-pressed="false"
+            style="--score: 84"
+          >
+            <span class="person">Drift <small>Jungle · Aurora</small></span
+            ><span class="rail"><span class="dot"></span></span
+            ><span class="score">84</span>
+          </button>
+          <button
+            class="player aurora"
+            data-player="Nova"
+            aria-label="Nova, Mid, Aurora, Sample MVP, score 94 out of 100"
+            aria-pressed="true"
+            style="--score: 94"
+          >
+            <span class="person"
+              >Nova <small>Mid · Aurora</small><em>Sample MVP</em></span
+            ><span class="rail"><span class="dot"></span></span
+            ><span class="score">94</span>
+          </button>
+          <button
+            class="player aurora"
+            data-player="Arrow"
+            aria-label="Arrow, Bot, Aurora, player, score 87 out of 100"
+            aria-pressed="false"
+            style="--score: 87"
+          >
+            <span class="person">Arrow <small>Bot · Aurora</small></span
+            ><span class="rail"><span class="dot"></span></span
+            ><span class="score">87</span>
+          </button>
+          <button
+            class="player aurora"
+            data-player="Vale"
+            aria-label="Vale, Support, Aurora, Team lowest, score 63 out of 100"
+            aria-pressed="false"
+            style="--score: 63"
+          >
+            <span class="person"
+              >Vale <small>Support · Aurora</small><em>Team lowest</em></span
+            ><span class="rail"><span class="dot"></span></span
+            ><span class="score">63</span>
+          </button>
+          <button
+            class="player vanguard"
+            data-player="Flint"
+            aria-label="Flint, Top, Vanguard, player, score 75 out of 100"
+            aria-pressed="false"
+            style="--score: 75"
+          >
+            <span class="person">Flint <small>Top · Vanguard</small></span
+            ><span class="rail"><span class="dot"></span></span
+            ><span class="score">75</span>
+          </button>
+          <button
+            class="player vanguard"
+            data-player="Rush"
+            aria-label="Rush, Jungle, Vanguard, Team lowest, score 68 out of 100"
+            aria-pressed="false"
+            style="--score: 68"
+          >
+            <span class="person"
+              >Rush <small>Jungle · Vanguard</small><em>Team lowest</em></span
+            ><span class="rail"><span class="dot"></span></span
+            ><span class="score">68</span>
+          </button>
+          <button
+            class="player vanguard"
+            data-player="Echo"
+            aria-label="Echo, Mid, Vanguard, player, score 82 out of 100"
+            aria-pressed="false"
+            style="--score: 82"
+          >
+            <span class="person">Echo <small>Mid · Vanguard</small></span
+            ><span class="rail"><span class="dot"></span></span
+            ><span class="score">82</span>
+          </button>
+          <button
+            class="player vanguard"
+            data-player="Kite"
+            aria-label="Kite, Bot, Vanguard, Team best, score 89 out of 100"
+            aria-pressed="false"
+            style="--score: 89"
+          >
+            <span class="person"
+              >Kite <small>Bot · Vanguard</small><em>Team best</em></span
+            ><span class="rail"><span class="dot"></span></span
+            ><span class="score">89</span>
+          </button>
+          <button
+            class="player vanguard"
+            data-player="Moss"
+            aria-label="Moss, Support, Vanguard, player, score 77 out of 100"
+            aria-pressed="false"
+            style="--score: 77"
+          >
+            <span class="person">Moss <small>Support · Vanguard</small></span
+            ><span class="rail"><span class="dot"></span></span
+            ><span class="score">77</span>
+          </button>
+        </div>
+        <div class="legend">
+          <span><i></i>Aurora</span><span><i class="v"></i>Vanguard</span>
+        </div>
+        <noscript
+          ><p class="noscript">
+            The chart shows all players. Enable JavaScript to select a player
+            and see their details.
+          </p></noscript
+        >
+      </section>
+      <section class="detail" aria-labelledby="detail-title">
+        <div class="detail-top">
+          <div>
+            <h2 id="detail-title">Player evidence</h2>
+            <p class="subtle">Choose a team or select any player above.</p>
+          </div>
+          <div class="teams" aria-label="Select team">
+            <button class="team" data-team="Aurora" aria-pressed="true">
+              Aurora</button
+            ><button class="team" data-team="Vanguard" aria-pressed="false">
+              Vanguard
+            </button>
+          </div>
+        </div>
+        <div class="detail-body" aria-live="polite">
+          <div>
+            <div class="name-line">
+              <h3 id="name">Nova</h3>
+              <strong id="impact">94 / 100</strong>
+            </div>
+            <p class="subtle" id="role">Mid · Aurora · 10 games</p>
+            <p class="assessment" id="assessment">
+              Largest lane lead in this sample. Highest damage among the two mid
+              players.
+            </p>
+            <p class="context" id="context">
+              Sample MVP and Aurora's best player. Aurora finished 8 wins and 2
+              losses as sample champion, with a team score of 82 / 100.
+            </p>
+          </div>
+          <dl class="stats">
+            <div>
+              <dt>Gold difference at 15 min</dt>
+              <dd id="gold">+420</dd>
+            </div>
+            <div>
+              <dt>Kill participation</dt>
+              <dd id="kills">76%</dd>
+            </div>
+            <div>
+              <dt>Damage per minute</dt>
+              <dd id="damage">740</dd>
+            </div>
+            <div>
+              <dt>Vision score per minute</dt>
+              <dd id="vision">1.0</dd>
+            </div>
+          </dl>
+        </div>
+        <p class="games">
+          <strong>Scores by game</strong>
+          <span id="games">88, 92, 96, 90, 95, 98, 93, 96, 97, 95</span>
+        </p>
+      </section>
+      <section class="method" aria-labelledby="method-title">
+        <h2 id="method-title">Sources and method</h2>
+        <div>
+          <p>
+            All fields are illustrative. The impact and team scores are manually
+            assigned and have no formula. A lower score does not mean a player
+            caused a loss.
+          </p>
+          <p>
+            Future sources could include Oracle's Elixir for game and player
+            stats, and Leaguepedia or official LoL Esports records for rosters
+            and results. None were fetched for this concept.
+          </p>
+          <p>
+            For production, compare players in the same role, account for
+            champion, patch and opponent strength, and give Worlds games more
+            weight than regular-season games when events are pooled. Show
+            uncertainty and data coverage.
+          </p>
+        </div>
+      </section>
+    </main>
+    <script>
+      (() => {
+        const root = document.querySelector("main.page");
+        const teams = {
+          Aurora: {
+            record: "8 wins and 2 losses as sample champion",
+            score: 82,
+            best: "Nova",
+            low: "Vale",
+          },
+          Vanguard: {
+            record: "6 wins and 4 losses as sample runner-up",
+            score: 76,
+            best: "Kite",
+            low: "Rush",
+          },
+        };
+        const players = {
+          Crest: [
+            "Aurora",
+            "Top",
+            78,
+            140,
+            61,
+            510,
+            1.1,
+            [70, 75, 80, 73, 82, 85, 79, 76, 82, 78],
+            "Steady lane lead. Fight participation was 61% in this sample.",
+          ],
+          Drift: [
+            "Aurora",
+            "Jungle",
+            84,
+            210,
+            74,
+            390,
+            1.8,
+            [78, 83, 82, 86, 84, 90, 81, 85, 88, 83],
+            "Joined most team kills and built early gold leads.",
+          ],
+          Nova: [
+            "Aurora",
+            "Mid",
+            94,
+            420,
+            76,
+            740,
+            1.0,
+            [88, 92, 96, 90, 95, 98, 93, 96, 97, 95],
+            "Largest lane lead in this sample. Highest damage among the two mid players.",
+          ],
+          Arrow: [
+            "Aurora",
+            "Bot",
+            87,
+            260,
+            71,
+            790,
+            0.8,
+            [81, 85, 90, 83, 88, 92, 86, 89, 91, 85],
+            "Strong damage output with a smaller lane lead than Nova.",
+          ],
+          Vale: [
+            "Aurora",
+            "Support",
+            63,
+            -80,
+            58,
+            140,
+            2.1,
+            [71, 66, 60, 67, 58, 64, 57, 65, 61, 61],
+            "Lowest fight participation on Aurora. Review fight attendance in the games.",
+          ],
+          Flint: [
+            "Vanguard",
+            "Top",
+            75,
+            70,
+            59,
+            480,
+            1.0,
+            [73, 78, 71, 76, 74, 80, 72, 77, 75, 74],
+            "Small lane lead with steady output.",
+          ],
+          Rush: [
+            "Vanguard",
+            "Jungle",
+            68,
+            -160,
+            62,
+            350,
+            1.5,
+            [74, 70, 67, 71, 65, 69, 61, 72, 66, 65],
+            "Early gold deficits repeated across the sample.",
+          ],
+          Echo: [
+            "Vanguard",
+            "Mid",
+            82,
+            180,
+            70,
+            660,
+            1.1,
+            [78, 80, 85, 79, 84, 87, 81, 83, 82, 81],
+            "Positive lane results with good fight presence.",
+          ],
+          Kite: [
+            "Vanguard",
+            "Bot",
+            89,
+            310,
+            73,
+            815,
+            0.9,
+            [84, 87, 92, 85, 90, 94, 88, 91, 90, 89],
+            "Strongest Vanguard player. High damage and a clear lane lead.",
+          ],
+          Moss: [
+            "Vanguard",
+            "Support",
+            77,
+            -40,
+            72,
+            125,
+            2.4,
+            [74, 76, 80, 75, 78, 82, 73, 79, 77, 76],
+            "Good fight presence and vision output.",
+          ],
+        };
+        function selectPlayer(name) {
+          const p = players[name],
+            t = teams[p[0]];
+          document
+            .querySelectorAll(".player")
+            .forEach((b) =>
+              b.setAttribute("aria-pressed", String(b.dataset.player === name)),
+            );
+          document
+            .querySelectorAll(".team")
+            .forEach((b) =>
+              b.setAttribute("aria-pressed", String(b.dataset.team === p[0])),
+            );
+          const set = (id, value) =>
+            (root.querySelector("#" + id).textContent = value);
+          set("name", name);
+          set("impact", p[2] + " / 100");
+          set("role", p[1] + " · " + p[0] + " · 10 games");
+          set("assessment", p[8]);
+          let standing =
+            name === t.best
+              ? name === "Nova"
+                ? "Sample MVP and Aurora's best player."
+                : p[0] + "'s best player."
+              : name === t.low
+                ? "Lowest observed score on " + p[0] + "."
+                : "On " +
+                  p[0] +
+                  ", " +
+                  t.best +
+                  " has the highest sample score and " +
+                  t.low +
+                  " the lowest.";
+          set(
+            "context",
+            standing +
+              " " +
+              p[0] +
+              " finished " +
+              t.record +
+              ", with a team score of " +
+              t.score +
+              " / 100.",
+          );
+          set("gold", (p[3] > 0 ? "+" : "") + p[3]);
+          set("kills", p[4] + "%");
+          set("damage", p[5]);
+          set("vision", p[6].toFixed(1));
+          set("games", p[7].join(", "));
+        }
+        document
+          .querySelectorAll(".player")
+          .forEach((b) =>
+            b.addEventListener("click", () => selectPlayer(b.dataset.player)),
+          );
+        document
+          .querySelectorAll(".team")
+          .forEach((b) =>
+            b.addEventListener("click", () =>
+              selectPlayer(teams[b.dataset.team].best),
+            ),
+          );
+      })();
+    </script>
+  </body>
+</html>

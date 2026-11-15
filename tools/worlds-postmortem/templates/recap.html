@@ -1,0 +1,3283 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Worlds postmortem, sample edition</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      :root {
+        color-scheme: light dark;
+        --page-max: 60rem;
+        --page-gutter: clamp(12px, 3vw, 32px);
+        --page-text: #191d23;
+        --page-muted: #5d6874;
+        --page-card: #ffffff;
+        --page-border: #dbe1e6;
+        --page-surface: #f2f4f6;
+        --rose: #b25870;
+        --cyan: #2b7a8a;
+        --serif-stack:
+          "Charter", "Bitstream Charter", "Iowan Old Style",
+          "Palatino Linotype", Georgia, serif;
+        --sans-stack:
+          "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial,
+          sans-serif;
+        --text: var(--foreground, var(--page-text));
+        --recap-muted: color-mix(
+          in srgb,
+          var(--foreground, var(--page-text)) 75%,
+          var(--card, var(--page-card))
+        );
+        --recap-card: var(--card, var(--page-card));
+        --recap-border: var(--border, var(--page-border));
+        --focus: var(--primary, var(--cyan));
+        --body: var(--font-sans, var(--sans-stack));
+        --display: var(--serif-stack);
+      }
+      :root:has(style#t3-theme) {
+        --page-max: none;
+        --page-gutter: 4px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --page-text: #e7ebef;
+          --page-muted: #a3aeb9;
+          --page-card: #1b2027;
+          --page-border: #343c46;
+          --page-surface: #222830;
+          --rose: #dc93a5;
+          --cyan: #83c6d2;
+        }
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        padding: var(--page-gutter);
+        background: transparent;
+        color: var(--text);
+        font-family: var(--display);
+        font-size: 17px;
+        line-height: 1.55;
+      }
+      .page {
+        max-width: var(--page-max);
+        margin-inline: auto;
+        padding-bottom: 16px;
+      }
+      p {
+        margin: 0;
+      }
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        color: var(--text);
+      }
+      h1 {
+        font-family: var(--display);
+        font-size: clamp(1.85rem, 4vw, 2.8rem);
+        line-height: 1.04;
+        letter-spacing: -0.022em;
+        font-weight: 600;
+        max-width: 30ch;
+        text-wrap: balance;
+      }
+      h2 {
+        font-size: 1.38rem;
+        line-height: 1.2;
+        letter-spacing: -0.012em;
+        font-weight: 600;
+      }
+      h3 {
+        font-family: var(--body);
+        font-size: 0.92rem;
+        line-height: 1.3;
+        font-weight: 650;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      :where(button):focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 2px;
+      }
+
+      .masthead {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 6px 18px;
+        padding-top: 6px;
+      }
+      .masthead p {
+        font-family: var(--body);
+        font-size: 0.76rem;
+        color: var(--recap-muted);
+      }
+      .fiction {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .fiction::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--rose);
+        flex: none;
+      }
+
+      .lede {
+        padding-top: 8px;
+      }
+      .lede-grid {
+        margin-top: 12px;
+        display: grid;
+        gap: 16px;
+      }
+      .deck {
+        margin-top: 9px;
+        max-width: 70ch;
+        color: var(--recap-muted);
+        font-size: 1.01rem;
+      }
+      .result {
+        display: grid;
+        gap: 8px;
+      }
+      .result-row {
+        --team: var(--chart-1, var(--rose));
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 4px 10px;
+        align-items: baseline;
+      }
+      .result-row[data-team="vanguard"] {
+        --team: var(--chart-2, var(--cyan));
+      }
+      .result-team {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 2px 8px;
+        min-width: 0;
+        font-family: var(--body);
+        font-size: 0.88rem;
+        font-weight: 650;
+      }
+      .monogram {
+        display: inline-grid;
+        place-items: center;
+        width: 19px;
+        height: 19px;
+        border-radius: 4px;
+        background: var(--team);
+        color: var(--recap-card);
+        font-size: 0.75rem;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .placing {
+        font-weight: 400;
+        font-size: 0.75rem;
+        color: var(--recap-muted);
+      }
+      .rec {
+        font-weight: 500;
+        font-size: 0.76rem;
+        color: var(--recap-muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .result-score {
+        font-family: var(--body);
+        font-size: 1.12rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+      }
+      .result-score span {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--recap-muted);
+      }
+      .result-bar {
+        grid-column: 1 / -1;
+        height: 4px;
+        border-radius: 99px;
+        background: color-mix(in srgb, var(--text) 8%, transparent);
+        overflow: hidden;
+      }
+      .result-bar i {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--team);
+      }
+      .fine {
+        margin-top: 6px;
+        font-family: var(--body);
+        font-size: 0.75rem;
+        line-height: 1.45;
+        color: var(--recap-muted);
+      }
+
+      .teams {
+        margin-top: 16px;
+      }
+      .teams-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 14px;
+      }
+      .switch {
+        display: inline-flex;
+        gap: 3px;
+        padding: 3px;
+        border: 1px solid var(--recap-border);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--recap-card) 72%, transparent);
+      }
+      .team-btn {
+        --sw: var(--chart-1, var(--rose));
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 10px;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--recap-muted);
+        font-family: var(--body);
+        font-size: 0.82rem;
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .team-btn[data-team-btn="vanguard"] {
+        --sw: var(--chart-2, var(--cyan));
+      }
+      .team-btn[aria-pressed="true"] {
+        color: var(--text);
+        background: var(--recap-card);
+        border-color: var(--recap-border);
+        box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+      }
+      .swatch {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--sw);
+        flex: none;
+      }
+      .btn-record {
+        color: var(--recap-muted);
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .team-panel {
+        --recap-accent: var(--chart-1, var(--rose));
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 2px solid var(--recap-accent);
+        container-type: inline-size;
+        container-name: team;
+      }
+      .team-panel[data-team-panel="vanguard"] {
+        --recap-accent: var(--chart-2, var(--cyan));
+      }
+      .callouts {
+        display: grid;
+        gap: 8px;
+      }
+      .callout {
+        padding-left: 10px;
+        border-left: 2px solid var(--recap-accent);
+      }
+      .callout + .callout {
+        border-left-color: color-mix(
+          in srgb,
+          var(--recap-accent) 38%,
+          var(--recap-border)
+        );
+      }
+      .callout-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0 6px;
+      }
+      .callout-label {
+        font-family: var(--body);
+        font-size: 0.75rem;
+        line-height: 1.25;
+        color: var(--recap-muted);
+      }
+      .callout-name {
+        font-family: var(--body);
+        font-size: 0.94rem;
+        font-weight: 650;
+        line-height: 1.3;
+      }
+      .callout-stat {
+        margin-top: 1px;
+        font-size: 0.89rem;
+        line-height: 1.35;
+      }
+
+      .lineup {
+        margin-top: 14px;
+      }
+      .lineup-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 3px 14px;
+      }
+
+      .ladder {
+        margin-top: 6px;
+        border-top: 1px solid var(--recap-border);
+      }
+      .rung {
+        display: grid;
+        grid-template-columns: 5.9rem minmax(3rem, 1fr) 2.6rem;
+        align-items: center;
+        gap: 9px;
+        width: 100%;
+        min-height: 44px;
+        padding: 4px 6px 4px 8px;
+        border: 0;
+        border-bottom: 1px solid var(--recap-border);
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
+        transition: background-color 120ms ease;
+      }
+      .rung:hover {
+        background: color-mix(in srgb, var(--text) 4%, transparent);
+      }
+      .rung[aria-pressed="true"] {
+        background: color-mix(
+          in srgb,
+          var(--recap-accent) 10%,
+          var(--recap-card)
+        );
+        box-shadow: inset 2px 0 0 var(--recap-accent);
+      }
+      .rung-who {
+        display: flex;
+        align-items: baseline;
+        gap: 5px;
+        min-width: 0;
+      }
+      .rung-role {
+        font-family: var(--body);
+        font-size: 0.75rem;
+        color: var(--recap-muted);
+        white-space: nowrap;
+      }
+      .rung-name {
+        font-family: var(--body);
+        font-size: 0.86rem;
+        font-weight: 650;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .rung-track {
+        height: 7px;
+        border-radius: 99px;
+        background: color-mix(in srgb, var(--text) 8%, transparent);
+        overflow: hidden;
+      }
+      .rung-fill {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--recap-accent);
+      }
+      .rung-score {
+        font-family: var(--body);
+        font-size: 1.08rem;
+        font-weight: 650;
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        line-height: 1;
+      }
+      .rung[aria-pressed="true"] .rung-score {
+        color: var(--recap-accent);
+      }
+      .ladder-axis {
+        display: grid;
+        grid-template-columns: 5.9rem minmax(3rem, 1fr) 2.6rem;
+        gap: 9px;
+        padding: 3px 6px 0 8px;
+        font-family: var(--body);
+        font-size: 0.75rem;
+        color: var(--recap-muted);
+      }
+      .ladder-axis .ticks {
+        grid-column: 2;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .story {
+        margin-top: 14px;
+        padding: 11px;
+        background: var(--recap-card);
+        border: 1px solid var(--recap-border);
+        border-radius: 12px;
+        container-type: inline-size;
+        container-name: story;
+      }
+      .story-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .story-role {
+        font-family: var(--body);
+        font-size: 0.75rem;
+        color: var(--recap-muted);
+      }
+      .story-title-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 1px 8px;
+      }
+      .story-name {
+        font-family: var(--display);
+        font-size: 1.7rem;
+        line-height: 1.1;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .story-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .tag {
+        font-family: var(--body);
+        font-size: 0.75rem;
+        line-height: 1.5;
+        padding: 1px 6px;
+        border-radius: 99px;
+        border: 1px solid
+          color-mix(in srgb, var(--recap-accent) 46%, var(--recap-border));
+        background: color-mix(
+          in srgb,
+          var(--recap-accent) 9%,
+          var(--recap-card)
+        );
+        color: var(--text);
+        white-space: nowrap;
+      }
+      .story-score {
+        text-align: right;
+        flex: none;
+      }
+      .story-score b {
+        display: block;
+        font-family: var(--body);
+        font-size: 1.7rem;
+        font-weight: 700;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .story-score span {
+        display: block;
+        font-family: var(--body);
+        font-size: 0.75rem;
+        color: var(--recap-muted);
+        white-space: nowrap;
+      }
+      .story-lead {
+        margin-top: 4px;
+        max-width: 58ch;
+        font-size: 0.95rem;
+        line-height: 1.4;
+      }
+      .story-body {
+        margin-top: 8px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .trend {
+        margin: 0;
+        min-width: 0;
+      }
+      .trend figcaption {
+        font-family: var(--body);
+        font-size: 0.75rem;
+        line-height: 1.4;
+        color: var(--recap-muted);
+      }
+      .trend svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        margin-top: 2px;
+        overflow: visible;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5px 12px;
+        margin: 0;
+        align-content: start;
+      }
+      .stats div {
+        padding-top: 3px;
+        border-top: 1px solid var(--recap-border);
+      }
+      .stats dt {
+        font-family: var(--body);
+        font-size: 0.75rem;
+        line-height: 1.3;
+        color: var(--recap-muted);
+      }
+      .stats dd {
+        margin: 0;
+        font-family: var(--body);
+        font-size: 0.98rem;
+        font-weight: 650;
+        line-height: 1.25;
+        font-variant-numeric: tabular-nums;
+      }
+
+      @container team (min-width: 38rem) {
+        .callouts {
+          grid-template-columns: 1fr 1fr;
+          gap: 10px 22px;
+        }
+        tbody .row-name,
+        tbody .row-role {
+          display: inline;
+        }
+        tbody .row-role {
+          margin-left: 4px;
+        }
+        .ladder-axis,
+        .rung {
+          grid-template-columns: 6.4rem minmax(3rem, 1fr) 2.9rem;
+        }
+      }
+      @container team (min-width: 38rem) {
+        .work {
+          display: grid;
+          grid-template-columns: 18rem minmax(0, 1fr);
+          gap: 16px;
+          align-items: start;
+        }
+        .work {
+          margin-top: 12px;
+        }
+        .work .lineup {
+          margin-top: 0;
+        }
+        .stories .story {
+          margin-top: 0;
+        }
+      }
+      @container story (min-width: 27rem) {
+        .story-body {
+          grid-template-columns: 1.18fr 0.82fr;
+          align-items: start;
+          gap: 16px;
+        }
+      }
+      @container team (min-width: 52rem) {
+        .work {
+          grid-template-columns: 20rem minmax(0, 1fr);
+        }
+      }
+
+      .form {
+        margin-top: 16px;
+      }
+      .form-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 3px 14px;
+      }
+      .form-note {
+        font-family: var(--body);
+        font-size: 0.75rem;
+        color: var(--recap-muted);
+      }
+      .table-wrap {
+        margin-top: 4px;
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        font-family: var(--body);
+      }
+      caption {
+        text-align: left;
+      }
+      th,
+      td {
+        text-align: center;
+        padding: 2px;
+        border-bottom: 1px solid var(--recap-border);
+        line-height: 1.25;
+        font-variant-numeric: tabular-nums;
+      }
+      thead th {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--recap-muted);
+        padding-bottom: 2px;
+      }
+      thead th:first-child {
+        width: 5rem;
+        text-align: left;
+      }
+      tbody th {
+        text-align: left;
+        padding-left: 4px;
+      }
+      .row-name {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 650;
+        line-height: 1.25;
+      }
+      .row-role {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 400;
+        line-height: 1.25;
+        color: var(--recap-muted);
+      }
+      tbody td {
+        font-size: 0.75rem;
+      }
+      .s4 {
+        background: color-mix(in srgb, var(--text) 11%, transparent);
+      }
+      .s3 {
+        background: color-mix(in srgb, var(--text) 6%, transparent);
+      }
+      .s2 {
+        background: color-mix(in srgb, var(--text) 2.5%, transparent);
+      }
+      tr.is-on th {
+        box-shadow: inset 2px 0 0 var(--recap-accent);
+      }
+      tr.is-on .row-name {
+        color: var(--recap-accent);
+      }
+      @container team (min-width: 50rem) {
+        tbody td {
+          font-size: 0.78rem;
+        }
+        thead th {
+          font-size: 0.75rem;
+        }
+        .row-name {
+          font-size: 0.8rem;
+        }
+        .row-role {
+          font-size: 0.75rem;
+        }
+      }
+
+      .mvp {
+        margin-top: 16px;
+        padding: 12px 15px;
+        border-left: 3px solid var(--chart-1, var(--rose));
+        border-radius: 2px 12px 12px 2px;
+        background: color-mix(
+          in srgb,
+          var(--chart-1, var(--rose)) 7%,
+          var(--recap-card)
+        );
+      }
+      .mvp-kicker {
+        font-family: var(--body);
+        font-size: 0.75rem;
+        color: var(--recap-muted);
+      }
+      .mvp-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 2px 12px;
+      }
+      .mvp-head h2 {
+        font-size: 1.5rem;
+      }
+      .mvp-score {
+        font-family: var(--body);
+        font-size: 1.34rem;
+        font-weight: 700;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .mvp-score span {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--recap-muted);
+      }
+      .mvp-copy {
+        margin-top: 4px;
+        max-width: 74ch;
+        font-size: 0.9rem;
+        line-height: 1.45;
+      }
+      .mvp-compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 16px;
+        margin: 9px 0 0;
+      }
+      .mvp-compare div {
+        padding-top: 4px;
+        border-top: 1px solid
+          color-mix(
+            in srgb,
+            var(--chart-1, var(--rose)) 30%,
+            var(--recap-border)
+          );
+      }
+      .mvp-compare dt {
+        font-family: var(--body);
+        font-size: 0.75rem;
+        line-height: 1.3;
+        color: var(--recap-muted);
+      }
+      .mvp-compare dd {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 1px 0 0;
+        font-family: var(--body);
+        font-size: 0.82rem;
+        font-weight: 600;
+        line-height: 1.3;
+      }
+      .mvp-compare dd span {
+        font-weight: 500;
+        color: var(--recap-muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .mvp-note {
+        margin-top: 7px;
+        font-family: var(--body);
+        font-size: 0.75rem;
+        line-height: 1.4;
+        color: var(--recap-muted);
+      }
+
+      .method {
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid var(--recap-border);
+      }
+      .method-grid {
+        margin-top: 7px;
+        display: grid;
+        gap: 10px 18px;
+      }
+      .method-grid p {
+        font-size: 0.79rem;
+        line-height: 1.45;
+        color: var(--recap-muted);
+      }
+      .method-grid b {
+        display: block;
+        font-family: var(--body);
+        font-size: 0.78rem;
+        font-weight: 650;
+        color: var(--text);
+      }
+      .method-foot {
+        margin-top: 8px;
+        font-family: var(--body);
+        font-size: 0.75rem;
+        color: var(--recap-muted);
+      }
+      .nojs-note {
+        margin-top: 7px;
+        font-family: var(--body);
+        font-size: 0.75rem;
+        color: var(--recap-muted);
+      }
+
+      .js-ready [data-team-panel]:not(.is-active),
+      .js-ready [data-story]:not(.is-active) {
+        display: none;
+      }
+
+      @media (min-width: 40rem) {
+        .method-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .mvp-compare {
+          grid-template-columns: repeat(4, 1fr);
+        }
+        .lede-grid {
+          gap: 22px;
+        }
+      }
+      @media (min-width: 54rem) {
+        .lede-grid {
+          grid-template-columns: minmax(0, 1.25fr) minmax(17rem, 0.75fr);
+          align-items: end;
+        }
+        .result-wrap {
+          padding-left: 18px;
+          border-left: 1px solid var(--recap-border);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .rung {
+          transition: none;
+        }
+      }
+      @media (max-width: 24rem) {
+        .rung {
+          grid-template-columns: 6.1rem minmax(2.5rem, 1fr) 2.3rem;
+        }
+        .ladder-axis {
+          grid-template-columns: 6.1rem minmax(2.5rem, 1fr) 2.3rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <p class="sr-only" data-status aria-live="polite"></p>
+
+      <header class="lede">
+        <div class="masthead">
+          <p>Worlds postmortem, sample edition</p>
+          <p class="fiction">
+            Illustrative data. Fictional teams, players, and scores.
+          </p>
+        </div>
+        <div class="lede-grid">
+          <div>
+            <h1>Aurora topped the sample. Nova scored highest.</h1>
+            <p class="deck">
+              Two teams, ten players, twenty games. Pick a team, then a player.
+            </p>
+          </div>
+          <div class="result-wrap">
+            <div class="result" aria-label="Sample team results">
+              <div class="result-row" data-team="aurora">
+                <p class="result-team">
+                  <span class="monogram" aria-hidden="true">A</span
+                  ><span>Aurora</span
+                  ><span class="placing">Sample champion</span
+                  ><span class="rec">8–2</span>
+                </p>
+                <p class="result-score">82<span> / 100</span></p>
+                <span class="result-bar" aria-hidden="true"
+                  ><i style="width: 82%"></i
+                ></span>
+              </div>
+              <div class="result-row" data-team="vanguard">
+                <p class="result-team">
+                  <span class="monogram" aria-hidden="true">V</span
+                  ><span>Vanguard</span
+                  ><span class="placing">Sample runner-up</span
+                  ><span class="rec">6–4</span>
+                </p>
+                <p class="result-score">76<span> / 100</span></p>
+                <span class="result-bar" aria-hidden="true"
+                  ><i style="width: 76%"></i
+                ></span>
+              </div>
+            </div>
+            <p class="fine">
+              Manual team scores, both on a 0 to 100 scale. No head-to-head
+              series is shown.
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <section class="teams" aria-labelledby="teams-h">
+        <div class="teams-head">
+          <h2 id="teams-h">Team stories</h2>
+          <div class="switch" role="group" aria-label="Choose a team">
+            <button
+              type="button"
+              class="team-btn"
+              data-team-btn="aurora"
+              aria-pressed="true"
+              aria-controls="panel-aurora"
+            >
+              <span class="swatch" aria-hidden="true"></span>Aurora<span
+                class="btn-record"
+                >8–2</span
+              >
+            </button>
+            <button
+              type="button"
+              class="team-btn"
+              data-team-btn="vanguard"
+              aria-pressed="false"
+              aria-controls="panel-vanguard"
+            >
+              <span class="swatch" aria-hidden="true"></span>Vanguard<span
+                class="btn-record"
+                >6–4</span
+              >
+            </button>
+          </div>
+        </div>
+        <noscript
+          ><p class="nojs-note">
+            JavaScript is off. The switches need it. Both teams and every player
+            story are shown below.
+          </p></noscript
+        >
+
+        <div
+          class="team-panel is-active"
+          id="panel-aurora"
+          data-team-panel="aurora"
+          data-team-name="Aurora"
+        >
+          <div class="callouts">
+            <div class="callout">
+              <p class="callout-head">
+                <span class="callout-label">Carried</span
+                ><span class="callout-name">Nova, mid</span>
+              </p>
+              <p class="callout-stat">
+                94 score. +420 gold at 15, the largest lane lead in the sample.
+              </p>
+            </div>
+            <div class="callout">
+              <p class="callout-head">
+                <span class="callout-label">Lowest score</span
+                ><span class="callout-name">Vale, support</span>
+              </p>
+              <p class="callout-stat">
+                63 score. 58% kill participation, the lowest on Aurora.
+              </p>
+            </div>
+          </div>
+
+          <div class="work">
+            <div class="lineup">
+              <div class="lineup-head">
+                <h3 id="lineup-aurora">The full lineup</h3>
+              </div>
+              <div
+                class="ladder"
+                role="group"
+                aria-label="Aurora player stories"
+              >
+                <button
+                  type="button"
+                  class="rung"
+                  data-player-btn="nova"
+                  aria-pressed="true"
+                  aria-controls="story-aurora-nova"
+                >
+                  <span class="rung-who"
+                    ><span class="rung-role">Mid</span
+                    ><span class="rung-name">Nova</span></span
+                  >
+                  <span class="rung-track" aria-hidden="true"
+                    ><span class="rung-fill" style="width: 94%"></span
+                  ></span>
+                  <span class="rung-score">94</span>
+                </button>
+                <button
+                  type="button"
+                  class="rung"
+                  data-player-btn="arrow"
+                  aria-pressed="false"
+                  aria-controls="story-aurora-arrow"
+                >
+                  <span class="rung-who"
+                    ><span class="rung-role">Bot</span
+                    ><span class="rung-name">Arrow</span></span
+                  >
+                  <span class="rung-track" aria-hidden="true"
+                    ><span class="rung-fill" style="width: 87%"></span
+                  ></span>
+                  <span class="rung-score">87</span>
+                </button>
+                <button
+                  type="button"
+                  class="rung"
+                  data-player-btn="drift"
+                  aria-pressed="false"
+                  aria-controls="story-aurora-drift"
+                >
+                  <span class="rung-who"
+                    ><span class="rung-role">Jungle</span
+                    ><span class="rung-name">Drift</span></span
+                  >
+                  <span class="rung-track" aria-hidden="true"
+                    ><span class="rung-fill" style="width: 84%"></span
+                  ></span>
+                  <span class="rung-score">84</span>
+                </button>
+                <button
+                  type="button"
+                  class="rung"
+                  data-player-btn="crest"
+                  aria-pressed="false"
+                  aria-controls="story-aurora-crest"
+                >
+                  <span class="rung-who"
+                    ><span class="rung-role">Top</span
+                    ><span class="rung-name">Crest</span></span
+                  >
+                  <span class="rung-track" aria-hidden="true"
+                    ><span class="rung-fill" style="width: 78%"></span
+                  ></span>
+                  <span class="rung-score">78</span>
+                </button>
+                <button
+                  type="button"
+                  class="rung"
+                  data-player-btn="vale"
+                  aria-pressed="false"
+                  aria-controls="story-aurora-vale"
+                >
+                  <span class="rung-who"
+                    ><span class="rung-role">Support</span
+                    ><span class="rung-name">Vale</span></span
+                  >
+                  <span class="rung-track" aria-hidden="true"
+                    ><span class="rung-fill" style="width: 63%"></span
+                  ></span>
+                  <span class="rung-score">63</span>
+                </button>
+              </div>
+              <div class="ladder-axis" aria-hidden="true">
+                <span class="axis-label">Sample score</span
+                ><span class="ticks"
+                  ><span>0</span><span>50</span><span>100</span></span
+                ><span></span>
+              </div>
+            </div>
+            <div class="stories">
+              <div
+                class="story"
+                id="story-aurora-nova"
+                data-story="nova"
+                role="group"
+                aria-labelledby="story-aurora-nova-name"
+                data-player-name="Nova"
+                data-player-role="Mid"
+                data-active="true"
+              >
+                <div class="story-head">
+                  <div>
+                    <p class="story-role">Mid, Aurora</p>
+                    <div class="story-title-row">
+                      <p class="story-name" id="story-aurora-nova-name">Nova</p>
+                      <div class="story-tags">
+                        <span class="tag">Sample MVP</span
+                        ><span class="tag">Best on Aurora</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="story-score">
+                    <b>94</b><span>sample score / 100</span>
+                  </p>
+                </div>
+                <p class="story-lead">
+                  Largest lane lead in this sample and the highest mid damage.
+                </p>
+                <div class="story-body">
+                  <figure class="trend">
+                    <figcaption>
+                      Ten games, game 1 to 10. Scale 50 to 100.
+                    </figcaption>
+                    <svg
+                      viewBox="0 0 280 76"
+                      role="img"
+                      aria-label="Nova, Mid. Game scores from game 1 to 10: 88, 92, 96, 90, 95, 98, 93, 96, 97, 95. Scale 50 to 100."
+                    >
+                      <title>Nova game scores</title>
+                      <g stroke="var(--recap-border)" stroke-width="1">
+                        <line x1="27" y1="9" x2="268" y2="9" />
+                        <line x1="27" y1="33" x2="268" y2="33" />
+                        <line x1="27" y1="57" x2="268" y2="57" />
+                      </g>
+                      <g
+                        fill="var(--recap-muted)"
+                        font-size="11"
+                        style="font-family: var(--body)"
+                      >
+                        <text x="0" y="12">100</text>
+                        <text x="0" y="36">75</text>
+                        <text x="0" y="60">50</text>
+                        <text x="26" y="71" text-anchor="middle">1</text>
+                        <text x="147.5" y="71" text-anchor="middle">5</text>
+                        <text x="268" y="71" text-anchor="end">10</text>
+                      </g>
+                      <path
+                        d="M27.0 20.5 L53.8 16.7 L80.6 12.8 L107.3 18.6 L134.1 13.8 L160.9 10.9 L187.7 15.7 L214.4 12.8 L241.2 11.9 L268.0 13.8 L268 57 L27 57 Z"
+                        fill="var(--recap-accent)"
+                        fill-opacity="0.1"
+                      />
+                      <path
+                        d="M27.0 20.5 L53.8 16.7 L80.6 12.8 L107.3 18.6 L134.1 13.8 L160.9 10.9 L187.7 15.7 L214.4 12.8 L241.2 11.9 L268.0 13.8"
+                        fill="none"
+                        stroke="var(--recap-accent)"
+                        stroke-width="1.9"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      />
+                      <circle
+                        cx="27.0"
+                        cy="20.5"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="53.8"
+                        cy="16.7"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="80.6"
+                        cy="12.8"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="107.3"
+                        cy="18.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="134.1"
+                        cy="13.8"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="160.9"
+                        cy="10.9"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="187.7"
+                        cy="15.7"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="214.4"
+                        cy="12.8"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="241.2"
+                        cy="11.9"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="268.0"
+                        cy="13.8"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                    </svg>
+                  </figure>
+                  <dl class="stats">
+                    <div>
+                      <dt>Gold at 15</dt>
+                      <dd>+420</dd>
+                    </div>
+                    <div>
+                      <dt>Kill participation</dt>
+                      <dd>76%</dd>
+                    </div>
+                    <div>
+                      <dt>Damage per minute</dt>
+                      <dd>740</dd>
+                    </div>
+                    <div>
+                      <dt>Vision per minute</dt>
+                      <dd>1.0</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+              <div
+                class="story"
+                id="story-aurora-arrow"
+                data-story="arrow"
+                role="group"
+                aria-labelledby="story-aurora-arrow-name"
+                data-player-name="Arrow"
+                data-player-role="Bot"
+              >
+                <div class="story-head">
+                  <div>
+                    <p class="story-role">Bot, Aurora</p>
+                    <div class="story-title-row">
+                      <p class="story-name" id="story-aurora-arrow-name">
+                        Arrow
+                      </p>
+                    </div>
+                  </div>
+                  <p class="story-score">
+                    <b>87</b><span>sample score / 100</span>
+                  </p>
+                </div>
+                <p class="story-lead">
+                  Strong damage output with a smaller lane lead than Nova.
+                </p>
+                <div class="story-body">
+                  <figure class="trend">
+                    <figcaption>
+                      Ten games, game 1 to 10. Scale 50 to 100.
+                    </figcaption>
+                    <svg
+                      viewBox="0 0 280 76"
+                      role="img"
+                      aria-label="Arrow, Bot. Game scores from game 1 to 10: 81, 85, 90, 83, 88, 92, 86, 89, 91, 85. Scale 50 to 100."
+                    >
+                      <title>Arrow game scores</title>
+                      <g stroke="var(--recap-border)" stroke-width="1">
+                        <line x1="27" y1="9" x2="268" y2="9" />
+                        <line x1="27" y1="33" x2="268" y2="33" />
+                        <line x1="27" y1="57" x2="268" y2="57" />
+                      </g>
+                      <g
+                        fill="var(--recap-muted)"
+                        font-size="11"
+                        style="font-family: var(--body)"
+                      >
+                        <text x="0" y="12">100</text>
+                        <text x="0" y="36">75</text>
+                        <text x="0" y="60">50</text>
+                        <text x="26" y="71" text-anchor="middle">1</text>
+                        <text x="147.5" y="71" text-anchor="middle">5</text>
+                        <text x="268" y="71" text-anchor="end">10</text>
+                      </g>
+                      <path
+                        d="M27.0 27.2 L53.8 23.4 L80.6 18.6 L107.3 25.3 L134.1 20.5 L160.9 16.7 L187.7 22.4 L214.4 19.6 L241.2 17.6 L268.0 23.4 L268 57 L27 57 Z"
+                        fill="var(--recap-accent)"
+                        fill-opacity="0.1"
+                      />
+                      <path
+                        d="M27.0 27.2 L53.8 23.4 L80.6 18.6 L107.3 25.3 L134.1 20.5 L160.9 16.7 L187.7 22.4 L214.4 19.6 L241.2 17.6 L268.0 23.4"
+                        fill="none"
+                        stroke="var(--recap-accent)"
+                        stroke-width="1.9"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      />
+                      <circle
+                        cx="27.0"
+                        cy="27.2"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="53.8"
+                        cy="23.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="80.6"
+                        cy="18.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="107.3"
+                        cy="25.3"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="134.1"
+                        cy="20.5"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="160.9"
+                        cy="16.7"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="187.7"
+                        cy="22.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="214.4"
+                        cy="19.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="241.2"
+                        cy="17.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="268.0"
+                        cy="23.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                    </svg>
+                  </figure>
+                  <dl class="stats">
+                    <div>
+                      <dt>Gold at 15</dt>
+                      <dd>+260</dd>
+                    </div>
+                    <div>
+                      <dt>Kill participation</dt>
+                      <dd>71%</dd>
+                    </div>
+                    <div>
+                      <dt>Damage per minute</dt>
+                      <dd>790</dd>
+                    </div>
+                    <div>
+                      <dt>Vision per minute</dt>
+                      <dd>0.8</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+              <div
+                class="story"
+                id="story-aurora-drift"
+                data-story="drift"
+                role="group"
+                aria-labelledby="story-aurora-drift-name"
+                data-player-name="Drift"
+                data-player-role="Jungle"
+              >
+                <div class="story-head">
+                  <div>
+                    <p class="story-role">Jungle, Aurora</p>
+                    <div class="story-title-row">
+                      <p class="story-name" id="story-aurora-drift-name">
+                        Drift
+                      </p>
+                    </div>
+                  </div>
+                  <p class="story-score">
+                    <b>84</b><span>sample score / 100</span>
+                  </p>
+                </div>
+                <p class="story-lead">
+                  Strong fight participation and early gold leads.
+                </p>
+                <div class="story-body">
+                  <figure class="trend">
+                    <figcaption>
+                      Ten games, game 1 to 10. Scale 50 to 100.
+                    </figcaption>
+                    <svg
+                      viewBox="0 0 280 76"
+                      role="img"
+                      aria-label="Drift, Jungle. Game scores from game 1 to 10: 78, 83, 82, 86, 84, 90, 81, 85, 88, 83. Scale 50 to 100."
+                    >
+                      <title>Drift game scores</title>
+                      <g stroke="var(--recap-border)" stroke-width="1">
+                        <line x1="27" y1="9" x2="268" y2="9" />
+                        <line x1="27" y1="33" x2="268" y2="33" />
+                        <line x1="27" y1="57" x2="268" y2="57" />
+                      </g>
+                      <g
+                        fill="var(--recap-muted)"
+                        font-size="11"
+                        style="font-family: var(--body)"
+                      >
+                        <text x="0" y="12">100</text>
+                        <text x="0" y="36">75</text>
+                        <text x="0" y="60">50</text>
+                        <text x="26" y="71" text-anchor="middle">1</text>
+                        <text x="147.5" y="71" text-anchor="middle">5</text>
+                        <text x="268" y="71" text-anchor="end">10</text>
+                      </g>
+                      <path
+                        d="M27.0 30.1 L53.8 25.3 L80.6 26.3 L107.3 22.4 L134.1 24.4 L160.9 18.6 L187.7 27.2 L214.4 23.4 L241.2 20.5 L268.0 25.3 L268 57 L27 57 Z"
+                        fill="var(--recap-accent)"
+                        fill-opacity="0.1"
+                      />
+                      <path
+                        d="M27.0 30.1 L53.8 25.3 L80.6 26.3 L107.3 22.4 L134.1 24.4 L160.9 18.6 L187.7 27.2 L214.4 23.4 L241.2 20.5 L268.0 25.3"
+                        fill="none"
+                        stroke="var(--recap-accent)"
+                        stroke-width="1.9"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      />
+                      <circle
+                        cx="27.0"
+                        cy="30.1"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="53.8"
+                        cy="25.3"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="80.6"
+                        cy="26.3"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="107.3"
+                        cy="22.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="134.1"
+                        cy="24.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="160.9"
+                        cy="18.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="187.7"
+                        cy="27.2"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="214.4"
+                        cy="23.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="241.2"
+                        cy="20.5"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="268.0"
+                        cy="25.3"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                    </svg>
+                  </figure>
+                  <dl class="stats">
+                    <div>
+                      <dt>Gold at 15</dt>
+                      <dd>+210</dd>
+                    </div>
+                    <div>
+                      <dt>Kill participation</dt>
+                      <dd>74%</dd>
+                    </div>
+                    <div>
+                      <dt>Damage per minute</dt>
+                      <dd>390</dd>
+                    </div>
+                    <div>
+                      <dt>Vision per minute</dt>
+                      <dd>1.8</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+              <div
+                class="story"
+                id="story-aurora-crest"
+                data-story="crest"
+                role="group"
+                aria-labelledby="story-aurora-crest-name"
+                data-player-name="Crest"
+                data-player-role="Top"
+              >
+                <div class="story-head">
+                  <div>
+                    <p class="story-role">Top, Aurora</p>
+                    <div class="story-title-row">
+                      <p class="story-name" id="story-aurora-crest-name">
+                        Crest
+                      </p>
+                    </div>
+                  </div>
+                  <p class="story-score">
+                    <b>78</b><span>sample score / 100</span>
+                  </p>
+                </div>
+                <p class="story-lead">
+                  Steady lane lead. Low fight participation limits the score.
+                </p>
+                <div class="story-body">
+                  <figure class="trend">
+                    <figcaption>
+                      Ten games, game 1 to 10. Scale 50 to 100.
+                    </figcaption>
+                    <svg
+                      viewBox="0 0 280 76"
+                      role="img"
+                      aria-label="Crest, Top. Game scores from game 1 to 10: 70, 75, 80, 73, 82, 85, 79, 76, 82, 78. Scale 50 to 100."
+                    >
+                      <title>Crest game scores</title>
+                      <g stroke="var(--recap-border)" stroke-width="1">
+                        <line x1="27" y1="9" x2="268" y2="9" />
+                        <line x1="27" y1="33" x2="268" y2="33" />
+                        <line x1="27" y1="57" x2="268" y2="57" />
+                      </g>
+                      <g
+                        fill="var(--recap-muted)"
+                        font-size="11"
+                        style="font-family: var(--body)"
+                      >
+                        <text x="0" y="12">100</text>
+                        <text x="0" y="36">75</text>
+                        <text x="0" y="60">50</text>
+                        <text x="26" y="71" text-anchor="middle">1</text>
+                        <text x="147.5" y="71" text-anchor="middle">5</text>
+                        <text x="268" y="71" text-anchor="end">10</text>
+                      </g>
+                      <path
+                        d="M27.0 37.8 L53.8 33.0 L80.6 28.2 L107.3 34.9 L134.1 26.3 L160.9 23.4 L187.7 29.2 L214.4 32.0 L241.2 26.3 L268.0 30.1 L268 57 L27 57 Z"
+                        fill="var(--recap-accent)"
+                        fill-opacity="0.1"
+                      />
+                      <path
+                        d="M27.0 37.8 L53.8 33.0 L80.6 28.2 L107.3 34.9 L134.1 26.3 L160.9 23.4 L187.7 29.2 L214.4 32.0 L241.2 26.3 L268.0 30.1"
+                        fill="none"
+                        stroke="var(--recap-accent)"
+                        stroke-width="1.9"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      />
+                      <circle
+                        cx="27.0"
+                        cy="37.8"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="53.8"
+                        cy="33.0"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="80.6"
+                        cy="28.2"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="107.3"
+                        cy="34.9"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="134.1"
+                        cy="26.3"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="160.9"
+                        cy="23.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="187.7"
+                        cy="29.2"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="214.4"
+                        cy="32.0"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="241.2"
+                        cy="26.3"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="268.0"
+                        cy="30.1"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                    </svg>
+                  </figure>
+                  <dl class="stats">
+                    <div>
+                      <dt>Gold at 15</dt>
+                      <dd>+140</dd>
+                    </div>
+                    <div>
+                      <dt>Kill participation</dt>
+                      <dd>61%</dd>
+                    </div>
+                    <div>
+                      <dt>Damage per minute</dt>
+                      <dd>510</dd>
+                    </div>
+                    <div>
+                      <dt>Vision per minute</dt>
+                      <dd>1.1</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+              <div
+                class="story"
+                id="story-aurora-vale"
+                data-story="vale"
+                role="group"
+                aria-labelledby="story-aurora-vale-name"
+                data-player-name="Vale"
+                data-player-role="Support"
+              >
+                <div class="story-head">
+                  <div>
+                    <p class="story-role">Support, Aurora</p>
+                    <div class="story-title-row">
+                      <p class="story-name" id="story-aurora-vale-name">Vale</p>
+                      <div class="story-tags">
+                        <span class="tag">Lowest on Aurora</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="story-score">
+                    <b>63</b><span>sample score / 100</span>
+                  </p>
+                </div>
+                <p class="story-lead">
+                  Lowest fight participation on Aurora. Review missed fights.
+                </p>
+                <div class="story-body">
+                  <figure class="trend">
+                    <figcaption>
+                      Ten games, game 1 to 10. Scale 50 to 100.
+                    </figcaption>
+                    <svg
+                      viewBox="0 0 280 76"
+                      role="img"
+                      aria-label="Vale, Support. Game scores from game 1 to 10: 71, 66, 60, 67, 58, 64, 57, 65, 61, 61. Scale 50 to 100."
+                    >
+                      <title>Vale game scores</title>
+                      <g stroke="var(--recap-border)" stroke-width="1">
+                        <line x1="27" y1="9" x2="268" y2="9" />
+                        <line x1="27" y1="33" x2="268" y2="33" />
+                        <line x1="27" y1="57" x2="268" y2="57" />
+                      </g>
+                      <g
+                        fill="var(--recap-muted)"
+                        font-size="11"
+                        style="font-family: var(--body)"
+                      >
+                        <text x="0" y="12">100</text>
+                        <text x="0" y="36">75</text>
+                        <text x="0" y="60">50</text>
+                        <text x="26" y="71" text-anchor="middle">1</text>
+                        <text x="147.5" y="71" text-anchor="middle">5</text>
+                        <text x="268" y="71" text-anchor="end">10</text>
+                      </g>
+                      <path
+                        d="M27.0 36.8 L53.8 41.6 L80.6 47.4 L107.3 40.7 L134.1 49.3 L160.9 43.6 L187.7 50.3 L214.4 42.6 L241.2 46.4 L268.0 46.4 L268 57 L27 57 Z"
+                        fill="var(--recap-accent)"
+                        fill-opacity="0.1"
+                      />
+                      <path
+                        d="M27.0 36.8 L53.8 41.6 L80.6 47.4 L107.3 40.7 L134.1 49.3 L160.9 43.6 L187.7 50.3 L214.4 42.6 L241.2 46.4 L268.0 46.4"
+                        fill="none"
+                        stroke="var(--recap-accent)"
+                        stroke-width="1.9"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      />
+                      <circle
+                        cx="27.0"
+                        cy="36.8"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="53.8"
+                        cy="41.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="80.6"
+                        cy="47.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="107.3"
+                        cy="40.7"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="134.1"
+                        cy="49.3"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="160.9"
+                        cy="43.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="187.7"
+                        cy="50.3"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="214.4"
+                        cy="42.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="241.2"
+                        cy="46.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="268.0"
+                        cy="46.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                    </svg>
+                  </figure>
+                  <dl class="stats">
+                    <div>
+                      <dt>Gold at 15</dt>
+                      <dd>-80</dd>
+                    </div>
+                    <div>
+                      <dt>Kill participation</dt>
+                      <dd>58%</dd>
+                    </div>
+                    <div>
+                      <dt>Damage per minute</dt>
+                      <dd>140</dd>
+                    </div>
+                    <div>
+                      <dt>Vision per minute</dt>
+                      <dd>2.1</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form">
+            <div class="form-head">
+              <h3 id="form-aurora">Form, game by game</h3>
+              <p class="form-note">
+                Aurora, games 1 to 10. Darker cells score higher.
+              </p>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <caption class="sr-only">
+                  Aurora sample game scores for games 1 to 10, scale 0 to 100.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Player</th>
+                    <th scope="col">1</th>
+                    <th scope="col">2</th>
+                    <th scope="col">3</th>
+                    <th scope="col">4</th>
+                    <th scope="col">5</th>
+                    <th scope="col">6</th>
+                    <th scope="col">7</th>
+                    <th scope="col">8</th>
+                    <th scope="col">9</th>
+                    <th scope="col">10</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr data-row="nova" class="is-on">
+                    <th scope="row">
+                      <span class="row-name">Nova</span
+                      ><span class="row-role">Mid</span>
+                    </th>
+                    <td class="s3">88</td>
+                    <td class="s4">92</td>
+                    <td class="s4">96</td>
+                    <td class="s4">90</td>
+                    <td class="s4">95</td>
+                    <td class="s4">98</td>
+                    <td class="s4">93</td>
+                    <td class="s4">96</td>
+                    <td class="s4">97</td>
+                    <td class="s4">95</td>
+                  </tr>
+                  <tr data-row="arrow">
+                    <th scope="row">
+                      <span class="row-name">Arrow</span
+                      ><span class="row-role">Bot</span>
+                    </th>
+                    <td class="s3">81</td>
+                    <td class="s3">85</td>
+                    <td class="s4">90</td>
+                    <td class="s3">83</td>
+                    <td class="s3">88</td>
+                    <td class="s4">92</td>
+                    <td class="s3">86</td>
+                    <td class="s3">89</td>
+                    <td class="s4">91</td>
+                    <td class="s3">85</td>
+                  </tr>
+                  <tr data-row="drift">
+                    <th scope="row">
+                      <span class="row-name">Drift</span
+                      ><span class="row-role">Jungle</span>
+                    </th>
+                    <td class="s2">78</td>
+                    <td class="s3">83</td>
+                    <td class="s3">82</td>
+                    <td class="s3">86</td>
+                    <td class="s3">84</td>
+                    <td class="s4">90</td>
+                    <td class="s3">81</td>
+                    <td class="s3">85</td>
+                    <td class="s3">88</td>
+                    <td class="s3">83</td>
+                  </tr>
+                  <tr data-row="crest">
+                    <th scope="row">
+                      <span class="row-name">Crest</span
+                      ><span class="row-role">Top</span>
+                    </th>
+                    <td class="s2">70</td>
+                    <td class="s2">75</td>
+                    <td class="s3">80</td>
+                    <td class="s2">73</td>
+                    <td class="s3">82</td>
+                    <td class="s3">85</td>
+                    <td class="s2">79</td>
+                    <td class="s2">76</td>
+                    <td class="s3">82</td>
+                    <td class="s2">78</td>
+                  </tr>
+                  <tr data-row="vale">
+                    <th scope="row">
+                      <span class="row-name">Vale</span
+                      ><span class="row-role">Support</span>
+                    </th>
+                    <td class="s2">71</td>
+                    <td class="s1">66</td>
+                    <td class="s1">60</td>
+                    <td class="s1">67</td>
+                    <td class="s1">58</td>
+                    <td class="s1">64</td>
+                    <td class="s1">57</td>
+                    <td class="s1">65</td>
+                    <td class="s1">61</td>
+                    <td class="s1">61</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="team-panel"
+          id="panel-vanguard"
+          data-team-panel="vanguard"
+          data-team-name="Vanguard"
+        >
+          <div class="callouts">
+            <div class="callout">
+              <p class="callout-head">
+                <span class="callout-label">Carried</span
+                ><span class="callout-name">Kite, bot</span>
+              </p>
+              <p class="callout-stat">
+                89 score. 815 damage per minute, the highest in the sample.
+              </p>
+            </div>
+            <div class="callout">
+              <p class="callout-head">
+                <span class="callout-label">Lowest score</span
+                ><span class="callout-name">Rush, jungle</span>
+              </p>
+              <p class="callout-stat">
+                68 score. -160 gold at 15, the lowest on Vanguard.
+              </p>
+            </div>
+          </div>
+
+          <div class="work">
+            <div class="lineup">
+              <div class="lineup-head">
+                <h3 id="lineup-vanguard">The full lineup</h3>
+              </div>
+              <div
+                class="ladder"
+                role="group"
+                aria-label="Vanguard player stories"
+              >
+                <button
+                  type="button"
+                  class="rung"
+                  data-player-btn="kite"
+                  aria-pressed="true"
+                  aria-controls="story-vanguard-kite"
+                >
+                  <span class="rung-who"
+                    ><span class="rung-role">Bot</span
+                    ><span class="rung-name">Kite</span></span
+                  >
+                  <span class="rung-track" aria-hidden="true"
+                    ><span class="rung-fill" style="width: 89%"></span
+                  ></span>
+                  <span class="rung-score">89</span>
+                </button>
+                <button
+                  type="button"
+                  class="rung"
+                  data-player-btn="echo"
+                  aria-pressed="false"
+                  aria-controls="story-vanguard-echo"
+                >
+                  <span class="rung-who"
+                    ><span class="rung-role">Mid</span
+                    ><span class="rung-name">Echo</span></span
+                  >
+                  <span class="rung-track" aria-hidden="true"
+                    ><span class="rung-fill" style="width: 82%"></span
+                  ></span>
+                  <span class="rung-score">82</span>
+                </button>
+                <button
+                  type="button"
+                  class="rung"
+                  data-player-btn="moss"
+                  aria-pressed="false"
+                  aria-controls="story-vanguard-moss"
+                >
+                  <span class="rung-who"
+                    ><span class="rung-role">Support</span
+                    ><span class="rung-name">Moss</span></span
+                  >
+                  <span class="rung-track" aria-hidden="true"
+                    ><span class="rung-fill" style="width: 77%"></span
+                  ></span>
+                  <span class="rung-score">77</span>
+                </button>
+                <button
+                  type="button"
+                  class="rung"
+                  data-player-btn="flint"
+                  aria-pressed="false"
+                  aria-controls="story-vanguard-flint"
+                >
+                  <span class="rung-who"
+                    ><span class="rung-role">Top</span
+                    ><span class="rung-name">Flint</span></span
+                  >
+                  <span class="rung-track" aria-hidden="true"
+                    ><span class="rung-fill" style="width: 75%"></span
+                  ></span>
+                  <span class="rung-score">75</span>
+                </button>
+                <button
+                  type="button"
+                  class="rung"
+                  data-player-btn="rush"
+                  aria-pressed="false"
+                  aria-controls="story-vanguard-rush"
+                >
+                  <span class="rung-who"
+                    ><span class="rung-role">Jungle</span
+                    ><span class="rung-name">Rush</span></span
+                  >
+                  <span class="rung-track" aria-hidden="true"
+                    ><span class="rung-fill" style="width: 68%"></span
+                  ></span>
+                  <span class="rung-score">68</span>
+                </button>
+              </div>
+              <div class="ladder-axis" aria-hidden="true">
+                <span class="axis-label">Sample score</span
+                ><span class="ticks"
+                  ><span>0</span><span>50</span><span>100</span></span
+                ><span></span>
+              </div>
+            </div>
+            <div class="stories">
+              <div
+                class="story"
+                id="story-vanguard-kite"
+                data-story="kite"
+                role="group"
+                aria-labelledby="story-vanguard-kite-name"
+                data-player-name="Kite"
+                data-player-role="Bot"
+                data-active="true"
+              >
+                <div class="story-head">
+                  <div>
+                    <p class="story-role">Bot, Vanguard</p>
+                    <div class="story-title-row">
+                      <p class="story-name" id="story-vanguard-kite-name">
+                        Kite
+                      </p>
+                      <div class="story-tags">
+                        <span class="tag">Best on Vanguard</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="story-score">
+                    <b>89</b><span>sample score / 100</span>
+                  </p>
+                </div>
+                <p class="story-lead">
+                  Strongest Vanguard player. High damage and a clear lane lead.
+                </p>
+                <div class="story-body">
+                  <figure class="trend">
+                    <figcaption>
+                      Ten games, game 1 to 10. Scale 50 to 100.
+                    </figcaption>
+                    <svg
+                      viewBox="0 0 280 76"
+                      role="img"
+                      aria-label="Kite, Bot. Game scores from game 1 to 10: 84, 87, 92, 85, 90, 94, 88, 91, 90, 89. Scale 50 to 100."
+                    >
+                      <title>Kite game scores</title>
+                      <g stroke="var(--recap-border)" stroke-width="1">
+                        <line x1="27" y1="9" x2="268" y2="9" />
+                        <line x1="27" y1="33" x2="268" y2="33" />
+                        <line x1="27" y1="57" x2="268" y2="57" />
+                      </g>
+                      <g
+                        fill="var(--recap-muted)"
+                        font-size="11"
+                        style="font-family: var(--body)"
+                      >
+                        <text x="0" y="12">100</text>
+                        <text x="0" y="36">75</text>
+                        <text x="0" y="60">50</text>
+                        <text x="26" y="71" text-anchor="middle">1</text>
+                        <text x="147.5" y="71" text-anchor="middle">5</text>
+                        <text x="268" y="71" text-anchor="end">10</text>
+                      </g>
+                      <path
+                        d="M27.0 24.4 L53.8 21.5 L80.6 16.7 L107.3 23.4 L134.1 18.6 L160.9 14.8 L187.7 20.5 L214.4 17.6 L241.2 18.6 L268.0 19.6 L268 57 L27 57 Z"
+                        fill="var(--recap-accent)"
+                        fill-opacity="0.1"
+                      />
+                      <path
+                        d="M27.0 24.4 L53.8 21.5 L80.6 16.7 L107.3 23.4 L134.1 18.6 L160.9 14.8 L187.7 20.5 L214.4 17.6 L241.2 18.6 L268.0 19.6"
+                        fill="none"
+                        stroke="var(--recap-accent)"
+                        stroke-width="1.9"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      />
+                      <circle
+                        cx="27.0"
+                        cy="24.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="53.8"
+                        cy="21.5"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="80.6"
+                        cy="16.7"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="107.3"
+                        cy="23.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="134.1"
+                        cy="18.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="160.9"
+                        cy="14.8"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="187.7"
+                        cy="20.5"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="214.4"
+                        cy="17.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="241.2"
+                        cy="18.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="268.0"
+                        cy="19.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                    </svg>
+                  </figure>
+                  <dl class="stats">
+                    <div>
+                      <dt>Gold at 15</dt>
+                      <dd>+310</dd>
+                    </div>
+                    <div>
+                      <dt>Kill participation</dt>
+                      <dd>73%</dd>
+                    </div>
+                    <div>
+                      <dt>Damage per minute</dt>
+                      <dd>815</dd>
+                    </div>
+                    <div>
+                      <dt>Vision per minute</dt>
+                      <dd>0.9</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+              <div
+                class="story"
+                id="story-vanguard-echo"
+                data-story="echo"
+                role="group"
+                aria-labelledby="story-vanguard-echo-name"
+                data-player-name="Echo"
+                data-player-role="Mid"
+              >
+                <div class="story-head">
+                  <div>
+                    <p class="story-role">Mid, Vanguard</p>
+                    <div class="story-title-row">
+                      <p class="story-name" id="story-vanguard-echo-name">
+                        Echo
+                      </p>
+                    </div>
+                  </div>
+                  <p class="story-score">
+                    <b>82</b><span>sample score / 100</span>
+                  </p>
+                </div>
+                <p class="story-lead">
+                  Positive lane results with good fight presence.
+                </p>
+                <div class="story-body">
+                  <figure class="trend">
+                    <figcaption>
+                      Ten games, game 1 to 10. Scale 50 to 100.
+                    </figcaption>
+                    <svg
+                      viewBox="0 0 280 76"
+                      role="img"
+                      aria-label="Echo, Mid. Game scores from game 1 to 10: 78, 80, 85, 79, 84, 87, 81, 83, 82, 81. Scale 50 to 100."
+                    >
+                      <title>Echo game scores</title>
+                      <g stroke="var(--recap-border)" stroke-width="1">
+                        <line x1="27" y1="9" x2="268" y2="9" />
+                        <line x1="27" y1="33" x2="268" y2="33" />
+                        <line x1="27" y1="57" x2="268" y2="57" />
+                      </g>
+                      <g
+                        fill="var(--recap-muted)"
+                        font-size="11"
+                        style="font-family: var(--body)"
+                      >
+                        <text x="0" y="12">100</text>
+                        <text x="0" y="36">75</text>
+                        <text x="0" y="60">50</text>
+                        <text x="26" y="71" text-anchor="middle">1</text>
+                        <text x="147.5" y="71" text-anchor="middle">5</text>
+                        <text x="268" y="71" text-anchor="end">10</text>
+                      </g>
+                      <path
+                        d="M27.0 30.1 L53.8 28.2 L80.6 23.4 L107.3 29.2 L134.1 24.4 L160.9 21.5 L187.7 27.2 L214.4 25.3 L241.2 26.3 L268.0 27.2 L268 57 L27 57 Z"
+                        fill="var(--recap-accent)"
+                        fill-opacity="0.1"
+                      />
+                      <path
+                        d="M27.0 30.1 L53.8 28.2 L80.6 23.4 L107.3 29.2 L134.1 24.4 L160.9 21.5 L187.7 27.2 L214.4 25.3 L241.2 26.3 L268.0 27.2"
+                        fill="none"
+                        stroke="var(--recap-accent)"
+                        stroke-width="1.9"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      />
+                      <circle
+                        cx="27.0"
+                        cy="30.1"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="53.8"
+                        cy="28.2"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="80.6"
+                        cy="23.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="107.3"
+                        cy="29.2"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="134.1"
+                        cy="24.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="160.9"
+                        cy="21.5"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="187.7"
+                        cy="27.2"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="214.4"
+                        cy="25.3"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="241.2"
+                        cy="26.3"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="268.0"
+                        cy="27.2"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                    </svg>
+                  </figure>
+                  <dl class="stats">
+                    <div>
+                      <dt>Gold at 15</dt>
+                      <dd>+180</dd>
+                    </div>
+                    <div>
+                      <dt>Kill participation</dt>
+                      <dd>70%</dd>
+                    </div>
+                    <div>
+                      <dt>Damage per minute</dt>
+                      <dd>660</dd>
+                    </div>
+                    <div>
+                      <dt>Vision per minute</dt>
+                      <dd>1.1</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+              <div
+                class="story"
+                id="story-vanguard-moss"
+                data-story="moss"
+                role="group"
+                aria-labelledby="story-vanguard-moss-name"
+                data-player-name="Moss"
+                data-player-role="Support"
+              >
+                <div class="story-head">
+                  <div>
+                    <p class="story-role">Support, Vanguard</p>
+                    <div class="story-title-row">
+                      <p class="story-name" id="story-vanguard-moss-name">
+                        Moss
+                      </p>
+                    </div>
+                  </div>
+                  <p class="story-score">
+                    <b>77</b><span>sample score / 100</span>
+                  </p>
+                </div>
+                <p class="story-lead">Good fight presence and vision output.</p>
+                <div class="story-body">
+                  <figure class="trend">
+                    <figcaption>
+                      Ten games, game 1 to 10. Scale 50 to 100.
+                    </figcaption>
+                    <svg
+                      viewBox="0 0 280 76"
+                      role="img"
+                      aria-label="Moss, Support. Game scores from game 1 to 10: 74, 76, 80, 75, 78, 82, 73, 79, 77, 76. Scale 50 to 100."
+                    >
+                      <title>Moss game scores</title>
+                      <g stroke="var(--recap-border)" stroke-width="1">
+                        <line x1="27" y1="9" x2="268" y2="9" />
+                        <line x1="27" y1="33" x2="268" y2="33" />
+                        <line x1="27" y1="57" x2="268" y2="57" />
+                      </g>
+                      <g
+                        fill="var(--recap-muted)"
+                        font-size="11"
+                        style="font-family: var(--body)"
+                      >
+                        <text x="0" y="12">100</text>
+                        <text x="0" y="36">75</text>
+                        <text x="0" y="60">50</text>
+                        <text x="26" y="71" text-anchor="middle">1</text>
+                        <text x="147.5" y="71" text-anchor="middle">5</text>
+                        <text x="268" y="71" text-anchor="end">10</text>
+                      </g>
+                      <path
+                        d="M27.0 34.0 L53.8 32.0 L80.6 28.2 L107.3 33.0 L134.1 30.1 L160.9 26.3 L187.7 34.9 L214.4 29.2 L241.2 31.1 L268.0 32.0 L268 57 L27 57 Z"
+                        fill="var(--recap-accent)"
+                        fill-opacity="0.1"
+                      />
+                      <path
+                        d="M27.0 34.0 L53.8 32.0 L80.6 28.2 L107.3 33.0 L134.1 30.1 L160.9 26.3 L187.7 34.9 L214.4 29.2 L241.2 31.1 L268.0 32.0"
+                        fill="none"
+                        stroke="var(--recap-accent)"
+                        stroke-width="1.9"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      />
+                      <circle
+                        cx="27.0"
+                        cy="34.0"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="53.8"
+                        cy="32.0"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="80.6"
+                        cy="28.2"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="107.3"
+                        cy="33.0"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="134.1"
+                        cy="30.1"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="160.9"
+                        cy="26.3"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="187.7"
+                        cy="34.9"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="214.4"
+                        cy="29.2"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="241.2"
+                        cy="31.1"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="268.0"
+                        cy="32.0"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                    </svg>
+                  </figure>
+                  <dl class="stats">
+                    <div>
+                      <dt>Gold at 15</dt>
+                      <dd>-40</dd>
+                    </div>
+                    <div>
+                      <dt>Kill participation</dt>
+                      <dd>72%</dd>
+                    </div>
+                    <div>
+                      <dt>Damage per minute</dt>
+                      <dd>125</dd>
+                    </div>
+                    <div>
+                      <dt>Vision per minute</dt>
+                      <dd>2.4</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+              <div
+                class="story"
+                id="story-vanguard-flint"
+                data-story="flint"
+                role="group"
+                aria-labelledby="story-vanguard-flint-name"
+                data-player-name="Flint"
+                data-player-role="Top"
+              >
+                <div class="story-head">
+                  <div>
+                    <p class="story-role">Top, Vanguard</p>
+                    <div class="story-title-row">
+                      <p class="story-name" id="story-vanguard-flint-name">
+                        Flint
+                      </p>
+                    </div>
+                  </div>
+                  <p class="story-score">
+                    <b>75</b><span>sample score / 100</span>
+                  </p>
+                </div>
+                <p class="story-lead">Small lane lead with steady output.</p>
+                <div class="story-body">
+                  <figure class="trend">
+                    <figcaption>
+                      Ten games, game 1 to 10. Scale 50 to 100.
+                    </figcaption>
+                    <svg
+                      viewBox="0 0 280 76"
+                      role="img"
+                      aria-label="Flint, Top. Game scores from game 1 to 10: 73, 78, 71, 76, 74, 80, 72, 77, 75, 74. Scale 50 to 100."
+                    >
+                      <title>Flint game scores</title>
+                      <g stroke="var(--recap-border)" stroke-width="1">
+                        <line x1="27" y1="9" x2="268" y2="9" />
+                        <line x1="27" y1="33" x2="268" y2="33" />
+                        <line x1="27" y1="57" x2="268" y2="57" />
+                      </g>
+                      <g
+                        fill="var(--recap-muted)"
+                        font-size="11"
+                        style="font-family: var(--body)"
+                      >
+                        <text x="0" y="12">100</text>
+                        <text x="0" y="36">75</text>
+                        <text x="0" y="60">50</text>
+                        <text x="26" y="71" text-anchor="middle">1</text>
+                        <text x="147.5" y="71" text-anchor="middle">5</text>
+                        <text x="268" y="71" text-anchor="end">10</text>
+                      </g>
+                      <path
+                        d="M27.0 34.9 L53.8 30.1 L80.6 36.8 L107.3 32.0 L134.1 34.0 L160.9 28.2 L187.7 35.9 L214.4 31.1 L241.2 33.0 L268.0 34.0 L268 57 L27 57 Z"
+                        fill="var(--recap-accent)"
+                        fill-opacity="0.1"
+                      />
+                      <path
+                        d="M27.0 34.9 L53.8 30.1 L80.6 36.8 L107.3 32.0 L134.1 34.0 L160.9 28.2 L187.7 35.9 L214.4 31.1 L241.2 33.0 L268.0 34.0"
+                        fill="none"
+                        stroke="var(--recap-accent)"
+                        stroke-width="1.9"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      />
+                      <circle
+                        cx="27.0"
+                        cy="34.9"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="53.8"
+                        cy="30.1"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="80.6"
+                        cy="36.8"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="107.3"
+                        cy="32.0"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="134.1"
+                        cy="34.0"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="160.9"
+                        cy="28.2"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="187.7"
+                        cy="35.9"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="214.4"
+                        cy="31.1"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="241.2"
+                        cy="33.0"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="268.0"
+                        cy="34.0"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                    </svg>
+                  </figure>
+                  <dl class="stats">
+                    <div>
+                      <dt>Gold at 15</dt>
+                      <dd>+70</dd>
+                    </div>
+                    <div>
+                      <dt>Kill participation</dt>
+                      <dd>59%</dd>
+                    </div>
+                    <div>
+                      <dt>Damage per minute</dt>
+                      <dd>480</dd>
+                    </div>
+                    <div>
+                      <dt>Vision per minute</dt>
+                      <dd>1.0</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+              <div
+                class="story"
+                id="story-vanguard-rush"
+                data-story="rush"
+                role="group"
+                aria-labelledby="story-vanguard-rush-name"
+                data-player-name="Rush"
+                data-player-role="Jungle"
+              >
+                <div class="story-head">
+                  <div>
+                    <p class="story-role">Jungle, Vanguard</p>
+                    <div class="story-title-row">
+                      <p class="story-name" id="story-vanguard-rush-name">
+                        Rush
+                      </p>
+                      <div class="story-tags">
+                        <span class="tag">Lowest on Vanguard</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="story-score">
+                    <b>68</b><span>sample score / 100</span>
+                  </p>
+                </div>
+                <p class="story-lead">
+                  Early gold deficits repeated across the sample.
+                </p>
+                <div class="story-body">
+                  <figure class="trend">
+                    <figcaption>
+                      Ten games, game 1 to 10. Scale 50 to 100.
+                    </figcaption>
+                    <svg
+                      viewBox="0 0 280 76"
+                      role="img"
+                      aria-label="Rush, Jungle. Game scores from game 1 to 10: 74, 70, 67, 71, 65, 69, 61, 72, 66, 65. Scale 50 to 100."
+                    >
+                      <title>Rush game scores</title>
+                      <g stroke="var(--recap-border)" stroke-width="1">
+                        <line x1="27" y1="9" x2="268" y2="9" />
+                        <line x1="27" y1="33" x2="268" y2="33" />
+                        <line x1="27" y1="57" x2="268" y2="57" />
+                      </g>
+                      <g
+                        fill="var(--recap-muted)"
+                        font-size="11"
+                        style="font-family: var(--body)"
+                      >
+                        <text x="0" y="12">100</text>
+                        <text x="0" y="36">75</text>
+                        <text x="0" y="60">50</text>
+                        <text x="26" y="71" text-anchor="middle">1</text>
+                        <text x="147.5" y="71" text-anchor="middle">5</text>
+                        <text x="268" y="71" text-anchor="end">10</text>
+                      </g>
+                      <path
+                        d="M27.0 34.0 L53.8 37.8 L80.6 40.7 L107.3 36.8 L134.1 42.6 L160.9 38.8 L187.7 46.4 L214.4 35.9 L241.2 41.6 L268.0 42.6 L268 57 L27 57 Z"
+                        fill="var(--recap-accent)"
+                        fill-opacity="0.1"
+                      />
+                      <path
+                        d="M27.0 34.0 L53.8 37.8 L80.6 40.7 L107.3 36.8 L134.1 42.6 L160.9 38.8 L187.7 46.4 L214.4 35.9 L241.2 41.6 L268.0 42.6"
+                        fill="none"
+                        stroke="var(--recap-accent)"
+                        stroke-width="1.9"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      />
+                      <circle
+                        cx="27.0"
+                        cy="34.0"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="53.8"
+                        cy="37.8"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="80.6"
+                        cy="40.7"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="107.3"
+                        cy="36.8"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="134.1"
+                        cy="42.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="160.9"
+                        cy="38.8"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="187.7"
+                        cy="46.4"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="214.4"
+                        cy="35.9"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="241.2"
+                        cy="41.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                      <circle
+                        cx="268.0"
+                        cy="42.6"
+                        r="2.1"
+                        fill="var(--recap-accent)"
+                        stroke="var(--recap-card)"
+                        stroke-width="1"
+                      />
+                    </svg>
+                  </figure>
+                  <dl class="stats">
+                    <div>
+                      <dt>Gold at 15</dt>
+                      <dd>-160</dd>
+                    </div>
+                    <div>
+                      <dt>Kill participation</dt>
+                      <dd>62%</dd>
+                    </div>
+                    <div>
+                      <dt>Damage per minute</dt>
+                      <dd>350</dd>
+                    </div>
+                    <div>
+                      <dt>Vision per minute</dt>
+                      <dd>1.5</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form">
+            <div class="form-head">
+              <h3 id="form-vanguard">Form, game by game</h3>
+              <p class="form-note">
+                Vanguard, games 1 to 10. Darker cells score higher.
+              </p>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <caption class="sr-only">
+                  Vanguard sample game scores for games 1 to 10, scale 0 to 100.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Player</th>
+                    <th scope="col">1</th>
+                    <th scope="col">2</th>
+                    <th scope="col">3</th>
+                    <th scope="col">4</th>
+                    <th scope="col">5</th>
+                    <th scope="col">6</th>
+                    <th scope="col">7</th>
+                    <th scope="col">8</th>
+                    <th scope="col">9</th>
+                    <th scope="col">10</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr data-row="kite" class="is-on">
+                    <th scope="row">
+                      <span class="row-name">Kite</span
+                      ><span class="row-role">Bot</span>
+                    </th>
+                    <td class="s3">84</td>
+                    <td class="s3">87</td>
+                    <td class="s4">92</td>
+                    <td class="s3">85</td>
+                    <td class="s4">90</td>
+                    <td class="s4">94</td>
+                    <td class="s3">88</td>
+                    <td class="s4">91</td>
+                    <td class="s4">90</td>
+                    <td class="s3">89</td>
+                  </tr>
+                  <tr data-row="echo">
+                    <th scope="row">
+                      <span class="row-name">Echo</span
+                      ><span class="row-role">Mid</span>
+                    </th>
+                    <td class="s2">78</td>
+                    <td class="s3">80</td>
+                    <td class="s3">85</td>
+                    <td class="s2">79</td>
+                    <td class="s3">84</td>
+                    <td class="s3">87</td>
+                    <td class="s3">81</td>
+                    <td class="s3">83</td>
+                    <td class="s3">82</td>
+                    <td class="s3">81</td>
+                  </tr>
+                  <tr data-row="moss">
+                    <th scope="row">
+                      <span class="row-name">Moss</span
+                      ><span class="row-role">Support</span>
+                    </th>
+                    <td class="s2">74</td>
+                    <td class="s2">76</td>
+                    <td class="s3">80</td>
+                    <td class="s2">75</td>
+                    <td class="s2">78</td>
+                    <td class="s3">82</td>
+                    <td class="s2">73</td>
+                    <td class="s2">79</td>
+                    <td class="s2">77</td>
+                    <td class="s2">76</td>
+                  </tr>
+                  <tr data-row="flint">
+                    <th scope="row">
+                      <span class="row-name">Flint</span
+                      ><span class="row-role">Top</span>
+                    </th>
+                    <td class="s2">73</td>
+                    <td class="s2">78</td>
+                    <td class="s2">71</td>
+                    <td class="s2">76</td>
+                    <td class="s2">74</td>
+                    <td class="s3">80</td>
+                    <td class="s2">72</td>
+                    <td class="s2">77</td>
+                    <td class="s2">75</td>
+                    <td class="s2">74</td>
+                  </tr>
+                  <tr data-row="rush">
+                    <th scope="row">
+                      <span class="row-name">Rush</span
+                      ><span class="row-role">Jungle</span>
+                    </th>
+                    <td class="s2">74</td>
+                    <td class="s2">70</td>
+                    <td class="s1">67</td>
+                    <td class="s2">71</td>
+                    <td class="s1">65</td>
+                    <td class="s1">69</td>
+                    <td class="s1">61</td>
+                    <td class="s2">72</td>
+                    <td class="s1">66</td>
+                    <td class="s1">65</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mvp" aria-labelledby="mvp-h">
+        <p class="mvp-kicker">Sample MVP</p>
+        <div class="mvp-head">
+          <h2 id="mvp-h">Nova, mid, Aurora</h2>
+          <p class="mvp-score">94<span> / 100</span></p>
+        </div>
+        <p class="mvp-copy">
+          Highest manual score in the sample. In 10 games, Nova also posted the
+          largest lane lead (+420 gold at 15) and the highest mid damage (740
+          per minute).
+        </p>
+        <dl class="mvp-compare">
+          <div>
+            <dt>Sample MVP</dt>
+            <dd>Nova <span>94</span></dd>
+          </div>
+          <div>
+            <dt>Best on Aurora</dt>
+            <dd>Nova <span>94</span></dd>
+          </div>
+          <div>
+            <dt>Best on Vanguard</dt>
+            <dd>Kite <span>89</span></dd>
+          </div>
+          <div>
+            <dt>Lowest in sample</dt>
+            <dd>Vale <span>63</span></dd>
+          </div>
+        </dl>
+        <p class="mvp-note">
+          A design placeholder, not an official award. Nova's damage lead is
+          among mids. Arrow and Kite post more raw damage.
+        </p>
+      </section>
+
+      <section class="method" aria-labelledby="method-h">
+        <h2 id="method-h">How to read this sample</h2>
+        <div class="method-grid">
+          <p>
+            <b>Manual scores</b>Every score is assigned by hand. No formula,
+            model, or confidence interval. A low score describes this sample,
+            not a cause of a loss.
+          </p>
+          <p>
+            <b>A fairer model</b>Compare within role, account for champion,
+            patch, and opponent, weight Worlds above regular season, and show
+            uncertainty and coverage.
+          </p>
+          <p>
+            <b>Proposed sources</b>Oracle's Elixir for stats. Leaguepedia or
+            official LoL Esports for rosters and results. Nothing was fetched.
+          </p>
+        </div>
+        <p class="method-foot">
+          Gold at 15 is the lane gold difference at 15 minutes. Damage and
+          vision are per minute. All values are fictional.
+        </p>
+      </section>
+    </main>
+    <script>
+      (() => {
+        "use strict";
+        const page = document.querySelector("main.page");
+        if (!page) return;
+        page.classList.add("js-ready");
+
+        const state = { aurora: "nova", vanguard: "kite" };
+        const status = page.querySelector("[data-status]");
+        const teamButtons = Array.from(
+          page.querySelectorAll("[data-team-btn]"),
+        );
+        const panels = Array.from(page.querySelectorAll("[data-team-panel]"));
+        const panelFor = (id) => panels.find((p) => p.dataset.teamPanel === id);
+        const playerName = (panel, id) => {
+          const s = panel.querySelector('[data-story="' + id + '"]');
+          return { name: s.dataset.playerName, role: s.dataset.playerRole };
+        };
+        const announce = (teamId, playerId) => {
+          if (!status) return;
+          const panel = panelFor(teamId);
+          const p = playerName(panel, playerId);
+          status.textContent =
+            panel.dataset.teamName +
+            ". " +
+            p.name +
+            ", " +
+            p.role.toLowerCase() +
+            ", open.";
+        };
+        const selectPlayer = (teamId, playerId, say) => {
+          state[teamId] = playerId;
+          const panel = panelFor(teamId);
+          panel.querySelectorAll("[data-player-btn]").forEach((b) => {
+            b.setAttribute(
+              "aria-pressed",
+              String(b.dataset.playerBtn === playerId),
+            );
+          });
+          panel.querySelectorAll("[data-story]").forEach((s) => {
+            s.classList.toggle("is-active", s.dataset.story === playerId);
+          });
+          panel.querySelectorAll("[data-row]").forEach((r) => {
+            r.classList.toggle("is-on", r.dataset.row === playerId);
+          });
+          if (say) announce(teamId, playerId);
+        };
+        const selectTeam = (teamId) => {
+          teamButtons.forEach((b) => {
+            b.setAttribute(
+              "aria-pressed",
+              String(b.dataset.teamBtn === teamId),
+            );
+          });
+          panels.forEach((p) => {
+            p.classList.toggle("is-active", p.dataset.teamPanel === teamId);
+          });
+          selectPlayer(teamId, state[teamId], false);
+          announce(teamId, state[teamId]);
+        };
+
+        teamButtons.forEach((b) => {
+          b.addEventListener("click", () => selectTeam(b.dataset.teamBtn));
+        });
+        panels.forEach((panel) => {
+          const teamId = panel.dataset.teamPanel;
+          panel.querySelectorAll("[data-player-btn]").forEach((b) => {
+            b.addEventListener("click", () =>
+              selectPlayer(teamId, b.dataset.playerBtn, true),
+            );
+          });
+          selectPlayer(teamId, state[teamId], false);
+        });
+      })();
+    </script>
+  </body>
+</html>
