@@ -43,6 +43,6 @@ export const MODE_TITLES: Record<Mode, { title: string; intro: string }> = {
   },
   tournaments: {
     title: 'Tournaments',
-    intro: 'Leaguepedia schedule and the Worlds Swiss preview. Not part of the Power Index.',
+    intro: 'Tournament schedules, forecasts and source-backed Worlds team reports.',
   },
 }
