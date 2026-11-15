@@ -247,9 +247,15 @@
         gap: 1rem;
       }
       .teams {
-        display: flex;
+        display: none;
         gap: 0.4rem;
         flex-wrap: wrap;
+      }
+      .has-script .teams {
+        display: flex;
+      }
+      .player:disabled {
+        cursor: default;
       }
       button.team {
         font: inherit;
@@ -416,6 +422,7 @@
         <div class="rows" id="rows">
           <button
             class="player aurora"
+            disabled
             data-player="Crest"
             aria-label="Crest, Top, Aurora, player, score 78 out of 100"
             aria-pressed="false"
@@ -427,6 +434,7 @@
           </button>
           <button
             class="player aurora"
+            disabled
             data-player="Drift"
             aria-label="Drift, Jungle, Aurora, player, score 84 out of 100"
             aria-pressed="false"
@@ -438,6 +446,7 @@
           </button>
           <button
             class="player aurora"
+            disabled
             data-player="Nova"
             aria-label="Nova, Mid, Aurora, Sample MVP, score 94 out of 100"
             aria-pressed="true"
@@ -450,6 +459,7 @@
           </button>
           <button
             class="player aurora"
+            disabled
             data-player="Arrow"
             aria-label="Arrow, Bot, Aurora, player, score 87 out of 100"
             aria-pressed="false"
@@ -461,6 +471,7 @@
           </button>
           <button
             class="player aurora"
+            disabled
             data-player="Vale"
             aria-label="Vale, Support, Aurora, Team lowest, score 63 out of 100"
             aria-pressed="false"
@@ -473,6 +484,7 @@
           </button>
           <button
             class="player vanguard"
+            disabled
             data-player="Flint"
             aria-label="Flint, Top, Vanguard, player, score 75 out of 100"
             aria-pressed="false"
@@ -484,6 +496,7 @@
           </button>
           <button
             class="player vanguard"
+            disabled
             data-player="Rush"
             aria-label="Rush, Jungle, Vanguard, Team lowest, score 68 out of 100"
             aria-pressed="false"
@@ -496,6 +509,7 @@
           </button>
           <button
             class="player vanguard"
+            disabled
             data-player="Echo"
             aria-label="Echo, Mid, Vanguard, player, score 82 out of 100"
             aria-pressed="false"
@@ -507,6 +521,7 @@
           </button>
           <button
             class="player vanguard"
+            disabled
             data-player="Kite"
             aria-label="Kite, Bot, Vanguard, Team best, score 89 out of 100"
             aria-pressed="false"
@@ -519,6 +534,7 @@
           </button>
           <button
             class="player vanguard"
+            disabled
             data-player="Moss"
             aria-label="Moss, Support, Vanguard, player, score 77 out of 100"
             aria-pressed="false"
@@ -618,6 +634,10 @@
     <script>
       (() => {
         const root = document.querySelector("main.page");
+        root.classList.add("has-script");
+        root.querySelectorAll(".player").forEach((button) => {
+          button.disabled = false;
+        });
         const teams = {
           Aurora: {
             record: "8 wins and 2 losses as sample champion",
