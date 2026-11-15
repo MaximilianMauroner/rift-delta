@@ -31,7 +31,7 @@ export type TournamentReportInput = {
   teams: Record<string, TeamProfile>
 }
 
-export function isWorldsReportMatch(match: MatchRecord) {
+function isWorldsReportMatch(match: MatchRecord) {
   return (
     tournamentInstanceForEvent(match.event, match.season)?.family ===
       'worlds' &&
@@ -56,7 +56,7 @@ export function retainTournamentReportInput(
   }
 }
 
-export function tournamentReportShardPath(id: string) {
+function tournamentReportShardPath(id: string) {
   if (!/^worlds:\d{4}$/.test(id)) throw new Error('Invalid report edition')
   return `${TOURNAMENT_REPORT_SHARD_DIR}/${id.replace(':', '-')}.json`
 }

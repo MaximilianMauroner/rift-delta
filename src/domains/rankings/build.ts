@@ -85,9 +85,7 @@ export { summarizePredictions } from './internal/projections/predictionModel.ts'
 export {
   buildTournamentReports,
   retainTournamentReportInput,
-  isWorldsReportMatch,
   tournamentReportFamily,
-  tournamentReportShardPath,
   TOURNAMENT_REPORT_INDEX_PATH,
   TOURNAMENT_REPORT_SHARD_DIR,
   type TournamentReportInput,
