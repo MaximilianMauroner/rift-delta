@@ -69,8 +69,8 @@ export async function refreshDataIfChanged(rawArgs = [], options = {}) {
   const publicDataDir = resolve(stringArg(args.publicDataDir ?? env.RANKING_PUBLIC_DATA_DIR ?? 'public/data'))
   const end = stringArg(args.end ?? env.RANKING_REFRESH_END ?? today())
   const force = booleanArg(args.force) || env.RANKING_FORCE_REFRESH === 'true'
-  const skipCrunch = booleanArg(args.skipCrunch) || env.RANKING_SKIP_CRUNCH === 'true'
-  const bucketUploadEnabled = !booleanArg(args.skipBucketUpload) && env.RANKING_BUCKET_UPLOAD_ENABLED !== 'false'
+  const skipCrunch = booleanArg(args.skipCrunch)
+  const bucketUploadEnabled = !booleanArg(args.skipBucketUpload)
   const bucketRequired = booleanArg(args.bucketRequired) || env.RANKING_BUCKET_REQUIRED === 'true'
   const bucketConfig = options.bucketConfig ?? bucketConfigFromEnv(env)
   const bucketClient = options.bucketClient ?? createBucketClient(bucketConfig)
@@ -78,7 +78,6 @@ export async function refreshDataIfChanged(rawArgs = [], options = {}) {
   const publishRankingArtifacts = options.uploadRankingArtifacts ?? uploadRankingArtifacts
   const stageAuditSnapshot = options.stageFullAuditSnapshot ?? stageFullAuditSnapshot
   const publishAuditReceipt = options.publishFullAuditDayReceipt ?? publishFullAuditDayReceipt
-  const restoreRawEnabled = env.RANKING_BUCKET_RESTORE_RAW !== 'false'
   const stagingDir = resolve(stringArg(args.stagingDir ?? `data/.refresh-staging-${process.pid}-${Date.now()}`))
   const stagingManifestPath = resolve(stagingDir, 'manifest.json')
   const rawWorkerDir = `${stagingDir}-raw-worker`
@@ -92,7 +91,7 @@ export async function refreshDataIfChanged(rawArgs = [], options = {}) {
   const previousState = await readJsonIfExists(statePath)
   const localManifest = manifestWithResolvedFiles(await readJsonIfExists(manifestPath), rawDir)
   const hasUsableLocalRawBaseline = await manifestHasUsableSourceFiles(localManifest)
-  const restoreResult = restoreRawEnabled && bucketConfig.enabled
+  const restoreResult = bucketConfig.enabled
     ? await attemptOptionalRawRestore({
         rawDir,
         manifestPath,
@@ -103,7 +102,7 @@ export async function refreshDataIfChanged(rawArgs = [], options = {}) {
         readRawAuthority,
         env,
       })
-    : { restored: false, reason: restoreRawEnabled ? 'bucket-disabled' : 'disabled' }
+    : { restored: false, reason: 'bucket-disabled' }
   metrics.recordStage('restore', {
     durationMs: monotonicNow() - restoreStarted,
     result: restoreResult.restored ? 'completed' : 'not-applicable',
@@ -157,7 +156,7 @@ export async function refreshDataIfChanged(rawArgs = [], options = {}) {
         '--manifest',
         stagingManifestPath,
         ...extraDownloadArgs,
-      ], env)
+      ])
       await (options.run ?? runCommand)(command, providerArgs, { env })
     } catch (error) {
       providerCommandError = error
@@ -460,10 +459,7 @@ export async function refreshDataIfChanged(rawArgs = [], options = {}) {
       await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`)
     }
 
-    const refreshMode = metrics.snapshot().mode
     const incrementalEnabled = Boolean(env.RANKING_REFRESH_FENCING_TOKEN)
-      && (refreshMode === 'gated'
-        || (refreshMode === 'shadow' && env.RANKING_INCREMENTAL_SHADOW_ENABLED === 'true'))
     if (!skipCrunch && incrementalEnabled && bucketConfig.enabled && bucketClient) {
       const rawAuthorityStarted = monotonicNow()
       const activeRaw = await readRawAuthority({ config: bucketConfig, client: bucketClient })
@@ -727,9 +723,6 @@ export async function refreshDataIfChanged(rawArgs = [], options = {}) {
           enabled: false,
           missing: bucketConfig.missing,
         }
-        if (env.RANKING_BUCKET_UPLOAD_ENABLED === 'true') {
-          console.warn(`Railway bucket upload skipped; missing ${bucketConfig.missing.join(', ')}.`)
-        }
       } else {
         const browserManifest = incrementalBuild?.rootManifest
           ?? incrementalBuild?.build?.publicPlan.manifest
@@ -820,7 +813,6 @@ export async function refreshDataIfChanged(rawArgs = [], options = {}) {
           statePath,
           config: bucketConfig,
           client: bucketClient,
-          uploadFullSnapshot: env.RANKING_BUCKET_UPLOAD_FULL_SNAPSHOT === 'true',
           ...(incrementalBuild?.action === 'publish-incremental' ? { publicArtifactPatch: incrementalBuild.patch } : {}),
           ...(incrementalState ? { stateManifestAuthority: incrementalState.authority } : {}),
           ...(rawSourceGeneration ? { rawSourceGeneration } : {}),
@@ -1687,7 +1679,7 @@ async function runRawSourceWorker(input, workerDir, env) {
   const stderr = []
   try {
     await new Promise((resolveRun, rejectRun) => {
-      const { command, args } = rawSourceWorkerCommand(inputPath, outputPath, env)
+      const { command, args } = rawSourceWorkerCommand(inputPath, outputPath)
       const child = spawn(command, args, { stdio: ['ignore', 'ignore', 'pipe'], env })
       child.stderr.on('data', (chunk) => stderr.push(Buffer.from(chunk)))
       child.on('error', rejectRun)

@@ -39,7 +39,7 @@ test('native local GET, HEAD, validators, MIME and gzip agree with Node sockets'
     const compare = async (path: string, options: { method?: string; headers?: Record<string, string> } = {}) => {
       const reference = await httpRead(node.port, path, options)
       const actual = await httpRead(native.port, path, options)
-      assert.equal(actual.status, reference.status, path)
+      assert.equal(actual.status, reference.status, `${path} ${JSON.stringify(options)}`)
       for (const header of ['content-type', 'cache-control', 'etag', 'last-modified', 'vary', 'content-encoding', 'content-length', 'x-robots-tag']) {
         assert.equal(actual.headers[header], reference.headers[header], `${path} ${header}`)
       }
@@ -132,14 +132,15 @@ test('native raw paths preserve Node normalization and immutable guards', async 
   }
 })
 
-test('native existing cache and gzip environment controls retain their scope', async () => {
+test('native cache controls retain their scope and gzip follows request negotiation', async () => {
   const { root } = await transportFixture()
-  const server = await nativeServer(root, { RANKING_DATA_CACHE_CONTROL: 'private, max-age=12', RANKING_DATA_MANIFEST_CACHE_CONTROL: 'no-cache', RANKING_GZIP_ENABLED: 'false' })
+  const server = await nativeServer(root, { RANKING_DATA_CACHE_CONTROL: 'private, max-age=12', RANKING_DATA_MANIFEST_CACHE_CONTROL: 'no-cache' })
   try {
     assert.equal((await httpRead(server.port, '/data/ranking-summary.json')).headers['cache-control'], 'no-cache')
     assert.equal((await httpRead(server.port, '/data/large.json')).headers['cache-control'], 'private, max-age=12')
     assert.equal((await httpRead(server.port, `/data/objects/sha256/${digest}`)).headers['cache-control'], immutableCache)
-    assert.equal((await httpRead(server.port, '/data/large.json', { headers: { 'accept-encoding': 'gzip' } })).headers['content-encoding'], undefined)
+    assert.equal((await httpRead(server.port, '/data/large.json', { headers: { 'accept-encoding': 'gzip' } })).headers['content-encoding'], 'gzip')
+    assert.equal((await httpRead(server.port, '/data/large.json', { headers: { 'accept-encoding': 'identity' } })).headers['content-encoding'], undefined)
   } finally {
     await server.close()
     await rm(root, { recursive: true, force: true })

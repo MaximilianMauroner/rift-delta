@@ -25,7 +25,7 @@ async function servingPair() {
   await writeFile(join(root, 'data/ranking-summary.json'), '{"source":"synthetic-lifecycle-test"}')
   const child = spawn(process.execPath, ['scripts/start-serving.mjs'], {
     env: {
-      ...process.env, RANKING_NATIVE_HTTP_BINARY: binary, HOST: '127.0.0.1', PORT: String(port), RANKING_REFRESH_ENABLED: 'false',
+      ...process.env, RANKING_NATIVE_HTTP_BINARY: binary, HOST: '127.0.0.1', PORT: String(port),
       RAILWAY_DIST_DIR: join(root, 'dist'), RANKING_PUBLIC_DATA_DIR: join(root, 'data'),
       RANKING_BUCKET_NAME: '', RANKING_BUCKET_ENDPOINT: '', RANKING_BUCKET_ACCESS_KEY_ID: '', RANKING_BUCKET_SECRET_ACCESS_KEY: '',
     },

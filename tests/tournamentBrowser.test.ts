@@ -13,7 +13,6 @@ const worldsId = '2026 Season World Championship/Main Event'
 const worldsAddress = eventAddress({ id: worldsId, competition: 'worlds', season: '2026' })
 const lcsAddress = eventAddress({ id: 'lcs:2026:fixture-lcs', competition: 'lcs', season: '2026' })
 const missingLink = 'This competition link is not in the current schedule. Choose a competition.'
-const disabledForecasts = 'Match forecasts are not enabled for this schedule.'
 
 function team(id: string, name: string | null, gameWins: number | null = null, outcome: string | null = null) {
   return { id, name, code: name?.slice(0, 3).toUpperCase() ?? null, gameWins, outcome }
@@ -123,7 +122,8 @@ test('tournament browser follows deep links, updates, stale state, recovery and 
     assert.equal(await page.getByRole('link', { name: 'Leaguepedia' }).getAttribute('href'), 'https://lol.fandom.com/wiki/2026_Season_World_Championship/Main_Event')
     assert.equal(await page.getByRole('link', { name: 'CC BY-SA 3.0' }).getAttribute('href'), 'https://creativecommons.org/licenses/by-sa/3.0/')
     assert.ok(dataRequests.includes(tournamentPath))
-    assert.ok(dataRequests.every((path) => path === tournamentPath || path === healthPath), `Unexpected data requests: ${dataRequests}`)
+    assert.ok(dataRequests.includes('/tournament-data/forecasts/team-ids.json'), 'Forecast inputs load without a build flag')
+    assert.ok(dataRequests.every((path) => path === tournamentPath || path === healthPath || path.startsWith('/tournament-data/forecasts/') || path.startsWith('/tournament-data/worlds/')), `Unexpected data requests: ${dataRequests}`)
     assert.deepEqual(externalRequests, [])
 
     const historyLength = await page.evaluate((id) => {
@@ -220,7 +220,7 @@ test('tournament browser follows deep links, updates, stale state, recovery and 
     assert.equal(await fallback.locator('img').count(), 0, 'An unbranded source team uses its initial')
     const tbdRow = page.locator('li').filter({ hasText: 'Island Otters vs TBD' })
     assert.equal(await tbdRow.locator('[title]').count(), 1, 'TBD does not gain a team identity')
-    assert.equal(await page.getByText(disabledForecasts, { exact: true }).count(), 1)
+    await page.locator('li').filter({ hasText: 'Island Otters vs TBD' }).getByText(/^Forecast unavailable:/).waitFor()
     assert.doesNotMatch(await page.locator('#main-content').innerText(), /Game win:|Series win \(Bo/)
     assert.match(await page.locator('#main-content p').last().innerText(), /Live means the start time has passed and no result is in yet/)
     await page.goBack()
@@ -283,7 +283,7 @@ test('tournament browser follows deep links, updates, stale state, recovery and 
     await page.getByRole('heading', { name: 'Worlds 2026' }).waitFor()
     assert.equal(await page.locator('#tournament-event').inputValue(), worldsId)
     assert.equal(await page.getByRole('button', { name: 'Bracket', exact: true }).getAttribute('aria-pressed'), 'true', 'The bracket is the default view')
-    assert.equal(await page.getByText(disabledForecasts, { exact: true }).count(), 0, 'The disabled schedule message is absent from the bracket')
+    assert.equal(await page.getByText(/^Forecast unavailable:/).count(), 0, 'The bracket has no schedule forecasts')
     const gamma = page.getByRole('button', { name: 'Gamma' })
     await gamma.click()
     assert.equal(await gamma.getAttribute('aria-pressed'), 'true')
@@ -331,7 +331,7 @@ test('tournament browser follows deep links, updates, stale state, recovery and 
     await page.getByRole('button', { name: 'Schedule', exact: true }).focus()
     await page.keyboard.press('Enter')
     await page.getByText(`Winner: ${longWinner}`, { exact: true }).waitFor()
-    assert.equal(await page.getByText(disabledForecasts, { exact: true }).count(), 1)
+    await page.locator('li').filter({ hasText: 'Island Otters vs TBD' }).getByText(/^Forecast unavailable:/).waitFor()
 
     await page.locator('a[href="#main-content"]').focus()
     await page.keyboard.press('Enter')

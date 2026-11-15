@@ -302,7 +302,6 @@ export async function runRefreshOnce(options = {}) {
       correctionAuditDue: dailyAuditDue,
       manual,
       now: now(),
-      shadowIngestionEnabled: env.RANKING_INCREMENTAL_SHADOW_ENABLED === 'true',
     })) {
       tracker.recordWork({ broadFetches: 0, fullBuilds: 0, incrementalBuilds: 0, uploads: 0, bytesWritten: 0, objectsWritten: 0 })
       logger.log(`Refresh probe complete: mode=${mode} pending=${Object.keys(state.pending).length}; scored providers skipped`)
@@ -493,7 +492,7 @@ export async function publishRefreshRolloutEvidence(metrics, {
   evidenceClass = 'live',
   publish = publishRolloutEvidence,
 } = {}) {
-  if (env.RANKING_ROLLOUT_EVIDENCE_ENABLED !== 'true' || !metrics) return { status: 'disabled' }
+  if (!metrics) return { status: 'metrics-unavailable' }
   const commit = env.RAILWAY_GIT_COMMIT_SHA ?? env.GIT_COMMIT_SHA
   const deploymentId = env.RAILWAY_DEPLOYMENT_ID
   const environmentId = env.RAILWAY_ENVIRONMENT_ID
@@ -705,8 +704,7 @@ function pendingDetectedAt(state, matchIds) {
 }
 
 export function isDailyAuditDue(env, value, now) {
-  const enabled = env.RANKING_DAILY_AUDIT_ENABLED ?? (refreshMode(env.RANKING_REFRESH_MODE) === 'gated' ? 'true' : 'false')
-  if (enabled !== 'true') return false
+  if (refreshMode(env.RANKING_REFRESH_MODE) !== 'gated') return false
   const intervalMs = numberEnv(env, 'RANKING_DAILY_AUDIT_INTERVAL_MS', 24 * 60 * 60_000)
   return new Date(now).getTime() - new Date(value.lastSuccessfulDailyAuditAt ?? 0).getTime() >= intervalMs
 }

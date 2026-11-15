@@ -19,7 +19,7 @@ let eventCapped = false
 let sequence = 0
 const spans = []
 const trackedChildren = new Set()
-const environmentKeys = ['RANKING_BENCHMARK_REPEATS', 'RANKING_BENCHMARK_MATCH_COUNT', 'RANKING_RAW_SOURCE_WORKER', 'RANKING_PROVIDER_FETCH_WORKER', 'RANKING_REFRESH_WORKER', 'RANKING_REFRESH_BINARY']
+const environmentKeys = ['RANKING_BENCHMARK_REPEATS', 'RANKING_BENCHMARK_MATCH_COUNT', 'RANKING_REFRESH_BINARY']
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
 
 function stamp(pid) {

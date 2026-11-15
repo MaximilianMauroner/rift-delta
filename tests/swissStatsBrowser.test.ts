@@ -35,7 +35,6 @@ test('on-demand hypothetical stats load, cancel, retry, and replace changed scen
     },
   }
   const server = await createServer({ configFile: false, logLevel: 'silent',
-    define: { 'import.meta.env.VITE_TOURNAMENT_FORECASTS_ENABLED': JSON.stringify('0') },
     resolve: { alias: { '@': new URL('../src', import.meta.url).pathname } },
     server: { host: '127.0.0.1', port: 0 }, plugins: [plugin, react(), tailwindcss()],
   })

@@ -65,7 +65,7 @@ for (const repair of ['partial publication', 'missing marker'] as const) {
         '--staging-dir', join(root, 'staging'), '--output', join(root, 'full.json'), '--public-data-dir', publicDataDir,
         '--start', '2026-01-01', '--end', '2026-06-29',
       ], {
-        env: { RANKING_BUCKET_RESTORE_RAW: 'false', RANKING_RAW_SOURCE_WORKER: 'node',
+        env: {
           ...(incremental ? { RANKING_REFRESH_FENCING_TOKEN: '7' } : {}) },
         bucketConfig: config,
         bucketClient: client,

@@ -30,7 +30,6 @@ pub(super) struct LocalData {
     metadata_slots: Arc<Semaphore>,
     data_cache: HeaderValue,
     manifest_cache: HeaderValue,
-    gzip_enabled: bool,
     origin: Option<PublishedOrigin>,
 }
 
@@ -111,7 +110,6 @@ impl LocalData {
             metadata_slots: Arc::new(Semaphore::new(64)),
             data_cache: header(&options.data_cache_control)?,
             manifest_cache: header(&options.manifest_cache_control)?,
-            gzip_enabled: options.gzip_enabled,
             origin: if options.ranking_origin {
                 PublishedOrigin::from_env().map_err(io::Error::other)?
             } else {
@@ -161,8 +159,7 @@ impl LocalData {
             CacheClass::Data => self.data_cache.clone(),
         };
         if let Some(origin) = &self.origin
-            && let Some(response) =
-                origin::respond(origin, target, head, headers, &cache, self.gzip_enabled).await
+            && let Some(response) = origin::respond(origin, target, head, headers, &cache).await
         {
             return response;
         }
@@ -186,12 +183,7 @@ impl LocalData {
         let modified = opened.metadata.modified().unwrap_or(UNIX_EPOCH);
         let fresh = is_fresh(headers, &etag, Some(modified));
         let compressible = compressible(path.media_type);
-        let gzip = !fresh
-            && !head
-            && self.gzip_enabled
-            && compressible
-            && length >= 1024
-            && accepts_gzip(headers);
+        let gzip = !fresh && !head && compressible && length >= 1024 && accepts_gzip(headers);
         let mut response = Response::builder()
             .status(if fresh {
                 StatusCode::NOT_MODIFIED

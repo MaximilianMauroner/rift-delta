@@ -40,7 +40,6 @@ fn parse_options() -> io::Result<Option<LocalDataOptions>> {
     if let Ok(value) = std::env::var("RANKING_DATA_MANIFEST_CACHE_CONTROL") {
         options.manifest_cache_control = value;
     }
-    options.gzip_enabled = std::env::var("RANKING_GZIP_ENABLED").as_deref() != Ok("false");
     options.commit = std::env::var("RAILWAY_GIT_COMMIT_SHA").ok();
     let mut arguments = std::env::args_os().skip(1);
     let mut root_seen = false;

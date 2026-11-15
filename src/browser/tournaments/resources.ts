@@ -11,11 +11,10 @@ import { loadTournamentForecastArtifacts, loadTournamentForecastLedger } from '.
 type FeedHealth = { checkedAt: string; complete: boolean; warnings: string[] }
 type FeedState = { status: 'loading' } | { status: 'ready'; feed: TournamentFeed; health: FeedHealth | null; healthPending: boolean; error?: string } | { status: 'error'; message: string }
 export const REFRESH_MS = 60_000
-export const FORECASTS_ENABLED = import.meta.env.VITE_TOURNAMENT_FORECASTS_ENABLED === '1'
 export type ForecastArtifacts = { basis: ForecastBasis | null; ledger: ForecastLedger; powerPreviews?: ConditionalPowerResultLedger | null; reason?: string; ledgerWarning?: string }
 
 
-export function useTournamentResources() {
+export function useTournamentResources(view: string | undefined) {
   const [state, setState] = useState<FeedState>(() => {
     const cached = readCachedTournamentFeed()
     const requestedEvent = hashParam('event')
@@ -38,7 +37,7 @@ export function useTournamentResources() {
   }, [])
 
   const refreshBasisIfDue = useCallback(() => {
-    if (!FORECASTS_ENABLED || basisLoading.current || Date.now() < basisNextRefreshAt.current) return
+    if (view === 'swiss' || basisLoading.current || Date.now() < basisNextRefreshAt.current) return
     basisLoading.current = true
     const generation = basisGeneration.current
     void loadTournamentForecastArtifacts().then((loaded) => {
@@ -50,7 +49,7 @@ export function useTournamentResources() {
       basisNextRefreshAt.current = Date.now() + (loaded.basis ? 10 * REFRESH_MS : REFRESH_MS)
       setForecastArtifacts((previous) => ({ ...previous, ...loaded }))
     })
-  }, [])
+  }, [view])
 
   const refresh = useCallback(async () => {
     const sequence = ++refreshSequence.current
@@ -73,7 +72,7 @@ export function useTournamentResources() {
       const health = isHealth(healthBody) ? healthBody : null
       if (sequence !== refreshSequence.current) return
       setState((previous) => previous.status === 'ready' && previous.feed === body ? { ...previous, health, healthPending: false } : previous)
-      if (FORECASTS_ENABLED) {
+      if (view !== 'swiss') {
         try {
           const ledger = await loadTournamentForecastLedger()
           if (sequence !== refreshSequence.current) return
@@ -88,7 +87,7 @@ export function useTournamentResources() {
       const message = error instanceof Error ? error.message : String(error)
       setState((previous) => previous.status === 'ready' ? { ...previous, healthPending: false, error: message } : { status: 'error', message })
     }
-  }, [refreshBasisIfDue])
+  }, [refreshBasisIfDue, view])
   useEffect(() => {
     const sequenceRef = refreshSequence
     const controllerRef = refreshController
