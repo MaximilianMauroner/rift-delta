@@ -68,9 +68,13 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
     <details className="players-method">
       <summary>Method</summary>
       <div className="grid gap-1.5 text-xs leading-relaxed text-muted-foreground">
-        {statsFamily
-          ? <p>Stats Power compares selected stats within each role. It does not measure overall player ability. Its ordering across roles is not validated as a measure of player ability or role importance. Newer games get more weight, with a 90-day half-life. Inactivity alone does not lower Stats Power. Only players with stat games in this scope get a rank. A player without stat games is unranked, because a league-anchor score is not an observation. Role Power stays in its own column and never sets a Stats Power rank.</p>
-          : <p>This scope has no Stats Power, so ranks use Role Power.</p>}
+        {statsFamily ? (
+          <>
+            <p>Stats Power compares selected stats within each role. It does not measure overall player ability. Its ordering across roles is not validated as a measure of player ability or role importance. Newer games get more weight, with a 90-day half-life. Inactivity alone does not lower Stats Power.</p>
+            <p>The selected stats for each role have equal base weight, with smaller samples reduced toward the league anchor. Support uses kill participation, wards placed per minute, and wards cleared per minute. Ward counts measure activity, not ward quality.</p>
+            <p>Only players with stat games in this scope get a rank. A player without stat games is unranked, because a league-anchor score is not an observation. Role Power stays in its own column and never sets a Stats Power rank.</p>
+          </>
+        ) : <p>This scope has no Stats Power, so ranks use Role Power.</p>}
         <p>Role Power includes individual stats, team results, opponent strength and event context. Because it includes team results, it does not measure individual skill alone.</p>
         {unrankedNote ? <p>{unrankedNote}</p> : null}
         <p>{teamAttribution} Games count games credited to that team where available, otherwise all rated games.</p>

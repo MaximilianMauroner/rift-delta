@@ -286,6 +286,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.getByText('Method', { exact: true }).click()
     await page.locator('.players-method').getByText(/It does not measure overall player ability/).waitFor()
     await page.locator('.players-method').getByText(/Its ordering across roles is not validated as a measure of player ability or role importance/).waitFor()
+    await page.locator('.players-method').getByText(/Support uses kill participation, wards placed per minute, and wards cleared per minute. Ward counts measure activity, not ward quality/).waitFor()
     await page.locator('.players-method').getByText(/Newer games get more weight, with a 90-day half-life/).waitFor()
     await page.getByText('Method', { exact: true }).click()
     await page.getByText('Scores are rounded. Ranks use full precision.', { exact: true }).waitFor()
