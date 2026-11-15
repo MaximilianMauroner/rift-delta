@@ -17,7 +17,7 @@ export function FormList({ form }: { form: PlayedGame[] }) {
           <span className="sc-gc"><b>{game.champion}</b><small>vs {game.against} {'·'} {shortDate(game.date)}</small></span>
           <div className="sc-axis" aria-hidden="true">
             <span data-side="neg">{game.lead !== null && game.lead < 0 ? <i style={{ width: `${width}%` }} /> : null}</span>
-            <span data-side="pos">{game.lead !== null && game.lead >= 0 ? <i style={{ width: `${width}%` }} /> : null}</span>
+            <span data-side="pos">{game.lead !== null && game.lead > 0 ? <i style={{ width: `${width}%` }} /> : null}</span>
           </div>
           <b className="sc-gv sc-num" data-tone={leadTone(game.lead)}>{game.lead === null ? <span className="sc-dim">no lane data</span> : signed(game.lead)}</b>
         </li>

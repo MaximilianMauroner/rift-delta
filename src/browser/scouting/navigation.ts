@@ -9,20 +9,22 @@ export function scoutingHref(player: Pick<PlayerReport, 'id' | 'role'>) {
 }
 
 /**
- * Resolve the role and player a hash query asks for, falling back to the most active player.
+ * Resolve the role and player a hash query asks for, or choose the most active player when no player is requested.
  * A role in the query wins over the player's own role, so the role picker can switch roles and reset the player.
  * A linked player under the game minimum stays selected, so the page can say why there is no report.
  */
 export function scoutingSelection(index: ScoutingIndex, query: URLSearchParams) {
-  const requested = index.players.find(player => reportKey(player) === query.get('player'))
+  const requestedKey = query.get('player')
+  const requested = index.players.find(player => reportKey(player) === requestedKey)
   const eligible = index.players.filter(player => player.games >= SCOUTING_RULES.minGames)
-  const roles = ROLES.filter(role => eligible.some(player => player.role === role))
+  const roles = ROLES.filter(role => requested?.role === role || eligible.some(player => player.role === role))
   const role: Role | undefined = roles.find(candidate => candidate === query.get('role')) ?? requested?.role ?? (roles.includes('Mid') ? 'Mid' : roles[0])
   const players = eligible.filter(player => player.role === role)
     .sort((a, b) => b.recent - a.recent || b.games - a.games || compareCodeUnits(reportKey(a), reportKey(b)))
-  const player = requested?.role === role ? requested : players[0]
+  const found = Boolean(requested) || !requestedKey
+  const player = !found ? undefined : requested?.role === role ? requested : players[0]
   if (player && !players.includes(player)) players.unshift(player)
-  return { roles, role, players, player, found: Boolean(requested) || !query.get('player') }
+  return { roles, role, players, player, found }
 }
 
 /** The hash that holds exactly the selection, so a reload or a shared link shows the same report. */

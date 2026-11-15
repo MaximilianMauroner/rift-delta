@@ -89,7 +89,7 @@
 .sc-lrow > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .sc-lrow[data-base] { color: var(--muted); font-weight: var(--w-body); }
 .sc-stack { display: flex; gap: 2px; height: 30px; }
-.sc-stack i { display: flex; align-items: center; justify-content: center; min-width: 2.4rem; overflow: hidden; color: var(--bg); font-style: normal; font-size: var(--t-2); }
+.sc-stack i { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; color: var(--bg); font-style: normal; font-size: var(--t-2); }
 .sc-stack i:first-child { border-radius: var(--r-2) 0 0 var(--r-2); }
 .sc-stack i:last-child { border-radius: 0 var(--r-2) var(--r-2) 0; }
 .sc-lrow[data-base] .sc-stack { height: 20px; opacity: 0.65; }
@@ -110,11 +110,14 @@ i[data-part="ahead"] { background: var(--up); }
 
 /* rank strips */
 .sc-ranks li { display: grid; grid-template-columns: minmax(0, 8.5rem) 3.4rem minmax(0, 1fr) 3.6rem; align-items: center; gap: 12px; padding: 11px 16px; }
+.sc-ranks[data-has-chart="false"] li { grid-template-columns: minmax(0, 1fr) auto 3.6rem; }
+.sc-ranks[data-has-chart="false"] .sc-track { display: none; }
 .sc-ranks li + li { border-top: 1px solid color-mix(in oklch, var(--line) 60%, transparent); }
 .sc-rl { color: var(--text); font-weight: var(--w-label); line-height: 1.25; }
 .sc-rv { text-align: right; color: var(--text-strong); font-family: var(--mono); font-weight: var(--w-figure); }
 .sc-track { position: relative; height: 22px; }
 .sc-track::before { content: ""; position: absolute; inset-inline: 0; top: 50%; border-top: 1px solid var(--line-strong); }
+.sc-track-empty::before { content: none; }
 .sc-band { position: absolute; top: 5px; height: 12px; border-radius: 3px; background: var(--surface-3); }
 .sc-med { position: absolute; top: 2px; bottom: 2px; border-left: 2px solid var(--line-strong); margin-left: -1px; }
 .sc-dot { position: absolute; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%; background: var(--series-4); box-shadow: 0 0 0 3px var(--surface); }
@@ -136,7 +139,7 @@ i[data-part="ahead"] { background: var(--up); }
 .sc-axis { display: grid; grid-template-columns: 1fr 1fr; height: 14px; }
 .sc-axis span { display: flex; align-items: center; }
 .sc-axis [data-side="neg"] { justify-content: flex-end; border-right: 2px solid var(--line-strong); }
-.sc-axis i { display: block; height: 12px; min-width: 3px; }
+.sc-axis i { display: block; height: 12px; }
 .sc-axis [data-side="neg"] i { background: var(--down); border-radius: 3px 0 0 3px; }
 .sc-axis [data-side="pos"] i { background: var(--up); border-radius: 0 3px 3px 0; }
 .sc-gv { text-align: right; font: var(--w-figure) var(--t-3) var(--mono); }
@@ -188,6 +191,7 @@ i[data-part="ahead"] { background: var(--up); }
   .sc-lrow { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .sc-duo { grid-template-columns: minmax(0, 1fr); }
   .sc-ranks li { grid-template-columns: minmax(0, 1fr) 3.4rem 3.6rem; grid-template-areas: "l v r" "t t t"; gap: 6px 10px; padding: 10px 12px; }
+  .sc-ranks[data-has-chart="false"] li { grid-template-areas: "l v r"; }
   .sc-rl { grid-area: l; }
   .sc-rv { grid-area: v; }
   .sc-rr { grid-area: r; }

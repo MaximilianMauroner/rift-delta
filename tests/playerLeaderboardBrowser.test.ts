@@ -6,9 +6,10 @@ import { createServer, type Plugin } from 'vite'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
 import { statsPowerPolicy } from '../src/domains/rankings/internal/policy/statsPowerPolicy.ts'
-import type { CompactPlayer, MatchRecord, PublicPlayerDirectory } from '../src/domains/rankings/types.ts'
+import type { CompactPlayer, MatchRecord, PublicPlayerDirectory, PublicRankingManifest } from '../src/domains/rankings/types.ts'
 
 const playerPath = '/data/entities/players.json'
+const manifestPath = '/data/ranking-summary.json'
 const playersAddress = '#players?scope=season%3A2026'
 
 function player(name: string, team: string, role: CompactPlayer['role'], rating: number, rank: number): CompactPlayer {
@@ -58,7 +59,7 @@ function fixtureBodies() {
   const legacy = player('Other-season only', 'Legacy Team', 'Top', 900, 1)
   const statsSeason = [
     withStatsPower(player('Delta', 'Legacy Team', 'Top', 400, 1), 101.2, 18),
-    withStatsPower(player('Echo', 'Legacy Team', 'Mid', 300, 2), 104.5, 22),
+    withStatsPower(player('Echo', 'Legacy Team', 'Mid', 300, 2), 104.54, 22),
     withStatsPower(player('Foxtrot', 'Legacy Team', 'Support', 200, 3), 104.5, 25),
   ]
   const directory: PublicPlayerDirectory = {
@@ -81,7 +82,7 @@ async function expectPlayers(page: Page, names: string[]) {
   assert.deepEqual(await page.getByRole('table', { name: 'Player rankings' }).locator('tbody tr td:nth-child(2)').allTextContents(), names)
 }
 
-test('Players supports navigation, exact seasons, score order, addressed filters and explicit artifact states', { timeout: 60_000 }, async () => {
+test('Players supports navigation, exact seasons, score order, addressed filters and explicit artifact states', { timeout: 90_000 }, async () => {
   const bodies = fixtureBodies()
   const requests: string[] = []
   let holdPlayers = true
@@ -155,6 +156,26 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.getByText(/Source synthetic-fixture/).waitFor()
     await page.getByText(/Role Power uses model .+ includes individual stats, results, opponent strength and event context/).waitFor()
     assert.equal(await page.getByText(/Stats Power stats-power-v3 scores/).count(), 0, 'Role Power rows must not claim Stats Power')
+    await page.getByRole('columnheader', { name: 'Season team', exact: true }).waitFor({ timeout: 2_000 })
+    assert.equal(await page.getByText(/Stats Power ranks role stats/).count(), 0, 'The shell must not claim Stats Power for a Role Power-only scope')
+    await page.getByText('Method', { exact: true }).click()
+    assert.equal(await page.locator('.players-method').getByText(/90-day half-life/).count(), 0, 'Role Power must not claim the Stats Power recency policy')
+    await page.locator('.players-method').getByText(/Season team is the most-played credited team in the selected season/).waitFor()
+    await page.locator('.players-method').getByText('This scope has no Stats Power, so ranks use Role Power.', { exact: true }).waitFor()
+    await page.locator('.players-method').getByText(/Because it includes team results, it does not measure individual skill alone/).waitFor()
+    await page.getByRole('columnheader', { name: 'Role Power', exact: true }).waitFor()
+    await page.getByText('Method', { exact: true }).click()
+    await page.getByText('Scores are rounded. Ranks use full precision.', { exact: true }).waitFor()
+    await page.getByText(/Seeded sample data. Player-stat freshness is unavailable/).waitFor()
+
+    await setHash('#players?scope=all')
+    await expectPlayers(page, ['Other-season only', 'Aster', 'Beacon', 'Cedar'])
+    await page.getByRole('columnheader', { name: 'Latest team', exact: true }).waitFor()
+    await page.getByText('Method', { exact: true }).click()
+    await page.locator('.players-method').getByText(/Latest team is the latest observed team across all seasons/).waitFor()
+    await page.getByText('Method', { exact: true }).click()
+    await setHash(playersAddress)
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
 
     await navigation.getByRole('link', { name: 'Rankings', exact: true }).click()
     await page.getByRole('heading', { name: 'Team Power Index', exact: true }).waitFor()
@@ -247,16 +268,75 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
     await page.getByRole('combobox', { name: 'Season', exact: true }).selectOption('2025')
     await expectPlayers(page, ['Echo', 'Foxtrot', 'Delta'])
-    assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '1', '3'], 'Equal Stats Power shares a rank')
-    assert.deepEqual(await rows.locator('td:nth-child(5)').allTextContents(), ['104.5', '104.5', '101.2'])
+    assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '2', '3'], 'Different full-precision scores have different ranks even when the displayed scores match')
+    assert.deepEqual(await rows.locator('td:nth-child(5) .player-score-figure').allTextContents(), ['104.5', '104.5', '101.2'])
+    assert.equal(await rows.first().getByText('Through Jul 1, 2025').count(), 1)
+    await page.setViewportSize({ width: 320, height: 900 })
+    assert.equal(await rows.first().evaluate((row) => {
+      const score = row.querySelector('.player-col-score')!.getBoundingClientRect()
+      const date = row.querySelector('.player-score-evidence')!.getBoundingClientRect()
+      return date.left >= score.left && date.right <= score.right
+    }), true, 'The evidence date fits inside the score cell on mobile')
+    await page.setViewportSize({ width: 1280, height: 900 })
     assert.deepEqual(await rows.locator('td:nth-child(6)').allTextContents(), ['22', '25', '18'], 'Stat games stay separate from games')
     assert.deepEqual(await rows.locator('td:nth-child(7)').allTextContents(), ['300', '200', '400'], 'Role Power stays visible')
     assert.deepEqual(await rows.locator('td:nth-child(8)').allTextContents(), ['12', '13', '11'], 'Credited-team games stay separate from raw stat games')
     await page.getByRole('columnheader', { name: 'Stats Power', exact: true }).waitFor()
     await page.getByText(/Stats Power stats-power-v3 scores lane leads/).waitFor()
+    await page.getByText('Method', { exact: true }).click()
+    await page.locator('.players-method').getByText(/It does not measure overall player ability/).waitFor()
+    await page.locator('.players-method').getByText(/Its ordering across roles is not validated as a measure of player ability or role importance/).waitFor()
+    await page.locator('.players-method').getByText(/Support uses kill participation, wards placed per minute, and wards cleared per minute. Ward counts measure activity, not ward quality/).waitFor()
+    await page.locator('.players-method').getByText(/Newer games get more weight, with a 90-day half-life/).waitFor()
+    await page.getByText('Method', { exact: true }).click()
+    await page.getByText('Scores are rounded. Ranks use full precision.', { exact: true }).waitFor()
+    const statsDirectory = JSON.parse(bodies.get(playerPath)!) as PublicPlayerDirectory
+    statsDirectory.scopedPlayers!['2025__All__All'][1].statsPower!.score = 104.5
+    bodies.set(playerPath, JSON.stringify(statsDirectory))
+    await page.reload()
+    await expectPlayers(page, ['Echo', 'Foxtrot', 'Delta'])
+    assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '1', '3'], 'Equal full-precision Stats Power scores share a rank')
     await page.getByRole('combobox', { name: 'Season', exact: true }).selectOption('2024')
     await page.getByRole('heading', { name: 'No ranked players in this scope', exact: true }).waitFor()
     assert.equal(await rows.count(), 0, 'An empty exact season must not borrow all-season players')
+
+    const priorOnlyRow = withStatsPower(player('Hotel', 'Legacy Team', 'Top', 800, 4), 110, 0)
+    priorOnlyRow.statsPower!.leagueAnchor = 110
+    statsDirectory.scopedPlayers!['2025__All__All'].push(priorOnlyRow, { ...player('Golf', 'Legacy Team', 'Mid', 999, 5), teamGames: 9 })
+    bodies.set(playerPath, JSON.stringify(statsDirectory))
+    await setHash('#players?scope=season%3A2025')
+    await page.reload()
+    await expectPlayers(page, ['Echo', 'Foxtrot', 'Delta', 'Hotel', 'Golf'])
+    assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '1', '3', '—Unranked', '—Unranked'], 'Only observed Stats Power gets a rank')
+    assert.deepEqual(await rows.locator('td:nth-child(5) .player-score-figure').allTextContents(), ['104.5', '104.5', '101.2', '—', '—'], 'Unavailable scores show a dash, not Role Power or the league anchor')
+    assert.deepEqual(await rows.locator('.player-score-unranked').allTextContents(), ['Unranked. No stat games.', 'Unranked. No Stats Power.'])
+    assert.deepEqual(await rows.locator('.player-score-evidence').allTextContents(), ['Through Jul 1, 2025', 'Through Jul 1, 2025', 'Through Jul 1, 2025'], 'Only ranked scores carry an evidence date')
+    assert.equal(await rows.locator('.player-score-position i').count(), 3, 'Unranked rows get no score-range marker')
+    assert.deepEqual(await rows.locator('.player-score-position').evaluateAll((tracks) => tracks.map((track) => getComputedStyle(track).visibility)), ['visible', 'visible', 'visible', 'hidden', 'hidden'], 'Unranked rows show no score-range track')
+    assert.deepEqual(await rows.locator('td:nth-child(6)').allTextContents(), ['22', '25', '18', '0', '—'])
+    assert.deepEqual(await rows.locator('td:nth-child(7)').allTextContents(), ['300', '200', '400', '800', '999'], 'Role Power stays visible in its own column')
+    await page.getByText('3 ranked by Stats Power. 2 unranked without a usable Stats Power score.', { exact: true }).waitFor()
+    assert.equal(await page.locator('.player-score-key').innerText(), 'Scope range 101.2 to 104.5', 'The score range uses ranked Stats Power only')
+    await page.getByText('Method', { exact: true }).click()
+    await page.locator('.players-method').getByText(/A player without stat games is unranked, because a league-anchor score is not an observation/).waitFor()
+    await page.getByText('Method', { exact: true }).click()
+    await role.selectOption('Mid')
+    await expectPlayers(page, ['Echo', 'Golf'])
+    assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '—Unranked'], 'Filters keep scope ranks and unranked state')
+    await role.selectOption('All')
+    await expectPlayers(page, ['Echo', 'Foxtrot', 'Delta', 'Hotel', 'Golf'])
+    for (const width of [320, 375]) {
+      await page.setViewportSize({ width, height: 900 })
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `The mixed scope must fit at ${width}px`)
+      assert.deepEqual(await rows.evaluateAll((elements) => elements.map((row) => {
+        const score = row.querySelector('.player-col-score')!.getBoundingClientRect()
+        return [...row.querySelectorAll('.player-col-score > span:not([aria-hidden])')].every((part) => {
+          const box = part.getBoundingClientRect()
+          return box.left >= score.left - 0.5 && box.right <= score.right + 0.5 && box.bottom <= score.bottom + 0.5
+        })
+      })), [true, true, true, true, true], `Score text, dates and unranked notes fit inside the score cell at ${width}px`)
+    }
+    await page.setViewportSize({ width: 1280, height: 900 })
 
     await page.goto('about:blank')
     await page.goto(`${base}${playersAddress}&player=Fixture&role=Mid`)
@@ -271,6 +351,11 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     }
     await page.setViewportSize({ width: 320, height: 900 })
     const table = page.getByRole('table', { name: 'Player rankings' })
+    assert.equal(await table.evaluate((element) => {
+      const viewport = element.parentElement!.getBoundingClientRect()
+      const score = element.querySelector('.player-col-score')!.getBoundingClientRect()
+      return score.left >= viewport.left && score.right <= viewport.right
+    }), true, 'The primary score is visible before scrolling')
     await table.focus()
     await table.press('ArrowRight')
     await page.waitForFunction(() => (document.querySelector('table[aria-label="Player rankings"]')?.parentElement?.scrollLeft ?? 0) > 0)
@@ -292,6 +377,50 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.reload()
     await error.waitFor()
     assert.equal(await rows.count(), 0)
+
+    playerStatus = 200
+    const manifest = JSON.parse(bodies.get(manifestPath)!) as PublicRankingManifest
+    manifest.dataMode = 'scheduled-public-data'
+    manifest.coverage.seededSample = false
+    manifest.playerData.status = 'sourced-player-stats'
+    manifest.generatedAt = '2026-11-15T12:00:00.000Z'
+    manifest.coverage.coverageEnd = '2026-11-14'
+    manifest.sources = [{
+      name: "Oracle's Elixir CSV: synthetic-browser-fixture.csv", kind: 'game-stats',
+      description: 'Synthetic source freshness fixture', status: 'active', coverageEnd: '2026-11-13',
+      refreshReceipt: { status: 'failed', attemptedAt: '2026-11-15T10:00:00.000Z', downloadedCount: 0, reusedCount: 1, failedCount: 1 },
+    }, {
+      name: 'Leaguepedia Cargo: synthetic-browser-fixture', kind: 'match-data',
+      description: 'Synthetic later match coverage', status: 'active', coverageEnd: '2026-11-14',
+    }]
+    for (const updateStatus of ['failed', 'partial']) {
+      manifest.sources[0].refreshReceipt!.status = updateStatus
+      bodies.set(manifestPath, JSON.stringify(manifest))
+      await page.reload()
+      await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+      const freshness = page.getByRole('status', { name: 'Player-stat freshness', exact: true })
+      assert.match(await freshness.innerText(), /Oracle's Elixir source coverage through Nov 13, 2026/)
+      assert.match(await freshness.innerText(), updateStatus === 'failed' ? /Latest Oracle's Elixir update failed/ : /Latest Oracle's Elixir update was partial/)
+      assert.doesNotMatch(await freshness.innerText(), /Nov 14|Nov 15|quota/i, 'Player-stat freshness must use source coverage and public receipt status')
+    }
+    manifest.dataMode = 'seeded-sample'
+    bodies.set(manifestPath, JSON.stringify(manifest))
+    await page.reload()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    const seededFreshness = page.getByRole('status', { name: 'Player-stat freshness', exact: true })
+    assert.match(await seededFreshness.innerText(), /Seeded sample data. Player-stat freshness is unavailable/)
+    assert.doesNotMatch(await seededFreshness.innerText(), /Nov 13|through/)
+    manifest.dataMode = 'scheduled-public-data'
+    manifest.sources[0].kind = 'seed'
+    bodies.set(manifestPath, JSON.stringify(manifest))
+    await page.reload()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    await page.getByRole('status', { name: 'Player-stat freshness', exact: true }).getByText(/Oracle's Elixir player-stat coverage is unavailable/).waitFor()
+    manifest.sources = []
+    bodies.set(manifestPath, JSON.stringify(manifest))
+    await page.reload()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    await page.getByRole('status', { name: 'Player-stat freshness', exact: true }).getByText(/Oracle's Elixir player-stat coverage is unavailable/).waitFor()
   } finally {
     pendingPlayers.splice(0).forEach((respond) => respond())
     await browser?.close()

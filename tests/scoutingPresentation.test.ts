@@ -27,6 +27,8 @@ test('the reading is one sentence of counts from the report, with no verdict wor
   const idle: PlayerReport = { ...focal, pool: focal.pool.map(row => ({ ...row, recent: { games: 0, wins: 0 } })), recent: { games: 0, champions: 0 } }
   assert.equal(readingSentence(idle, artifact.roles),
     'No games in the last 90 days. Won 60% of 40 games on record, and led by 500 or more at 15 minutes in 33% of games with lane data (mid average 24%).')
+  const hidden = { ...idle, recent: { games: 1, champions: 1 } }
+  assert.match(readingSentence(hidden, artifact.roles), /^Played 1 game in the last 90 days\./)
   const noLane = readingSentence({ ...focal, lane: { games: 0, behind: 0, even: 0, ahead: 0 } }, artifact.roles)
   assert.equal(noLane, 'Played Riser, Steady and Fresh most in the last 90 days, won 60% of 40 games overall.')
   for (const sentence of [readingSentence(focal, artifact.roles), noLane]) assert.doesNotMatch(sentence, /above|below|better|worse|will/i)

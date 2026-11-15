@@ -77,9 +77,9 @@ export function PlayerRankingCard({
           <div>
             <h3>
               Player Rankings
-              <CountBadge>Source gap</CountBadge>
+              <CountBadge>No ranked players</CountBadge>
             </h3>
-            <p>No player data in {playerScopeLabel}.</p>
+            <p>No ranked player data in {playerScopeLabel}.</p>
           </div>
         </div>
       </aside>
@@ -91,11 +91,13 @@ export function PlayerRankingCard({
       <div className={playerRankCardHeadClassName}>
         <div>
           <h3>Player Rankings</h3>
-          <p>
-            {currentLineup
-              ? `Last lineup ${formatDate(currentLineup.observedAt)}${currentLineup.observedEvent ? ` at ${currentLineup.observedEvent}` : ''}`
-              : `Career rows in ${playerScopeLabel}`}
-          </p>
+          <p>Ranked career rows in {playerScopeLabel}.</p>
+          {currentLineup ? (
+            <small>
+              Roster evidence from {formatDate(currentLineup.observedAt)}{currentLineup.observedEvent ? ` at ${currentLineup.observedEvent}` : ''}.
+              {' '}Observed players can have too few games to qualify for rankings.
+            </small>
+          ) : null}
           {currentLineup?.missingRoles.length ? <small>Missing roles: {currentLineup.missingRoles.join(', ')}</small> : null}
         </div>
         <CountBadge>{players.length} players</CountBadge>

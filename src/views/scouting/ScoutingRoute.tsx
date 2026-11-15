@@ -55,7 +55,7 @@ function Report({ index, query }: { index: ScoutingIndex; query: URLSearchParams
   const change = (params: Record<string, string>) => changeScoutingQuery(params, index)
 
   useEffect(() => {
-    if (readModeFromHash() !== 'scouting') return
+    if (readModeFromHash() !== 'scouting' || !selection.found) return
     const canonical = `#scouting?${canonicalScoutingQuery(selection).toString()}`
     if (window.location.hash !== canonical) writeNavigationHash(canonical, 'replace')
   }, [selection])
@@ -67,14 +67,15 @@ function Report({ index, query }: { index: ScoutingIndex; query: URLSearchParams
           {roles.map(option => <option key={option}>{option}</option>)}
         </Select></label>
       <label className="sc-field sc-field-grow"><span>Player</span>
-        <Select aria-label="Player" value={player ? reportKey(player) : ''} disabled={!player} onChange={event => change({ player: event.target.value })}>
+        <Select aria-label="Player" value={player ? reportKey(player) : ''} disabled={!players.length} onChange={event => change({ player: event.target.value })}>
+          {!player ? <option value="" disabled>Choose a player</option> : null}
           {players.map(option => <option key={reportKey(option)} value={reportKey(option)}>{option.name} ({option.team}, {gameCount(option.games)})</option>)}
         </Select></label>
-      <p className="sc-through">{index.through ? <>Games through <b>{fullDate(index.through)}</b></> : 'No counted games'}</p>
+      <p className="sc-through">{index.through ? <>Games through <b>{fullDate(index.through)}</b>. Recent stats cover the 90 days ending then.</> : 'No counted games'}</p>
     </div>
     <div className="sc-body">
-      {!found && player ? <p className="sc-alert" role="status"><b>No report matches this link.</b> Showing {player.name} instead.</p> : null}
-      {player && role && player.games < SCOUTING_RULES.minGames ? <Panel><DataState icon={<Users size={26} aria-hidden="true" />} title={`Too few games for a report on ${player.name}`}>
+      {!found ? <Panel><DataState icon={<Users size={26} aria-hidden="true" />} title="No report matches this link.">Choose another player or role.</DataState></Panel>
+        : player && role && player.games < SCOUTING_RULES.minGames ? <Panel><DataState icon={<Users size={26} aria-hidden="true" />} title={`Too few games for a report on ${player.name}`}>
         {player.name} has {gameCount(player.games)} in the counted data. A report needs {SCOUTING_RULES.minGames}, because fewer games mostly show chance. Choose another player.
       </DataState></Panel>
         : player && role ? <PlayerReportView index={index} player={player} role={role} />
@@ -89,7 +90,6 @@ export function ScoutingRoute() {
   const { state, retry } = useScoutingIndex()
   const [query, setQuery] = useState(currentHashQuery)
   useEffect(() => {
-    // Not popstate. It fires before hashchange, so the canonical replace would run between them and the second read would hide the not-found notice.
     const restore = () => {
       if (readModeFromHash() === 'scouting') setQuery(currentHashQuery())
     }

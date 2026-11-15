@@ -9,9 +9,9 @@ function LaneBar({ label, split, base }: { label: string; split: LaneSplit; base
     <span>{label}</span>
     {shares ? <div className="sc-stack" role="img"
       aria-label={`${label}: behind by 500 or more ${percent(shares.behind)}, within 500 ${percent(shares.even)}, ahead by 500 or more ${percent(shares.ahead)}, over ${gameCount(split.games)}`}>
-      <i data-part="behind" style={{ flex: split.behind }}><b className="sc-num">{percent(shares.behind)}</b></i>
-      <i data-part="even" style={{ flex: split.even }}><b className="sc-num">{percent(shares.even)}</b></i>
-      <i data-part="ahead" style={{ flex: split.ahead }}><b className="sc-num">{percent(shares.ahead)}</b></i>
+      {split.behind > 0 ? <i data-part="behind" style={{ flex: split.behind }}>{shares.behind >= 0.12 ? <b className="sc-num">{percent(shares.behind)}</b> : null}</i> : null}
+      {split.even > 0 ? <i data-part="even" style={{ flex: split.even }}>{shares.even >= 0.12 ? <b className="sc-num">{percent(shares.even)}</b> : null}</i> : null}
+      {split.ahead > 0 ? <i data-part="ahead" style={{ flex: split.ahead }}>{shares.ahead >= 0.12 ? <b className="sc-num">{percent(shares.ahead)}</b> : null}</i> : null}
     </div> : <span className="sc-dim">No lane data</span>}
   </div>
 }

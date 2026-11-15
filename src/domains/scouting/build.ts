@@ -30,7 +30,7 @@ const MEASURES: Record<MetricKey, (stats: PlayerGameStats) => number | undefined
   csm: stats => nonnegative(stats.csPerMinute) ? round(stats.csPerMinute) : undefined,
   dpm: stats => nonnegative(stats.damagePerMinute) ? round(stats.damagePerMinute) : undefined,
   kp: stats => nonnegative(stats.killParticipation) && stats.killParticipation <= 1 ? round(stats.killParticipation) : undefined,
-  deaths: stats => Number.isSafeInteger(stats.deaths) && stats.deaths >= 0 ? stats.deaths : undefined,
+  deaths: stats => nonnegative(stats.deaths) && Number.isSafeInteger(stats.deaths) ? stats.deaths : undefined,
 }
 
 function complete(roster: MatchRosterSnapshot | undefined): roster is MatchRosterSnapshot {

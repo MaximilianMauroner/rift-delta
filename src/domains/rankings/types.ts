@@ -146,9 +146,9 @@ export type PlayerGameStats = {
   side: Side
   champion?: string
   won: boolean
-  kills: number
-  deaths: number
-  assists: number
+  kills?: number
+  deaths?: number
+  assists?: number
   totalGold?: number
   earnedGold?: number
   damageShare?: number

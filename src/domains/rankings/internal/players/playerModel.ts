@@ -1135,7 +1135,7 @@ function noWinStatScoreFor(player: RosterPlayerAppearance) {
   const parts = [
     diagnosticScorePart(sourcedPerformanceWeights.damageShare, stats.damageShare, baseline.damageShare, 0.12),
     diagnosticScorePart(sourcedPerformanceWeights.earnedGoldShare, stats.earnedGoldShare, baseline.earnedGoldShare, 0.1),
-    { weight: sourcedPerformanceWeights.kda, score: statScore(kdaFor(stats), baseline.kda, 4) },
+    diagnosticScorePart(sourcedPerformanceWeights.kda, kdaFor(stats), baseline.kda, 4),
     diagnosticScorePart(sourcedPerformanceWeights.vision, stats.vspm, baseline.vspm, 1.8),
   ].filter((part): part is { weight: number; score: number } => Boolean(part))
   const totalWeight = parts.reduce((total, part) => total + part.weight, 0)
@@ -1244,6 +1244,7 @@ function rawPlayerPerformance(player: RosterPlayerAppearance) {
 }
 
 function kdaFor(stats: PlayerGameStats) {
+  if (stats.kills === undefined || stats.deaths === undefined || stats.assists === undefined) return undefined
   return (stats.kills + stats.assists) / Math.max(1, stats.deaths)
 }
 

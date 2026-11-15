@@ -118,7 +118,7 @@ export function readingSentence(player: PlayerReport, roles: Record<Role, RoleBa
     : ''
   return top.length
     ? `Played ${joinNames(top)} most in the last 90 days, won ${results} overall${laneClause}.`
-    : `No games in the last 90 days. Won ${results} on record${laneClause}.`
+    : `${player.recent.games ? `Played ${gameCount(player.recent.games)}` : 'No games'} in the last 90 days. Won ${results} on record${laneClause}.`
 }
 
 export function poolRowLabel(row: ChampionRow) {

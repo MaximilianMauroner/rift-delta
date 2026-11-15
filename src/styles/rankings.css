@@ -638,6 +638,7 @@ table.ranking-table.board-grid tbody td {
 .players-table td { padding-block: 10px; }
 .player-score-figure { display: inline-grid; grid-template-columns: auto 2ch; text-align: right; font-variant-numeric: tabular-nums; }
 .player-score-figure > span:last-child { text-align: left; }
+.player-score-evidence { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .player-score-key, .player-score-position { display: none; }
 @media (min-width: 1000px) {
   .player-score-key { display: inline; color: var(--text); }

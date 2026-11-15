@@ -437,7 +437,7 @@ export function RankingRoute() {
           <RouteErrorBoundary key={mode}>
             <Suspense fallback={<LoadingState presentation="page" layout={PAGE_LAYOUTS[mode]} label={`Loading ${MODE_TITLES[mode].title}`} />}>
               {mode === 'players' ? (
-                <PlayersView state={playersState} filter={filter} scopeLabel={scopeLabel(effectiveScope)} hashQuery={playersHashQuery} searchRef={searchRef} />
+                <PlayersView state={playersState} manifest={loadedData} filter={filter} scopeLabel={scopeLabel(effectiveScope)} hashQuery={playersHashQuery} searchRef={searchRef} />
               ) : null}
               {mode === 'regions' ? (
                 <RegionsView
