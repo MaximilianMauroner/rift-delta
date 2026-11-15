@@ -7,7 +7,7 @@ import { formatMeasure, measureLabel, middleHalf, ordinal, peerNoun, peerRange, 
 
 function Strip({ measure }: { measure: Measure }) {
   const { metric, band, value } = measure
-  if (!band || value === null) return <div className="sc-track" />
+  if (!band || value === null) return <span className="sc-track sc-track-empty" aria-hidden="true" />
   const half = middleHalf(metric, band)
   return <div className="sc-track" role="img" aria-label={measureLabel(measure)}>
     <i className="sc-band" style={{ left: `${half.left}%`, width: `${half.width}%` }} />
@@ -19,19 +19,20 @@ function Strip({ measure }: { measure: Measure }) {
 export function RankStrips({ role, measures }: { role: Role; measures: Measure[] }) {
   const peers = peerRange(measures)
   const unranked = measures.some(measure => measure.rank === null)
+  const hasChart = measures.some(measure => measure.band && measure.value !== null)
   return <Panel aria-labelledby="sc-rank-title">
     <PanelHeader title={`Against other ${peerNoun(role)}`} titleId="sc-rank-title" />
-    <ul className="sc-ranks">
+    <ul className="sc-ranks" data-has-chart={hasChart}>
       {measures.map(measure => <li key={measure.metric.key}>
         <span className="sc-rl">{measure.metric.label}</span>
         <b className="sc-rv sc-num">{formatMeasure(measure.metric, measure.value)}</b>
         <Strip measure={measure} />
-        <span className="sc-rr">{measure.rank === null ? <span className="sc-dim" aria-label="Not ranked">{'–'}</span>
+        <span className="sc-rr">{measure.rank === null ? <span className="sc-unranked">Not ranked</span>
           : measure.rank <= 3 ? <Badge variant="rank">{ordinal(measure.rank)}</Badge> : <span className="sc-rk sc-num">{ordinal(measure.rank)}</span>}</span>
       </li>)}
     </ul>
     <PanelFooter className="sc-pfoot">
-      <span><i className="sc-key-band" />Middle half</span><span><i className="sc-key-med" />Median</span><span>Right is stronger</span>
+      {hasChart ? <><span><i className="sc-key-band" />Middle half</span><span><i className="sc-key-med" />Median</span><span>Right is stronger</span></> : null}
       {peers ? <p>Ranked among {peers} {peerNoun(role)} with enough games.</p> : null}
       {unranked ? <p>Ranks need {SCOUTING_RULES.minFieldGames} games in the role and {SCOUTING_RULES.minMetricGames} with the measure.</p> : null}
     </PanelFooter>

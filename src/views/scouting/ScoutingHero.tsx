@@ -1,26 +1,18 @@
-import type { CSSProperties } from 'react'
 import { TeamMark } from '../../components/TeamMark'
 import { Badge } from '../../components/ui/badge'
 import { Panel } from '../../components/ui/panel'
 import { SCOUTING_RULES, STALE_DAYS, staleDays, type Measure, type PlayerReport, type RoleBaseline } from '../../domains/scouting/report'
 import type { Role } from '../../domains/rankings/types'
-import { gameCount, leadTone, ordinal, percent, poolSegments, readingSentence, shortDate, signed, winLoss } from './presentation'
+import { gameCount, leadTone, ordinal, percent, readingSentence, recentChampionCounts, shortDate, signed, winLoss } from './presentation'
 
-function PoolStrip({ player }: { player: PlayerReport }) {
-  const segments = poolSegments(player)
-  if (!segments.length) return null
-  const summary = segments.map(segment => `${segment.name} ${segment.games}`).join(', ')
+function RecentChampions({ player }: { player: PlayerReport }) {
+  const champions = recentChampionCounts(player)
+  if (!champions.length) return null
   return <div className="sc-poolblock">
-    <div className="sc-pooltop"><span>Last {SCOUTING_RULES.windowDays} days, by champion</span><span className="sc-num">{gameCount(player.recent.games)}</span></div>
-    <div role="img" aria-label={`Games by champion in the last ${SCOUTING_RULES.windowDays} days: ${summary}`}>
-      <ul className="sc-strip" aria-hidden="true">
-        {segments.map(segment => <li key={segment.name} data-size={segment.size} data-other={segment.heat === 0 || undefined}
-          style={{ flex: segment.games, '--sc-heat': `var(--heat-${segment.heat || 1})` } as CSSProperties}
-          title={`${segment.name}: ${segment.games} of ${gameCount(player.recent.games)}`}>
-          <b>{segment.name}</b><span className="sc-num">{segment.games}</span>
-        </li>)}
-      </ul>
-    </div>
+    <div className="sc-pooltop"><span>Recent champions</span><span>{gameCount(player.recent.games)} in the last {SCOUTING_RULES.windowDays} days</span></div>
+    <ul className="sc-picks" aria-label="Recent champions">
+      {champions.map(champion => <li key={champion.name} aria-label={`${champion.name}: ${gameCount(champion.games)}`}><span>{champion.name}</span><b className="sc-num">{champion.games}</b></li>)}
+    </ul>
   </div>
 }
 
@@ -39,7 +31,7 @@ export function ScoutingHero({ player, roles, through, measures }: { player: Pla
       <p className="sc-reading">{readingSentence(player, roles)}</p>
     </div>
     {stale > STALE_DAYS ? <p className="sc-alert" role="status"><b>Last game {shortDate(player.last)}.</b> {stale} days before the newest record, so recent numbers may be old.</p> : null}
-    <PoolStrip player={player} />
+    <RecentChampions player={player} />
     <dl className="sc-ribbon">
       <div><dt>Win rate</dt><dd className="sc-fig">{percent(player.wins / player.games)}</dd><small>{gameCount(player.games)}</small></div>
       <div><dt>Lane lead at 15</dt>

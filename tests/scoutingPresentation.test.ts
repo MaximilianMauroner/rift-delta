@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { METRICS, type PlayerReport } from '../src/domains/scouting/report.ts'
 import {
-  formatMeasure, joinNames, leadTone, ordinal, poolRowLabel, poolSegments, readingSentence, shortDate, signed, trackPosition, verdictBadge, middleHalf,
+  formatMeasure, joinNames, leadTone, ordinal, poolRowLabel, readingSentence, recentChampionCounts, shortDate, signed, trackPosition, verdictBadge, middleHalf,
 } from '../src/views/scouting/presentation.ts'
 import { reportOf, scoutingOf } from './scoutingFixtures.ts'
 
@@ -32,11 +32,11 @@ test('the reading is one sentence of counts from the report, with no verdict wor
   for (const sentence of [readingSentence(focal, artifact.roles), noLane]) assert.doesNotMatch(sentence, /above|below|better|worse|will/i)
 })
 
-test('the pool strip heat follows games against the largest champion and keeps the rest as Others', () => {
-  assert.deepEqual(poolSegments(focal).map(segment => [segment.name, segment.games, segment.heat]),
-    [['Riser', 4, 6], ['Steady', 3, 5], ['Fresh', 2, 3], ['Fader', 1, 2]])
-  const hidden = poolSegments({ recent: { games: 10, champions: 4 }, pool: [{ ...focal.pool[0]!, recent: { games: 6, wins: 3 } }] })
-  assert.deepEqual(hidden.map(segment => [segment.name, segment.games, segment.heat, segment.size]), [[focal.pool[0]!.champion, 6, 6, 'big'], ['Others', 4, 0, 'big']])
+test('recent champion counts include unlisted games as Others', () => {
+  assert.deepEqual(recentChampionCounts(focal).map(champion => [champion.name, champion.games]),
+    [['Riser', 4], ['Steady', 3], ['Fresh', 2], ['Fader', 1]])
+  const hidden = recentChampionCounts({ recent: { games: 10, champions: 4 }, pool: [{ ...focal.pool[0]!, recent: { games: 6, wins: 3 } }] })
+  assert.deepEqual(hidden.map(champion => [champion.name, champion.games]), [[focal.pool[0]!.champion, 6], ['Others', 4]])
 })
 
 test('comparison wording exists only for the four verdicts', () => {
