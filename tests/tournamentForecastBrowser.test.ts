@@ -22,7 +22,7 @@ function series(startTime: string, bestOf = 5): TournamentSeries {
     teams: [team('fixture-t1', 'T1'), team('fixture-gen', 'Gen.G')], vodUrls: [] }
 }
 
-test('synthetic tournament card keeps published pre-match odds through live and finished states', { timeout: 60_000 }, async (context) => {
+test('tournament forecasts are available by default and keep published odds through live and finished states', { timeout: 60_000 }, async (context) => {
   const manifestJson = await readFile(join(referencePublicDataDir, 'ranking-summary.json'), 'utf8')
   const manifest = parsePublicRankingManifest(JSON.parse(manifestJson))
   const shardUrl = manifest.snapshotIndex[manifest.defaultSnapshotKey]?.url
@@ -67,9 +67,6 @@ test('synthetic tournament card keeps published pre-match odds through live and 
   } }
   const server = await createServer({
     publicDir: referencePublicDir, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixturePlugin],
-    define: {
-      'import.meta.env.VITE_TOURNAMENT_FORECASTS_ENABLED': JSON.stringify('1'),
-    },
   })
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined = undefined
   context.after(async () => {

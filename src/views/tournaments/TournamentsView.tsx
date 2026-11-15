@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { currentHashQuery, hashParam, writeNavigationHash } from '../../browser/navigation'
 import { eventAddress, resolveEventLink } from '../../browser/tournaments/eventAddress'
-import { FORECASTS_ENABLED, REFRESH_MS, useTournamentResources, type ForecastArtifacts } from '../../browser/tournaments/resources'
+import { REFRESH_MS, useTournamentResources, type ForecastArtifacts } from '../../browser/tournaments/resources'
 import { worldsFeedEventKey } from '../../browser/tournaments/worldsArtifacts'
 import { TeamMark } from '../../components/TeamMark'
 import { Alert } from '../../components/ui/alert'
@@ -31,9 +31,9 @@ function replaceLegacyEventAlias(requested: string, address: string | undefined)
 }
 
 export function TournamentsView() {
-  const { state, now, forecastArtifacts, refresh } = useTournamentResources()
   const [requestedEvent, setRequestedEvent] = useState(() => hashParam('event') ?? '')
   const [view, setView] = useState(() => hashParam('view'))
+  const { state, now, forecastArtifacts, refresh } = useTournamentResources(view)
   const events = state.status === 'ready' ? state.feed.events : EMPTY_EVENTS
   useEffect(() => {
     const onHashChange = () => {
@@ -98,7 +98,7 @@ export function TournamentsView() {
         <Button variant="outline" size="sm" className="ml-2" onClick={() => void refresh()}>Retry</Button>
       </Alert> : null}
       {state.feed.dataMode === 'synthetic-fixture' ? <Alert variant="warning" role="status">Test fixture data. Not official LoL Esports results.</Alert> : null}
-      {FORECASTS_ENABLED && forecastArtifacts.ledgerWarning ? <Alert variant="warning" role="status">{forecastArtifacts.ledgerWarning}</Alert> : null}
+      {forecastArtifacts.ledgerWarning ? <Alert variant="warning" role="status">{forecastArtifacts.ledgerWarning}</Alert> : null}
       {!state.feed.coverage.complete || state.feed.coverage.warnings.length ? (
         <Alert variant="warning" role="status">Coverage {state.feed.coverage.complete ? 'has warnings' : 'is incomplete'} for {state.feed.coverage.start.slice(0, 10)} to {state.feed.coverage.end.slice(0, 10)}. {state.feed.coverage.warnings.join(' ')}</Alert>
       ) : null}
@@ -119,15 +119,14 @@ export function TournamentsView() {
       ) : (
         <>
           <h2 className="text-lg font-semibold text-[var(--text-strong)]">{selected.label}</h2>
-          {!FORECASTS_ENABLED ? <p className="text-sm text-muted-foreground">Match forecasts are not enabled for this schedule.</p> : null}
-          {FORECASTS_ENABLED && selected.competition === 'worlds' ? <WorldsTournamentPanel
+          {selected.competition === 'worlds' ? <WorldsTournamentPanel
             key={JSON.stringify([state.feed.source, worldsFeedEventKey(selected), forecastArtifacts.basis?.snapshotId, forecastArtifacts.basis?.model.version,
               forecastArtifacts.basis?.model.configHash, forecastArtifacts.basis?.ratingDataAsOf, forecastArtifacts.basis?.ratingPublishedAt, forecastArtifacts.basis?.identityMap.revision])}
             event={selected} forecast={{ seriesSource: state.feed.source, basis: forecastArtifacts.basis }} fixtureFeed={state.feed.dataMode === 'synthetic-fixture'} /> : null}
           {SECTION_ORDER.some((group) => grouped[group].length > 0)
             ? SECTION_ORDER.filter((group) => grouped[group].length > 0).map((group) => <section key={group} aria-label={group} className="grid gap-2">
               <h3 className="flex items-baseline gap-2 text-base font-semibold text-[var(--text-strong)]">{SECTION_TITLES[group]}{' '}<span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">{grouped[group].length}</span></h3>
-              <SeriesList series={grouped[group]} timezone={timezone} now={now} seriesSource={state.feed.source} forecasts={FORECASTS_ENABLED ? forecastArtifacts : null} />
+              <SeriesList series={grouped[group]} timezone={timezone} now={now} seriesSource={state.feed.source} forecasts={forecastArtifacts} />
             </section>)
             : <p className="text-sm text-muted-foreground">No series in the schedule window.</p>}
         </>
@@ -153,8 +152,7 @@ function formatFeedAge(timestamp: string, now: number) {
   return `${days} ${days === 1 ? 'day' : 'days'} ago`
 }
 
-/** Series grouped under one heading per local day, in feed order. */
-function SeriesList({ series, timezone, now, seriesSource, forecasts }: { series: TournamentSeries[]; timezone: string; now: number; seriesSource: TournamentFeed['source']; forecasts: ForecastArtifacts | null }) {
+function SeriesList({ series, timezone, now, seriesSource, forecasts }: { series: TournamentSeries[]; timezone: string; now: number; seriesSource: TournamentFeed['source']; forecasts: ForecastArtifacts }) {
   const days: Array<{ label: string; series: TournamentSeries[] }> = []
   for (const entry of series) {
     const label = entry.startTime ? formatDay(entry.startTime, timezone) : 'Date not supplied'
@@ -172,13 +170,12 @@ function SeriesList({ series, timezone, now, seriesSource, forecasts }: { series
   </div>
 }
 
-function SeriesRow({ series, timezone, now, seriesSource, forecasts }: { series: TournamentSeries; timezone: string; now: number; seriesSource: TournamentFeed['source']; forecasts: ForecastArtifacts | null }) {
+function SeriesRow({ series, timezone, now, seriesSource, forecasts }: { series: TournamentSeries; timezone: string; now: number; seriesSource: TournamentFeed['source']; forecasts: ForecastArtifacts }) {
   const [first, second] = series.teams
   const winner = seriesWinner(series)
   const winningTeam = winner !== null ? series.teams[winner] : undefined
   const scheduledStartPassed = !series.startTime || now >= Date.parse(series.startTime)
   const forecast = useMemo<TournamentForecast | ForecastReceipt | null>(() => {
-    if (!forecasts) return null
     if (series.status === 'upcoming') {
       const estimate = forecastTournamentSeries(series, forecasts.basis, { seriesSource })
       if (estimate.status === 'unavailable' && estimate.reason === 'unsupported-source') return estimate
@@ -211,7 +208,7 @@ function SeriesRow({ series, timezone, now, seriesSource, forecasts }: { series:
       {winningTeam?.name ? <span className="min-w-0 font-semibold text-[var(--text-strong)]">Winner: {winningTeam.name}</span> : null}
       {series.vodUrls.map((url) => <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="underline">Watch VOD</a>)}
     </p>
-    {forecasts ? <div className="grid min-w-0 gap-1 md:col-span-2 md:col-start-3">
+    <div className="grid min-w-0 gap-1 md:col-span-2 md:col-start-3">
       {forecast ? <div className="mt-1 grid gap-1 border-t border-border pt-2 text-sm text-muted-foreground">
         {forecast.status === 'ready' ? <>
           <strong className="text-foreground">{receipt ? 'Published pre-match forecast' : 'Current model estimate · not archived'}</strong>
@@ -226,7 +223,7 @@ function SeriesRow({ series, timezone, now, seriesSource, forecasts }: { series:
         </> : <span>Forecast unavailable: {forecast.detail}</span>}
       </div> : null}
       <div className="text-sm text-muted-foreground"><ConditionalPowerPreview key={JSON.stringify([series, forecast, forecasts.powerPreviews])} series={series} forecast={forecast} now={now} basis={forecasts.basis} powerPreviews={forecasts.powerPreviews} /></div>
-    </div> : null}
+    </div>
   </li>
 }
 const STATUS_LABELS = { upcoming: 'Upcoming', live: 'Live', completed: 'Completed', postponed: 'Postponed', cancelled: 'Cancelled', unknown: 'Unknown' } as const

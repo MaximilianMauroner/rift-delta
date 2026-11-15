@@ -4,6 +4,9 @@ const attempts = new Map<string, { count: number; resetAt: number }>()
 const WINDOW_MS = 15 * 60 * 1000
 
 export async function login(request: Request, ip: string): Promise<Response> {
+  if (!process.env.PROTOTYPE_ACCESS_PASSWORD || !process.env.PROTOTYPE_SESSION_SECRET) {
+    return Response.json({ error: 'Lab sign-in is not configured.' }, { status: 503 })
+  }
   const now = Date.now()
   for (const [key, state] of attempts) if (state.resetAt <= now) attempts.delete(key)
   const state = attempts.get(ip)
@@ -16,9 +19,6 @@ export async function login(request: Request, ip: string): Promise<Response> {
   if (!await passwordMatches(password)) {
     attempts.set(ip, { count: (state?.count ?? 0) + 1, resetAt: state?.resetAt ?? now + WINDOW_MS })
     return Response.json({ error: 'Invalid prototype password.' }, { status: 401 })
-  }
-  if (!process.env.PROTOTYPE_SESSION_SECRET) {
-    return Response.json({ error: 'Prototype access is not configured.' }, { status: 503 })
   }
   attempts.delete(ip)
   return Response.json({ ok: true }, { headers: { 'set-cookie': sessionCookie(await createSessionToken(), SESSION_TTL_SECONDS) } })

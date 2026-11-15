@@ -20,8 +20,6 @@ export async function nativeServer(root: string, env: NodeJS.ProcessEnv = {}) {
       RANKING_BUCKET_ACCESS_KEY_ID: 'poison',
       RANKING_BUCKET_SECRET_ACCESS_KEY: 'poison',
       LEAGUEPEDIA_CARGO_EXPORT_URL: 'http://127.0.0.1:1',
-      RANKING_REFRESH_ENABLED: 'true',
-      RANKING_GZIP_ENABLED: 'true',
       RAILWAY_GIT_COMMIT_SHA: 'native-fixture',
       ...env,
     },
@@ -99,7 +97,6 @@ export async function nodeLocalServer(root: string, env: NodeJS.ProcessEnv = {})
     env: {
       ...process.env, HOST: '127.0.0.1', PORT: String(port), RANKING_PUBLIC_DATA_DIR: root,
       RAILWAY_DIST_DIR: root, TOURNAMENT_PUBLIC_DATA_DIR: tournament,
-      RANKING_REFRESH_ENABLED: 'false', RANKING_GZIP_ENABLED: 'true',
       RANKING_BUCKET_NAME: '', RANKING_BUCKET_ENDPOINT: '', RANKING_BUCKET_ACCESS_KEY_ID: '', RANKING_BUCKET_SECRET_ACCESS_KEY: '',
       ...env,
     },

@@ -64,6 +64,28 @@ test('login sets the retained HttpOnly cookie and logout expires it', async () =
   expect(logout.headers.get('set-cookie')).toContain('Max-Age=0')
 })
 
+test('missing lab credentials report unavailable without locking out a later login', async () => {
+  const secret = process.env.PROTOTYPE_SESSION_SECRET
+  try {
+    delete process.env.PROTOTYPE_ACCESS_PASSWORD
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const response = await fetch(`${base}/api/dps/auth/login`, { method: 'POST', body: JSON.stringify({ password }) })
+      expect(response.status).toBe(503)
+      expect(await response.json()).toEqual({ error: 'Lab sign-in is not configured.' })
+    }
+    process.env.PROTOTYPE_ACCESS_PASSWORD = password
+    delete process.env.PROTOTYPE_SESSION_SECRET
+    const response = await fetch(`${base}/api/dps/auth/login`, { method: 'POST', body: JSON.stringify({ password }) })
+    expect(response.status).toBe(503)
+  } finally {
+    process.env.PROTOTYPE_ACCESS_PASSWORD = password
+    if (secret === undefined) delete process.env.PROTOTYPE_SESSION_SECRET
+    else process.env.PROTOTYPE_SESSION_SECRET = secret
+  }
+  const configured = await fetch(`${base}/api/dps/auth/login`, { method: 'POST', body: JSON.stringify({ password }) })
+  expect(configured.status).toBe(200)
+})
+
 test('body limits apply to streamed requests without content-length', async () => {
   const token = await createSessionToken()
   const init = {

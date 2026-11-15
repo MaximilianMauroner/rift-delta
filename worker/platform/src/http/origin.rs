@@ -20,7 +20,6 @@ pub(super) async fn respond(
     head: bool,
     headers: &HeaderMap,
     cache: &HeaderValue,
-    gzip_enabled: bool,
 ) -> Option<Response<Body>> {
     let path = target.path.strip_prefix("/data/").unwrap();
     let redirect = !target.force_proxy && delivery::immutable_path(&target.path);
@@ -28,7 +27,7 @@ pub(super) async fn respond(
         .read(path, target.generation.as_deref(), head, redirect)
         .await
     {
-        Ok(Some(object)) => Some(deliver(object, head, headers, cache, gzip_enabled)),
+        Ok(Some(object)) => Some(deliver(object, head, headers, cache)),
         Ok(None) if target.generation.is_some() => Some(json_response(
             StatusCode::NOT_FOUND,
             json!({"ok":false,"error":"Versioned data artifact not found"}),
@@ -53,7 +52,6 @@ fn deliver(
     head: bool,
     headers: &HeaderMap,
     cache: &HeaderValue,
-    gzip_enabled: bool,
 ) -> Response<Body> {
     if let Some(location) = object.redirect {
         return Response::builder()
@@ -72,7 +70,6 @@ fn deliver(
     let compressible = delivery::compressible(&object.content_type);
     let stored_gzip = object.content_encoding.as_deref() == Some("gzip");
     let gzip = !fresh
-        && gzip_enabled
         && delivery::accepts_gzip(headers)
         && (stored_gzip || (!head && compressible && object.content_length >= 1024));
     let mut response = Response::builder()

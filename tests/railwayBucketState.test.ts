@@ -334,8 +334,10 @@ test('lost lease leaves uploaded generation objects orphaned and active pointer 
 test('takeover between final assertion and active-pointer write invalidates the exact promotion CAS', async () => {
   const root = await mkdtemp(join(tmpdir(), 'ranking-promotion-race-'))
   const publicDir = join(root, 'public')
+  const fullSnapshotPath = join(root, 'full.json')
   const client = memoryS3()
   await writeContentAddressedFixture(publicDir, 'stale-generation')
+  await writeFile(fullSnapshotPath, '{}\n')
   await writeBucketJson('active-generation.json', { generationId: 'current', fencingToken: 0 }, { ifNoneMatch: '*', config, client })
   const oldWorker = await acquireBucketLease('lease.json', { owner: 'old', now: '2026-07-11T00:00:00Z', ttlMs: 60_000, config, client })
   assert.equal(oldWorker.acquired, true)
@@ -344,6 +346,7 @@ test('takeover between final assertion and active-pointer write invalidates the 
   try {
     await assert.rejects(() => uploadRankingArtifacts({
       publicDataDir: publicDir,
+      fullSnapshotPath,
       generationId: 'stale-generation',
       fencingToken: oldWorker.lease.fencingToken,
       leaseAuthority: { key: 'lease.json', lease: oldWorker.lease, promotionEtag: oldWorker.promotionEtag },
@@ -356,6 +359,7 @@ test('takeover between final assertion and active-pointer write invalidates the 
       client,
     }), /no longer authoritative|Active generation changed during promotion/)
     assert.ok(client.objects.has('rankings/generations/stale-generation/manifest.json'))
+    assert.equal(client.objects.has('rankings/artifacts/latest-full.json'), false)
     assert.equal(JSON.parse(client.objects.get('rankings/active-generation.json')!.body).generationId, 'current')
   } finally {
     await rm(root, { recursive: true, force: true })
@@ -389,6 +393,38 @@ test('readiness receipt failure leaves the prior active generation authoritative
     }), /injected readiness receipt failure/)
     assert.equal(JSON.parse(client.objects.get('rankings/active-generation.json')!.body).generationId, 'prior')
     assert.equal(client.objects.has(`rankings/generations/${generationId}/manifest.json`), true)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('full snapshot is uploaded after activation and remains outside readiness authority', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ranking-snapshot-after-promotion-'))
+  const publicDir = join(root, 'public')
+  const fullSnapshotPath = join(root, 'full.json')
+  const backing = memoryS3()
+  let snapshotWrites = 0
+  const client = {
+    objects: backing.objects,
+    async send(command: unknown) {
+      const { name, input } = commandDetails(command)
+      if (name === 'PutObjectCommand' && input.Key === 'rankings/artifacts/latest-full.json') {
+        assert.equal(JSON.parse(backing.objects.get('rankings/active-generation.json')!.body).generationId, 'snapshot-after-promotion')
+        snapshotWrites += 1
+      }
+      return backing.send(command)
+    },
+  }
+  try {
+    await writeContentAddressedFixture(publicDir, 'snapshot-after-promotion')
+    await writeFile(fullSnapshotPath, '{"fixture":"snapshot"}\n')
+    const result = await uploadRankingArtifacts({
+      publicDataDir: publicDir, fullSnapshotPath, generationId: 'snapshot-after-promotion', fencingToken: 1, config, client,
+    })
+    assert.equal(snapshotWrites, 1)
+    assert.equal(backing.objects.get('rankings/artifacts/latest-full.json')!.body, '{"fixture":"snapshot"}\n')
+    assert.equal((result.publicationReceipt as { objects: Array<{ key: string }> }).objects.some((entry) => entry.key === 'rankings/artifacts/latest-full.json'), false)
+    assert.equal((result.uploaded as Array<{ key: string }>).some((entry) => entry.key === 'rankings/artifacts/latest-full.json'), true)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -1409,6 +1445,7 @@ test('post-commit operational failures return committed warnings without invalid
   const root = await mkdtemp(join(tmpdir(), 'ranking-post-commit-warning-'))
   const publicDir = join(root, 'public')
   const statePath = join(root, 'refresh-state.json')
+  const fullSnapshotPath = join(root, 'full.json')
   const backing = memoryS3()
   let committed = false
   const client = {
@@ -1432,9 +1469,11 @@ test('post-commit operational failures return committed warnings without invalid
   try {
     await writeContentAddressedFixture(publicDir, 'post-commit-warning')
     await writeFile(statePath, '{}\n')
+    await writeFile(fullSnapshotPath, '{}\n')
     const result = await uploadRankingArtifacts({
       publicDataDir: publicDir,
       statePath,
+      fullSnapshotPath,
       refreshStateForUpload: () => ({ ok: true }),
       refreshTelemetry: () => { throw new Error('injected post-CAS audit/telemetry failure') },
       onStage: (name: string) => {
@@ -1451,7 +1490,7 @@ test('post-commit operational failures return committed warnings without invalid
     assert.equal(result.committedWithOperationalWarnings, true)
     assert.deepEqual(
       (result.operationalWarnings as Array<{ stage: string }>).map((warning) => warning.stage).sort(),
-      ['post-commit-refresh-state', 'post-commit-telemetry', 'promotion-observer'],
+      ['post-commit-full-snapshot', 'post-commit-refresh-state', 'post-commit-telemetry', 'promotion-observer'],
     )
     committed = false
     const loaded = await readActiveContentAddressedGeneration({ config, client })

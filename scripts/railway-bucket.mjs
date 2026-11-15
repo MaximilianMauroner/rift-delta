@@ -89,7 +89,6 @@ export async function uploadRankingArtifacts({
   statePath,
   config = bucketConfigFromEnv(),
   client = createBucketClient(config),
-  uploadFullSnapshot = parseBoolean(process.env.RANKING_BUCKET_UPLOAD_FULL_SNAPSHOT),
   refreshStateForUpload,
   generationId,
   fencingToken,
@@ -218,14 +217,6 @@ export async function uploadRankingArtifacts({
     })
   }
 
-  if (fullSnapshotPath && uploadFullSnapshot) {
-    uploads.push(await uploadFile(client, config, fullSnapshotPath, 'artifacts/latest-full.json'))
-  } else if (fullSnapshotPath) {
-    skipped.push({
-      key: bucketKey(config, 'artifacts/latest-full.json'),
-      reason: 'full-snapshot-upload-disabled',
-    })
-  }
   if (manifestPath && !rawSourceGeneration) {
     uploads.push(await uploadFile(client, config, manifestPath, 'raw/manifest.json'))
   }
@@ -408,6 +399,14 @@ export async function uploadRankingArtifacts({
 
   let telemetry
   if (generationalPublication) {
+    if (fullSnapshotPath) {
+      try {
+        await assertBucketLease(leaseAuthority.key, leaseAuthority, { config, client, now: now(), requireEtag: false })
+        uploads.push(await uploadFile(client, config, fullSnapshotPath, 'artifacts/latest-full.json'))
+      } catch (error) {
+        operationalWarnings.push(operationalWarning('post-commit-full-snapshot', error))
+      }
+    }
     if (refreshTelemetry) {
       try {
         telemetry = await (typeof refreshTelemetry === 'function' ? refreshTelemetry(promotionOutcome) : refreshTelemetry)
@@ -432,6 +431,12 @@ export async function uploadRankingArtifacts({
       }
     }
   } else {
+    if (fullSnapshotPath) {
+      if (leaseAuthority) await assertBucketLease(leaseAuthority.key, leaseAuthority, {
+        config, client, now: now(), requireEtag: false,
+      })
+      uploads.push(await uploadFile(client, config, fullSnapshotPath, 'artifacts/latest-full.json'))
+    }
     telemetry = refreshTelemetry
       ? await (typeof refreshTelemetry === 'function' ? refreshTelemetry(promotionOutcome) : refreshTelemetry)
       : undefined

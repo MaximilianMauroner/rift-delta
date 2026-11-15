@@ -165,7 +165,6 @@ function boundaryReached(page: Row, direction: 'older' | 'newer', start: string,
 }
 
 async function main() {
-  if (process.env.TOURNAMENT_COLLECTOR_ENABLED !== '1') throw new Error('Set TOURNAMENT_COLLECTOR_ENABLED=1 for an explicit local/staging collection.')
   const output = resolve(process.argv[2] ?? 'public/tournament-data/feed.json')
   const lock = `${output}.lock`
   await mkdir(dirname(output), { recursive: true })

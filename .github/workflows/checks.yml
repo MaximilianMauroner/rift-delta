@@ -127,7 +127,6 @@ jobs:
           pnpm exec tsx --tsconfig tsconfig.app.json --test tests/seriesPassShadow.test.ts
       - name: Rust raw seam integration
         env:
-          RANKING_RAW_SOURCE_WORKER: rust
           RANKING_REFRESH_BINARY: ${{ github.workspace }}/worker/target/debug/ranking-refresh
           RANKING_RUST_TEST_BINARY: ${{ github.workspace }}/worker/target/debug/ranking-refresh
         run: pnpm exec tsx --tsconfig tsconfig.app.json --test tests/rawSourceGeneration.test.ts tests/rustRawSourceParity.test.ts
@@ -139,7 +138,6 @@ jobs:
           node --max-old-space-size=2048 --expose-gc --import tsx scripts/benchmark-incremental-ranking.ts --raw-seam-parity
       - name: Rust provider replay and failure integration
         env:
-          RANKING_PROVIDER_FETCH_WORKER: rust
           RANKING_REFRESH_BINARY: ${{ github.workspace }}/worker/target/release/ranking-refresh
           RANKING_RUST_TEST_BINARY: ${{ github.workspace }}/worker/target/release/ranking-refresh
         run: pnpm exec tsx --tsconfig tsconfig.app.json --test tests/downloadLocalData.test.ts tests/rustProviderFetchParity.test.ts

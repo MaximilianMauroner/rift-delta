@@ -25,7 +25,6 @@ use tokio::task::JoinSet;
 pub struct LocalDataOptions {
     pub data_root: PathBuf,
     pub listen: SocketAddr,
-    pub gzip_enabled: bool,
     pub data_cache_control: String,
     pub manifest_cache_control: String,
     pub commit: Option<String>,
@@ -37,7 +36,6 @@ impl Default for LocalDataOptions {
         Self {
             data_root: "public/data".into(),
             listen: "127.0.0.1:4174".parse().unwrap(),
-            gzip_enabled: true,
             data_cache_control: "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800, stale-if-error=604800".into(),
             manifest_cache_control: "public, max-age=0, s-maxage=300, stale-while-revalidate=3600, stale-if-error=86400".into(),
             commit: None,

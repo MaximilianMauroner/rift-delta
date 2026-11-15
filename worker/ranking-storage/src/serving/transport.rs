@@ -19,7 +19,7 @@ pub(super) struct Transport {
     secret: String,
     pub prefix: String,
     path_style: bool,
-    pub redirect_threshold: Option<u64>,
+    pub redirect_threshold: u64,
 }
 
 pub(super) struct Object {
@@ -47,18 +47,14 @@ impl Transport {
     }
 
     #[cfg(test)]
-    pub(super) fn fixture(endpoint: &str, redirect: bool) -> Self {
+    pub(super) fn fixture(endpoint: &str, threshold: &str) -> Self {
         let values = BTreeMap::from([
             ("BUCKET", "fixture"),
             ("ENDPOINT", endpoint),
             ("ACCESS_KEY_ID", "read-only"),
             ("SECRET_ACCESS_KEY", "fixture-secret"),
             ("RANKING_BUCKET_FORCE_PATH_STYLE", "true"),
-            (
-                "RANKING_PRESIGNED_DELIVERY_ENABLED",
-                if redirect { "true" } else { "false" },
-            ),
-            ("RANKING_PRESIGNED_DELIVERY_THRESHOLD_BYTES", "1"),
+            ("RANKING_PRESIGNED_DELIVERY_THRESHOLD_BYTES", threshold),
         ]);
         Self::from_values(|name| values.get(name).map(|value| value.to_string()))
             .unwrap()
@@ -102,14 +98,9 @@ impl Transport {
         if !prefix.is_empty() {
             super::super::s3::validate_key(&prefix)?;
         }
-        let redirect_threshold =
-            (get("RANKING_PRESIGNED_DELIVERY_ENABLED").as_deref() == Some("true")).then(|| {
-                get("RANKING_PRESIGNED_DELIVERY_THRESHOLD_BYTES")
-                    .and_then(|value| {
-                        ranking_contracts::published::serving::positive_number_text(&value)
-                    })
-                    .unwrap_or(65_536)
-            });
+        let redirect_threshold = get("RANKING_PRESIGNED_DELIVERY_THRESHOLD_BYTES")
+            .and_then(|value| ranking_contracts::published::serving::positive_number_text(&value))
+            .unwrap_or(65_536);
         Ok(Some(Self {
             client: Client::builder()
                 .no_gzip()
@@ -362,6 +353,24 @@ mod tests {
         );
         assert!(config(&[("RANKING_BUCKET_NAME", "")]).unwrap().is_none());
         assert!(config(&[("RANKING_BUCKET_ENDPOINT", "bad")]).is_err());
+    }
+    #[test]
+    fn redirect_threshold_defaults_and_rejects_invalid_values() {
+        assert_eq!(config(&[]).unwrap().unwrap().redirect_threshold, 65_536);
+        assert_eq!(
+            config(&[("RANKING_PRESIGNED_DELIVERY_THRESHOLD_BYTES", "invalid")])
+                .unwrap()
+                .unwrap()
+                .redirect_threshold,
+            65_536
+        );
+        assert_eq!(
+            config(&[("RANKING_PRESIGNED_DELIVERY_THRESHOLD_BYTES", "123")])
+                .unwrap()
+                .unwrap()
+                .redirect_threshold,
+            123
+        );
     }
     #[test]
     fn presigning_binds_method_expiry_path_and_authority() {

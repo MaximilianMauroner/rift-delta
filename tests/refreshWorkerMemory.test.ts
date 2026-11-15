@@ -51,29 +51,18 @@ test('refresh worker memory flags are canonical and deduplicate inherited varian
   ])
 })
 
-test('raw source selector defaults to Node, uses Rust CLI arguments, and rejects unknown workers', () => {
+test('raw source command uses Node with canonical memory flags', () => {
   const inherited = process.execArgv
   try {
     process.execArgv = ['--trace-warnings', '--max_old_space_size', '1024', '--max_semi_space_size=32', '--import', 'tsx']
-    for (const env of [{}, { RANKING_RAW_SOURCE_WORKER: 'node' }]) {
-      assert.deepEqual(rawSourceWorkerCommand('input.json', 'output.json', env), {
-        command: process.execPath,
-        args: ['--trace-warnings', '--max-old-space-size=2048', '--max-semi-space-size=4', '--expose-gc', '--import=tsx',
-          resolve('scripts/raw-source-worker.mjs'), 'input.json', 'output.json'],
-      })
-    }
+    assert.deepEqual(rawSourceWorkerCommand('input.json', 'output.json'), {
+      command: process.execPath,
+      args: ['--trace-warnings', '--max-old-space-size=2048', '--max-semi-space-size=4', '--expose-gc', '--import=tsx',
+        resolve('scripts/raw-source-worker.mjs'), 'input.json', 'output.json'],
+    })
   } finally {
     process.execArgv = inherited
   }
-  for (const binary of [undefined, '/custom/ranking-refresh']) {
-    assert.deepEqual(rawSourceWorkerCommand('input.json', 'output.json', {
-      RANKING_RAW_SOURCE_WORKER: 'rust', ...(binary ? { RANKING_REFRESH_BINARY: binary } : {}),
-    }), {
-      command: binary ?? resolve('worker/target/release/ranking-refresh'),
-      args: ['raw-source', 'input.json', 'output.json'],
-    })
-  }
-  assert.throws(() => rawSourceWorkerCommand('input.json', 'output.json', { RANKING_RAW_SOURCE_WORKER: 'unknown' }), /Unsupported RANKING_RAW_SOURCE_WORKER/)
 })
 
 test('Linux executable peak excludes the setup parent memory inherited across fork and exec', {

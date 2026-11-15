@@ -9,7 +9,7 @@ process.env = {
   PROTOTYPE_ACCESS_PASSWORD: randomUUID(),
   PROTOTYPE_SESSION_SECRET: randomUUID(),
 }
-const server = await createServer({ server: { host: '127.0.0.1', port: 0 }, logLevel: 'silent' })
+const server = await createServer({ server: { host: '127.0.0.1', port: 0, preTransformRequests: false }, logLevel: 'silent' })
 try {
   await server.listen()
   const address = server.httpServer?.address()

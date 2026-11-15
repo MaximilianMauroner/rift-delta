@@ -600,8 +600,6 @@ async function runBenchmarkWorker() {
       RANKING_REFRESH_MODE: 'gated',
       RANKING_REFRESH_CAUSE: 'pending-match',
       RANKING_REFRESH_RUN_ID: 'production-shaped-local',
-      RANKING_BUCKET_RESTORE_RAW: 'true',
-      RANKING_BUCKET_UPLOAD_ENABLED: 'true',
       RANKING_REFRESH_LEASE_OWNER: lease.lease.owner,
       RANKING_REFRESH_FENCING_TOKEN: String(lease.lease.fencingToken),
       RANKING_REFRESH_LEASE_KEY: 'ops/refresh-lease.json',

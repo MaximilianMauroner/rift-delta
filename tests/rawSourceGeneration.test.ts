@@ -396,7 +396,9 @@ async function rawWorkerFixture(root: string, name: string, generatedAt = '2026-
 }
 
 async function runRawWorker(inputPath: string, outputPath: string) {
-  const { command, args } = rawSourceWorkerCommand(inputPath, outputPath)
+  const { command, args } = process.env.RANKING_RUST_TEST_BINARY
+    ? { command: process.env.RANKING_RUST_TEST_BINARY, args: ['raw-source', inputPath, outputPath] }
+    : rawSourceWorkerCommand(inputPath, outputPath)
   const child = spawn(command, args, { stdio: ['ignore', 'ignore', 'pipe'] })
   const stderr: Buffer[] = []
   child.stderr.on('data', (chunk) => stderr.push(Buffer.from(chunk)))
