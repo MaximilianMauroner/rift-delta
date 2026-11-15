@@ -31,7 +31,7 @@ export const MODE_TITLES: Record<Mode, { title: string; intro: string }> = {
   },
   players: {
     title: 'Player rankings',
-    intro: 'Stats Power ranks role stats against the role average, weighted by event and league strength. Higher is stronger.',
+    intro: 'Players ranked by the score shown for this scope. Higher is stronger.',
   },
   regions: {
     title: 'Region power',

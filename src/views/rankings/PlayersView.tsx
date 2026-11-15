@@ -11,9 +11,10 @@ import { LoadingState } from '../../components/ui/loading'
 import { Select } from '../../components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { teamBrandingFor } from '../../data/teamBranding'
+import { providerFreshness } from '../../domains/rankings/evidence'
 import { playerLeaderboardForScope } from '../../domains/rankings/read'
-import type { Role, SnapshotFilter } from '../../domains/rankings/types'
-import { formatDecimal, formatNumber, formatRating } from '../../shared/display'
+import type { PublicRankingManifest, Role, SnapshotFilter } from '../../domains/rankings/types'
+import { formatDate, formatDecimal, formatNumber, formatRating } from '../../shared/display'
 
 const ROLES: readonly Role[] = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
 const ROLE_FILTERS = ['All', ...ROLES] as const
@@ -24,8 +25,9 @@ function readFilters(query: URLSearchParams) {
   }
 }
 
-export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }: {
+export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, searchRef }: {
   state: PlayerDirectoryState
+  manifest: PublicRankingManifest
   filter: SnapshotFilter
   scopeLabel: string
   hashQuery: URLSearchParams
@@ -46,6 +48,13 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
   }, [players])
   const statsPowerVersion = players.find((player) => player.statsPower)?.statsPower?.version
   const scoreLabel = statsPowerVersion ? 'Stats Power' : 'Role Power'
+  const teamLabel = filter.season === 'All' ? 'Latest team' : 'Season team'
+  const teamAttribution = filter.season === 'All'
+    ? 'Latest team is the latest observed team across all seasons.'
+    : 'Season team is the most-played credited team in the selected season.'
+  const seeded = manifest.dataMode === 'seeded-sample' || manifest.coverage.seededSample || manifest.playerData.status === 'seeded-demo-rosters'
+  const statSource = providerFreshness([], manifest.sources.filter((source) => source.kind !== 'seed'))
+    .find((provider) => provider.label === "Oracle's Elixir")
   const search = filters.search.trim().toLowerCase()
   const visible = players.filter((player) =>
     (filters.role === 'All' || player.role === filters.role)
@@ -56,7 +65,9 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
     <details className="players-method">
       <summary>Method</summary>
       <div className="grid gap-1.5 text-xs leading-relaxed text-muted-foreground">
-        <p>Newer games get more weight, with a 90-day half-life. Inactivity alone does not lower the score. Rows without a stat score show Role Power, which also uses results.</p>
+        {statsPowerVersion ? <p>Stats Power gives newer games more weight, with a 90-day half-life. Inactivity alone does not lower Stats Power. Rows without a stat score show Role Power.</p> : null}
+        <p>Role Power includes individual stats, results, opponent strength and event context.</p>
+        <p>{teamAttribution} Games count games credited to that team where available, otherwise all rated games.</p>
       </div>
     </details>
   )
@@ -87,6 +98,18 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
         </label>
       </div>
 
+      <p className="players-source break-words text-xs leading-relaxed text-muted-foreground" role="status" aria-label="Player-stat freshness">
+        {seeded ? 'Seeded sample data. Player-stat freshness is unavailable.' : (
+          <>
+            {statSource?.publishedThrough
+              ? `Oracle's Elixir source coverage through ${formatDate(statSource.publishedThrough)}.`
+              : "Oracle's Elixir player-stat coverage is unavailable."}
+            {statSource?.failedUpdate === 'failed' ? " Latest Oracle's Elixir update failed." : null}
+            {statSource?.failedUpdate === 'partial' ? " Latest Oracle's Elixir update was partial." : null}
+          </>
+        )}
+      </p>
+
       {visible.length > 0 ? (
         <div className="players-reading-tools">
           {methodDisclosure}
@@ -112,6 +135,7 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
         <>
           <p className="players-count flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-muted-foreground" role="status">
             <span>{formatNumber(visible.length)} of {formatNumber(players.length)} players in {scopeLabel}. Ranks stay tied to this scope when filtered.</span>
+            <span>Scores are rounded. Ranks use full precision.</span>
             {scoreRange && visible.length > 0 ? (
               <span className="player-score-key" title="Markers show position in the full scope's score range. Filters keep the same scale.">
                 Scope range {formatDecimal(scoreRange.min)} to {formatDecimal(scoreRange.max)}
@@ -127,12 +151,12 @@ export function PlayersView({ state, filter, scopeLabel, hashQuery, searchRef }:
           ) : (
             <Card className="players-board min-w-0 overflow-hidden p-0">
               <Table role="table" data-stat-games={Boolean(statsPowerVersion)} aria-label="Player rankings" tabIndex={0} className="players-table focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--focus)]">
-                <caption className="sr-only">Player rankings for {scopeLabel}, ordered by {scoreLabel}, highest first. Equal scores share a rank.{statsPowerVersion ? ' Stat games count games with usable role stats in this scope, including previous teams.' : ''} Games count games credited to the displayed team where available, otherwise all rated games.</caption>
+                <caption className="sr-only">Player rankings for {scopeLabel}, ordered by {scoreLabel}, highest first. Ranks use full precision. Equal full-precision scores share a rank. Displayed scores are rounded. {teamAttribution}{statsPowerVersion ? ' Stat games count games with usable role stats in this scope, including previous teams.' : ''} Games count games credited to the displayed team where available, otherwise all rated games.</caption>
                 <TableHeader role="rowgroup">
                   <TableRow role="row">
                     <TableHead role="columnheader" scope="col" className="player-col-rank pl-4">Rank</TableHead>
                     <TableHead role="columnheader" scope="col" className="player-col-name">Player</TableHead>
-                    <TableHead role="columnheader" scope="col" className="player-col-team">Team</TableHead>
+                    <TableHead role="columnheader" scope="col" className="player-col-team" title={teamAttribution}>{teamLabel}</TableHead>
                     <TableHead role="columnheader" scope="col" className="player-col-role">Role</TableHead>
                     <TableHead role="columnheader" scope="col" className="player-col-score text-right" aria-sort="descending">{scoreLabel}</TableHead>
                     {statsPowerVersion ? (

@@ -6,9 +6,10 @@ import { createServer, type Plugin } from 'vite'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
 import { statsPowerPolicy } from '../src/domains/rankings/internal/policy/statsPowerPolicy.ts'
-import type { CompactPlayer, MatchRecord, PublicPlayerDirectory } from '../src/domains/rankings/types.ts'
+import type { CompactPlayer, MatchRecord, PublicPlayerDirectory, PublicRankingManifest } from '../src/domains/rankings/types.ts'
 
 const playerPath = '/data/entities/players.json'
+const manifestPath = '/data/ranking-summary.json'
 const playersAddress = '#players?scope=season%3A2026'
 
 function player(name: string, team: string, role: CompactPlayer['role'], rating: number, rank: number): CompactPlayer {
@@ -58,7 +59,7 @@ function fixtureBodies() {
   const legacy = player('Other-season only', 'Legacy Team', 'Top', 900, 1)
   const statsSeason = [
     withStatsPower(player('Delta', 'Legacy Team', 'Top', 400, 1), 101.2, 18),
-    withStatsPower(player('Echo', 'Legacy Team', 'Mid', 300, 2), 104.5, 22),
+    withStatsPower(player('Echo', 'Legacy Team', 'Mid', 300, 2), 104.54, 22),
     withStatsPower(player('Foxtrot', 'Legacy Team', 'Support', 200, 3), 104.5, 25),
   ]
   const directory: PublicPlayerDirectory = {
@@ -155,6 +156,23 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.getByText(/Source synthetic-fixture/).waitFor()
     await page.getByText(/Role Power uses model .+ includes individual stats, results, opponent strength and event context/).waitFor()
     assert.equal(await page.getByText(/Stats Power stats-power-v3 scores/).count(), 0, 'Role Power rows must not claim Stats Power')
+    await page.getByRole('columnheader', { name: 'Season team', exact: true }).waitFor({ timeout: 2_000 })
+    assert.equal(await page.getByText(/Stats Power ranks role stats/).count(), 0, 'The shell must not claim Stats Power for a Role Power-only scope')
+    await page.getByText('Method', { exact: true }).click()
+    assert.equal(await page.locator('.players-method').getByText(/90-day half-life/).count(), 0, 'Role Power must not claim the Stats Power recency policy')
+    await page.locator('.players-method').getByText(/Season team is the most-played credited team in the selected season/).waitFor()
+    await page.getByText('Method', { exact: true }).click()
+    await page.getByText('Scores are rounded. Ranks use full precision.', { exact: true }).waitFor()
+    await page.getByText(/Seeded sample data. Player-stat freshness is unavailable/).waitFor()
+
+    await setHash('#players?scope=all')
+    await expectPlayers(page, ['Other-season only', 'Aster', 'Beacon', 'Cedar'])
+    await page.getByRole('columnheader', { name: 'Latest team', exact: true }).waitFor()
+    await page.getByText('Method', { exact: true }).click()
+    await page.locator('.players-method').getByText(/Latest team is the latest observed team across all seasons/).waitFor()
+    await page.getByText('Method', { exact: true }).click()
+    await setHash(playersAddress)
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
 
     await navigation.getByRole('link', { name: 'Rankings', exact: true }).click()
     await page.getByRole('heading', { name: 'Team Power Index', exact: true }).waitFor()
@@ -247,13 +265,23 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
     await page.getByRole('combobox', { name: 'Season', exact: true }).selectOption('2025')
     await expectPlayers(page, ['Echo', 'Foxtrot', 'Delta'])
-    assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '1', '3'], 'Equal Stats Power shares a rank')
+    assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '2', '3'], 'Different full-precision scores have different ranks even when the displayed scores match')
     assert.deepEqual(await rows.locator('td:nth-child(5)').allTextContents(), ['104.5', '104.5', '101.2'])
     assert.deepEqual(await rows.locator('td:nth-child(6)').allTextContents(), ['22', '25', '18'], 'Stat games stay separate from games')
     assert.deepEqual(await rows.locator('td:nth-child(7)').allTextContents(), ['300', '200', '400'], 'Role Power stays visible')
     assert.deepEqual(await rows.locator('td:nth-child(8)').allTextContents(), ['12', '13', '11'], 'Credited-team games stay separate from raw stat games')
     await page.getByRole('columnheader', { name: 'Stats Power', exact: true }).waitFor()
     await page.getByText(/Stats Power stats-power-v3 scores lane leads/).waitFor()
+    await page.getByText('Method', { exact: true }).click()
+    await page.locator('.players-method').getByText(/Stats Power gives newer games more weight, with a 90-day half-life/).waitFor()
+    await page.getByText('Method', { exact: true }).click()
+    await page.getByText('Scores are rounded. Ranks use full precision.', { exact: true }).waitFor()
+    const statsDirectory = JSON.parse(bodies.get(playerPath)!) as PublicPlayerDirectory
+    statsDirectory.scopedPlayers!['2025__All__All'][1].statsPower!.score = 104.5
+    bodies.set(playerPath, JSON.stringify(statsDirectory))
+    await page.reload()
+    await expectPlayers(page, ['Echo', 'Foxtrot', 'Delta'])
+    assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '1', '3'], 'Equal full-precision Stats Power scores share a rank')
     await page.getByRole('combobox', { name: 'Season', exact: true }).selectOption('2024')
     await page.getByRole('heading', { name: 'No ranked players in this scope', exact: true }).waitFor()
     assert.equal(await rows.count(), 0, 'An empty exact season must not borrow all-season players')
@@ -297,6 +325,50 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.reload()
     await error.waitFor()
     assert.equal(await rows.count(), 0)
+
+    playerStatus = 200
+    const manifest = JSON.parse(bodies.get(manifestPath)!) as PublicRankingManifest
+    manifest.dataMode = 'scheduled-public-data'
+    manifest.coverage.seededSample = false
+    manifest.playerData.status = 'sourced-player-stats'
+    manifest.generatedAt = '2026-11-15T12:00:00.000Z'
+    manifest.coverage.coverageEnd = '2026-11-14'
+    manifest.sources = [{
+      name: "Oracle's Elixir CSV: synthetic-browser-fixture.csv", kind: 'game-stats',
+      description: 'Synthetic source freshness fixture', status: 'active', coverageEnd: '2026-11-13',
+      refreshReceipt: { status: 'failed', attemptedAt: '2026-11-15T10:00:00.000Z', downloadedCount: 0, reusedCount: 1, failedCount: 1 },
+    }, {
+      name: 'Leaguepedia Cargo: synthetic-browser-fixture', kind: 'match-data',
+      description: 'Synthetic later match coverage', status: 'active', coverageEnd: '2026-11-14',
+    }]
+    for (const updateStatus of ['failed', 'partial']) {
+      manifest.sources[0].refreshReceipt!.status = updateStatus
+      bodies.set(manifestPath, JSON.stringify(manifest))
+      await page.reload()
+      await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+      const freshness = page.getByRole('status', { name: 'Player-stat freshness', exact: true })
+      assert.match(await freshness.innerText(), /Oracle's Elixir source coverage through Nov 13, 2026/)
+      assert.match(await freshness.innerText(), updateStatus === 'failed' ? /Latest Oracle's Elixir update failed/ : /Latest Oracle's Elixir update was partial/)
+      assert.doesNotMatch(await freshness.innerText(), /Nov 14|Nov 15|quota/i, 'Player-stat freshness must use source coverage and public receipt status')
+    }
+    manifest.dataMode = 'seeded-sample'
+    bodies.set(manifestPath, JSON.stringify(manifest))
+    await page.reload()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    const seededFreshness = page.getByRole('status', { name: 'Player-stat freshness', exact: true })
+    assert.match(await seededFreshness.innerText(), /Seeded sample data. Player-stat freshness is unavailable/)
+    assert.doesNotMatch(await seededFreshness.innerText(), /Nov 13|through/)
+    manifest.dataMode = 'scheduled-public-data'
+    manifest.sources[0].kind = 'seed'
+    bodies.set(manifestPath, JSON.stringify(manifest))
+    await page.reload()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    await page.getByRole('status', { name: 'Player-stat freshness', exact: true }).getByText(/Oracle's Elixir player-stat coverage is unavailable/).waitFor()
+    manifest.sources = []
+    bodies.set(manifestPath, JSON.stringify(manifest))
+    await page.reload()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    await page.getByRole('status', { name: 'Player-stat freshness', exact: true }).getByText(/Oracle's Elixir player-stat coverage is unavailable/).waitFor()
   } finally {
     pendingPlayers.splice(0).forEach((respond) => respond())
     await browser?.close()
