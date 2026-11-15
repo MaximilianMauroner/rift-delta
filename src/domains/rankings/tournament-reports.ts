@@ -336,6 +336,10 @@ export function resolveReportSelection(
   return {
     kind: 'ready',
     team,
-    player: player ?? team?.participants[0],
+    player:
+      player ??
+      (team
+        ? (reportAwards(team.participants).best[0] ?? team.participants[0])
+        : undefined),
   } as const
 }

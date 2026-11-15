@@ -25,17 +25,14 @@ export function PostmortemView() {
       className="grid min-w-0 gap-5 px-[var(--page-x)] py-5"
       aria-label="Worlds team reports"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+      {state.status !== 'ready' ? (
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <h2 className="text-xl font-semibold">Worlds team reports</h2>
-          <p className="text-sm text-muted-foreground">
-            Event-only player evidence from the published ranking generation.
-          </p>
+          <Button variant="outline" onClick={retry}>
+            Refresh reports
+          </Button>
         </div>
-        <Button variant="outline" onClick={retry}>
-          Refresh reports
-        </Button>
-      </div>
+      ) : null}
       {state.status === 'loading' ? (
         <p role="status">Loading report catalog…</p>
       ) : state.status === 'unavailable' ? (
@@ -53,13 +50,19 @@ export function PostmortemView() {
           </Button>
         </Alert>
       ) : (
-        <ReportCatalog index={state.data} />
+        <ReportCatalog index={state.data} retryCatalog={retry} />
       )}
     </section>
   )
 }
 
-function ReportCatalog({ index }: { index: TournamentReportIndex }) {
+function ReportCatalog({
+  index,
+  retryCatalog,
+}: {
+  index: TournamentReportIndex
+  retryCatalog: () => void
+}) {
   const query = useTournamentReportAddress()
   const requested = query.get('event')
   const entry =
@@ -69,24 +72,29 @@ function ReportCatalog({ index }: { index: TournamentReportIndex }) {
   const { state, retry } = useTournamentReport(index, entry)
   return (
     <>
-      <div className="grid min-w-0 gap-1 justify-start">
-        <label htmlFor="report-event" className="text-sm font-semibold">
-          Report event
-        </label>
-        <Select
-          id="report-event"
-          value={entry?.id ?? ''}
-          onChange={(event) =>
-            selectTournamentReport({ event: event.target.value })
-          }
-        >
-          {!entry ? <option value="">Choose a report</option> : null}
-          {index.tournaments.map((event) => (
-            <option key={event.id} value={event.id}>
-              {event.label}
-            </option>
-          ))}
-        </Select>
+      <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
+        <div className="grid min-w-0 gap-1">
+          <label htmlFor="report-event" className="text-sm font-semibold">
+            Report event
+          </label>
+          <Select
+            id="report-event"
+            value={entry?.id ?? ''}
+            onChange={(event) =>
+              selectTournamentReport({ event: event.target.value })
+            }
+          >
+            {!entry ? <option value="">Choose a report</option> : null}
+            {index.tournaments.map((event) => (
+              <option key={event.id} value={event.id}>
+                {event.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button variant="outline" onClick={retryCatalog}>
+          Refresh reports
+        </Button>
       </div>
       {!entry ? (
         <Alert role="status">
@@ -132,19 +140,59 @@ function ReportBody({ report }: { report: TournamentReport }) {
   const { coverage } = report
   return (
     <>
-      <header className="grid gap-2 border-b border-border pb-4">
-        <h3 className="text-2xl font-semibold">{report.label}</h3>
-        <p className="text-sm">
-          {coverage.observedGames} source-observed games ·{' '}
-          {coverage.observedTeams} teams · {coverage.participants} player-role
-          participants
-        </p>
-        <p className="text-sm text-muted-foreground">
-          The ranking universe includes {coverage.ratedGames} of these games and{' '}
-          {coverage.ratedTeams} teams. Source evidence runs from{' '}
-          {coverage.since} through {coverage.through}. Official event completion
-          is unknown.
-        </p>
+      <header className="grid gap-3 border-b border-border pb-4">
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="grid gap-1">
+            <h2 className="text-2xl font-semibold">{report.label}</h2>
+            <p className="text-sm">
+              {coverage.observedGames} source-observed games ·{' '}
+              {coverage.observedTeams} teams · {coverage.participants}{' '}
+              player-role participants
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {coverage.since} through {coverage.through}. Official event
+              completion is unknown.
+            </p>
+          </div>
+          <div className="min-w-0 rounded-md border border-[var(--accent-line)] bg-[var(--accent-soft)] px-3 py-2">
+            <p className="text-xs font-semibold">
+              {uniqueMvp.length > 1 ? 'Statistical MVP tie' : 'Statistical MVP'}
+            </p>
+            {uniqueMvp.length ? (
+              uniqueMvp.map((player) => (
+                <Button
+                  key={player.key}
+                  variant="ghost"
+                  aria-label={`View statistical MVP ${player.name}, ${player.role}`}
+                  className="h-auto w-full min-w-0 justify-between gap-4 px-0 py-1 text-left whitespace-normal"
+                  onClick={() =>
+                    selectTournamentReport({
+                      event: report.id,
+                      team: player.teamId,
+                      player: player.key,
+                    })
+                  }
+                >
+                  <span className="grid">
+                    <span className="text-lg font-semibold">{player.name}</span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {player.role} · {player.statsPower!.sampleGames} scored
+                      games
+                    </span>
+                  </span>
+                  <span className="font-mono text-lg tabular-nums">
+                    {player.statsPower!.score.toFixed(2)}
+                  </span>
+                </Button>
+              ))
+            ) : (
+              <p className="mt-1 text-sm">No score has observed evidence.</p>
+            )}
+            <p className="text-2xs text-muted-foreground">
+              Model report award. Official awards are separate.
+            </p>
+          </div>
+        </div>
         {report.provenance.dataMode === 'seeded-sample' ||
         report.provenance.providers.includes('seed') ? (
           <Alert variant="warning" role="status">
@@ -152,25 +200,21 @@ function ReportBody({ report }: { report: TournamentReport }) {
             synthetic.
           </Alert>
         ) : null}
-        <p className="text-sm">
-          <span className="font-semibold">
-            {uniqueMvp.length > 1 ? 'Statistical MVP tie' : 'Statistical MVP'}
-          </span>
-          {' · '}
-          {uniqueMvp.length
-            ? uniqueMvp
-                .map(
-                  (player) =>
-                    `${player.name} (${player.role}, ${player.statsPower!.score.toFixed(2)})`,
-                )
-                .join(', ')
-            : 'No score has observed evidence.'}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          This is a model report award. Official tournament awards are separate.{' '}
-          {mvp.eligible} participant rows have observed score evidence.
-          Prior-only scores receive no awards. Awards use unrounded scores.
-        </p>
+        <details className="text-xs text-muted-foreground">
+          <summary className="cursor-pointer">
+            Coverage and award details
+          </summary>
+          <div className="mt-2 grid gap-1">
+            <p>
+              The ranking universe includes {coverage.ratedGames} of these games
+              and {coverage.ratedTeams} teams.
+            </p>
+            <p>
+              {mvp.eligible} participant rows have observed score evidence.
+              Prior-only scores receive no awards. Awards use unrounded scores.
+            </p>
+          </div>
+        </details>
       </header>
       <div className="grid min-w-0 gap-1 justify-start">
         <label htmlFor="report-team" className="text-sm font-semibold">

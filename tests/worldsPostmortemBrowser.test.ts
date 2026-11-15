@@ -164,7 +164,14 @@ async function journey(
     await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
-    console.log(JSON.stringify({ fixture: 'synthetic-worlds-report', checkout: process.cwd(), pid: process.pid, port: address.port }))
+    console.log(
+      JSON.stringify({
+        fixture: 'synthetic-worlds-report',
+        checkout: process.cwd(),
+        pid: process.pid,
+        port: address.port,
+      }),
+    )
     const executablePath = chromium.executablePath()
     browser = await chromium.launch(
       existsSync(executablePath)
@@ -195,7 +202,13 @@ async function journey(
   } finally {
     await browser?.close()
     await server.close()
-    console.log(JSON.stringify({ fixture: 'synthetic-worlds-report', pid: process.pid, serverClosed: true }))
+    console.log(
+      JSON.stringify({
+        fixture: 'synthetic-worlds-report',
+        pid: process.pid,
+        serverClosed: true,
+      }),
+    )
   }
 }
 
@@ -254,6 +267,23 @@ test(
       const report = control.generation.reports['worlds:2025']!
       const beta = team(report, 'Beta')
       await teamPicker(page).selectOption(beta.id)
+      await page
+        .getByRole('button', {
+          name: 'View statistical MVP Focal, Mid',
+          exact: true,
+        })
+        .click()
+      await evidence(page).waitFor()
+      assert.equal(
+        await teamPicker(page).inputValue(),
+        team(report, 'Alpha').id,
+      )
+      assert.ok(
+        (await hash(page)).includes(
+          `player=${team(report, 'Alpha').participants.find((player) => player.role === 'Mid')!.key}`,
+        ),
+      )
+      await teamPicker(page).selectOption(beta.id)
       const row = page.getByRole('button', {
         name: 'View b-2, Mid',
         exact: true,
@@ -296,7 +326,12 @@ test(
         .getByRole('button', { name: 'View Focal, Mid', exact: true })
         .click()
       await evidence(page).waitFor()
-      await page.getByText('Observed GD15 range 500 to 500 gold').waitFor()
+      await page
+        .getByRole('img', {
+          name: 'Observed GD15 range 500 to 500 gold',
+          exact: true,
+        })
+        .waitFor()
       await evidence(page)
         .getByText('GD15 unavailable', { exact: true })
         .waitFor()
@@ -320,8 +355,12 @@ test(
         feedCount,
         'Archived report navigation does not mount the live feed',
       )
-      await page.goto(`${base}/#tournaments?view=postmortem&scope=season:2024&event=worlds:2024`)
-      await page.getByRole('heading', { name: 'Worlds 2024', exact: true }).waitFor()
+      await page.goto(
+        `${base}/#tournaments?view=postmortem&scope=season:2024&event=worlds:2024`,
+      )
+      await page
+        .getByRole('heading', { name: 'Worlds 2024', exact: true })
+        .waitFor()
       await page
         .getByRole('navigation', { name: 'Primary', exact: true })
         .getByRole('link', { name: 'Rankings', exact: true })

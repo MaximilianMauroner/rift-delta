@@ -1,5 +1,4 @@
 import { TeamMark } from '../../../components/TeamMark'
-import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader } from '../../../components/ui/card'
 import {
@@ -18,11 +17,17 @@ export function TeamReportCard({
   onSelect: (player: TournamentReportPlayer) => void
 }) {
   const awards = reportAwards(team.participants)
+  const allGold = team.participants.flatMap((player) =>
+    player.games.flatMap((game) =>
+      game.metrics.goldDiffAt15 === null ? [] : game.metrics.goldDiffAt15,
+    ),
+  )
+  const extent = Math.max(1, ...allGold.map(Math.abs))
   return (
-    <Card>
-      <CardHeader className="gap-4">
+    <Card size="sm">
+      <CardHeader className="gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <TeamMark team={team.name} code={team.code} className="size-12" />
+          <TeamMark team={team.name} code={team.code} className="size-10" />
           <div className="min-w-0">
             <h4 className="break-words text-xl font-semibold">{team.name}</h4>
             <p className="text-xs text-muted-foreground">
@@ -44,18 +49,30 @@ export function TeamReportCard({
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          {awards.eligible} of {team.participants.length} participant rows have
+          {awards.eligible} of {team.participants.length} participants have
           observed score evidence. Tied scores share the callout.
         </p>
       </CardHeader>
-      <CardContent className="grid min-w-0 gap-3">
+      <CardContent className="grid min-w-0 gap-2">
         <h5 className="text-sm font-semibold">Observed lineup</h5>
-        <p className="text-xs text-muted-foreground">
-          All observed roles and substitutes. Select a participant for evidence.
-          GD15 is gold relative to the opposing role at 15 minutes.
-        </p>
         <div
-          className="grid min-w-0 gap-2"
+          aria-hidden="true"
+          className="hidden grid-cols-[3.5rem_minmax(0,1fr)_minmax(5rem,1.2fr)_4.5rem] items-end gap-2 px-2 text-2xs text-muted-foreground sm:grid"
+        >
+          <span>Role</span>
+          <span>Player</span>
+          <span className="grid gap-1">
+            <span>GD15 range, gold</span>
+            <span className="flex justify-between">
+              <span>−{extent}</span>
+              <span>0</span>
+              <span>+{extent}</span>
+            </span>
+          </span>
+          <span className="text-right">StatsPower</span>
+        </div>
+        <div
+          className="grid min-w-0 divide-y divide-border"
           role="group"
           aria-label="Observed lineup"
         >
@@ -65,61 +82,84 @@ export function TeamReportCard({
                 ? []
                 : game.metrics.goldDiffAt15,
             )
-            const mean = player.performance.metrics.goldDiffAt15
+            const minimum = gold.length ? Math.min(...gold) : 0
+            const maximum = gold.length ? Math.max(...gold) : 0
+            const mean = player.performance.metrics.goldDiffAt15.value
+            const observedScore =
+              player.statsPower && !player.statsPower.priorOnly
             return (
               <Button
                 key={player.key}
-                variant="outline"
+                variant="ghost"
                 aria-pressed={player.key === selected}
                 aria-label={`View ${player.name}, ${player.role}`}
                 onClick={() => onSelect(player)}
-                className="h-auto w-full min-w-0 flex-wrap justify-between gap-x-3 gap-y-2 px-3 py-3 text-left whitespace-normal aria-pressed:border-[var(--accent)] aria-pressed:bg-[var(--accent-soft)]"
+                className="grid h-auto min-h-12 w-full min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] items-center gap-2 rounded-none px-2 py-2 text-left whitespace-normal aria-pressed:bg-[var(--accent-soft)] sm:grid-cols-[3.5rem_minmax(0,1fr)_minmax(5rem,1.2fr)_4.5rem]"
               >
-                <span className="grid min-w-0 flex-1 gap-1">
-                  <span className="text-xs text-muted-foreground">
-                    {player.role}
-                  </span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  {player.role}
+                </span>
+                <span className="grid min-w-0 gap-0.5">
                   <span className="break-words font-semibold">
                     {player.name}
                   </span>
-                  <span className="text-xs font-normal text-muted-foreground">
+                  <span className="text-2xs font-normal text-muted-foreground">
                     {player.games.length} team games
                   </span>
                 </span>
-                <span className="grid justify-items-end gap-1">
-                  <span className="font-mono text-lg tabular-nums">
-                    {player.statsPower
-                      ? player.statsPower.score.toFixed(2)
-                      : 'Unavailable'}
+                <span className="hidden min-w-0 sm:block">
+                  {gold.length ? (
+                    <span
+                      role="img"
+                      aria-label={`Observed GD15 range ${minimum} to ${maximum} gold`}
+                      title={`Observed GD15 range ${minimum} to ${maximum} gold. ${gold.length} observed games.`}
+                      className="relative block h-5"
+                    >
+                      <span className="absolute inset-x-0 top-1/2 border-t border-border" />
+                      <span className="absolute inset-y-0 left-1/2 border-l border-border" />
+                      <span
+                        className="absolute top-1/2 h-2 -translate-y-1/2 rounded-sm bg-[var(--accent-soft)]"
+                        style={{
+                          left: `${((minimum + extent) / (2 * extent)) * 100}%`,
+                          width: `${((maximum - minimum) / (2 * extent)) * 100}%`,
+                        }}
+                      />
+                      {mean !== null ? (
+                        <span
+                          className="absolute inset-y-1 w-0.5 bg-[var(--accent)]"
+                          style={{
+                            left: `${((mean + extent) / (2 * extent)) * 100}%`,
+                          }}
+                        />
+                      ) : null}
+                    </span>
+                  ) : (
+                    <span className="text-2xs font-normal text-muted-foreground">
+                      No GD15 data
+                    </span>
+                  )}
+                </span>
+                <span className="grid justify-items-end gap-0.5">
+                  <span className="font-mono text-base tabular-nums">
+                    {observedScore ? player.statsPower!.score.toFixed(2) : '—'}
                   </span>
-                  <span className="text-2xs text-muted-foreground">
+                  <span className="text-2xs font-normal text-muted-foreground sm:hidden">
                     StatsPower
                   </span>
-                  {!player.statsPower || player.statsPower.priorOnly ? (
-                    <Badge variant="secondary">No observed score</Badge>
-                  ) : player.statsPower.sampleGames < 20 ? (
-                    <Badge variant="warning">Small sample</Badge>
+                  {!observedScore ? (
+                    <span className="text-2xs font-normal text-muted-foreground">
+                      No observed score
+                    </span>
                   ) : null}
-                </span>
-                <span className="grid w-full gap-1 border-t border-border pt-2 text-xs font-normal text-muted-foreground">
-                  <span>
-                    Mean GD15{' '}
-                    {mean.value === null
-                      ? 'unavailable'
-                      : `${Math.round(mean.value)} gold`}{' '}
-                    · {mean.games} observed, {mean.missing} missing
-                  </span>
-                  <span>
-                    Observed GD15 range{' '}
-                    {gold.length
-                      ? `${Math.min(...gold)} to ${Math.max(...gold)} gold`
-                      : 'unavailable'}
-                  </span>
                 </span>
               </Button>
             )
           })}
         </div>
+        <p className="text-2xs text-muted-foreground">
+          All observed roles and substitutes. GD15 compares gold with the
+          opposing role at 15 minutes.
+        </p>
       </CardContent>
     </Card>
   )
@@ -135,7 +175,7 @@ function Award({
   onSelect: (player: TournamentReportPlayer) => void
 }) {
   return (
-    <div className="min-w-0 rounded-md border border-border bg-[var(--surface-2)] p-3">
+    <div className="min-w-0 rounded-md border border-border bg-[var(--surface-2)] p-2">
       <h5 className="text-xs text-muted-foreground">
         {label}
         {players.length > 1 ? ' · Tie' : ''}
@@ -145,12 +185,12 @@ function Award({
           <Button
             key={player.key}
             variant="ghost"
-            className="h-auto w-full min-w-0 justify-between gap-2 px-0 py-2 whitespace-normal"
+            className="h-auto w-full min-w-0 justify-between gap-2 px-0 py-1 whitespace-normal"
             onClick={() => onSelect(player)}
           >
             <span className="break-words text-left">
               {player.name}
-              <span className="block text-xs font-normal text-muted-foreground">
+              <span className="block text-2xs font-normal text-muted-foreground">
                 {player.role} · {player.statsPower!.sampleGames} scored games
               </span>
             </span>

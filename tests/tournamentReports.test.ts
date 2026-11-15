@@ -185,6 +185,24 @@ test('event-role scores disclose teams and award exact ties without prior-only o
   )
 })
 
+test('a team opens its best observed player and falls back when all scores lack evidence', () => {
+  const report = parseTournamentReport(Object.values(build().shards)[0])
+  const team = report.teams[0]!
+  const best = reportAwards(team.participants).best[0]!
+  team.participants = [
+    ...team.participants.filter((player) => player.key !== best.key),
+    best,
+  ]
+  const selection = resolveReportSelection(report, { team: team.id })
+  assert.equal(selection.kind, 'ready')
+  if (selection.kind === 'ready') assert.equal(selection.player?.key, best.key)
+  for (const player of team.participants) player.statsPower = null
+  const fallback = resolveReportSelection(report, { team: team.id })
+  assert.equal(fallback.kind, 'ready')
+  if (fallback.kind === 'ready')
+    assert.equal(fallback.player?.key, team.participants[0]!.key)
+})
+
 test('league anchors stop at the event boundary and later games cannot alter an archived report', () => {
   const matches = [reportGame('one'), reportGame('two', '2025-10-16', -300)]
   const original = buildInput(matches)
