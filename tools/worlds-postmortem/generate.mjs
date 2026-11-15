@@ -57,7 +57,7 @@ for (const definition of definitions) {
   await writeFile(new URL(definition.artifact, outputDirectory), html);
 }
 
-const initialNode = "C";
+const initialNode = "A";
 const replacements = {
   STYLE: concepts[initialNode].styles,
   DESCRIPTION: concepts[initialNode].description,

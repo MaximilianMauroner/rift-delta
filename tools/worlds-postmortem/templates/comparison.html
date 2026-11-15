@@ -154,7 +154,7 @@
         </details>
       </div>
       <output data-review-status aria-live="polite"
-        >Round 1. No design selected.</output
+        >A is the selected baseline.</output
       >
     </section>
     <div id="review-content">{{BODY}}</div>
@@ -190,7 +190,7 @@
               ),
             );
           document.querySelector("[data-review-status]").textContent =
-            "Viewing " + node + ". Round 1. No design selected.";
+            "Viewing " + node + ". A is the selected baseline.";
           active = node;
           const script = document.createElement("script");
           script.textContent = concept.script;
