@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { PlayerRankingCard } from '../src/views/rankings/PlayerDisclosure.tsx'
 import { createPlayerDirectory, createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
+import { mergeCommunityMatchSources } from '../src/domains/rankings/internal/evidence/communitySources.ts'
 import { compactStanding, parsePublicPlayerDirectory, teamIdFor } from '../src/domains/rankings/internal/published/schema.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
 import { importOraclesElixirCsv } from '../scripts/rankings/providers/oraclesElixir.ts'
@@ -327,12 +328,12 @@ test('source game suffixes order substitutions even with equal differently forma
   assert.equal(lineup?.starters.find((player) => player.role === 'Mid')?.playerId, 'reserve-Mid')
 })
 
-test('imported series game order wins over duration-derived completion times for a shared start', () => {
+function importedSeriesWithSubstitution(gameId: (game: number) => string) {
   const columns = ['gameid', 'date', 'year', 'league', 'game', 'gamelength', 'position', 'side', 'teamname', 'playerid', 'playername', 'result']
   const rows = [columns.join(',')]
   for (const [game, duration] of [[1, 2400], [2, 1800]]) {
     for (const [side, team, result] of [['Blue', 'Alpha', '1'], ['Red', 'Beta', '0']]) {
-      const common = { gameid: `series_game_${game}`, date: '2026-01-24 12:00:00', year: '2026', league: 'LCK', game, gamelength: duration, side, teamname: team, result }
+      const common = { gameid: gameId(game), date: '2026-01-24 12:00:00', year: '2026', league: 'LCK', game, gamelength: duration, side, teamname: team, result }
       const add = (row: Record<string, string | number>) => rows.push(columns.map((key) => row[key] ?? '').join(','))
       add({ ...common, position: 'team' })
       for (const [index, position] of ['top', 'jng', 'mid', 'bot', 'sup'].entries()) {
@@ -341,13 +342,26 @@ test('imported series game order wins over duration-derived completion times for
       }
     }
   }
-  const imported = importOraclesElixirCsv(rows.join('\n')).matches
+  return importOraclesElixirCsv(rows.join('\n')).matches
+}
+
+test('imported series game order wins over duration-derived completion times for a shared start', () => {
+  const imported = importedSeriesWithSubstitution((game) => `series_game_${game}`)
   assert.equal(imported.length, 2)
   assert.equal(imported[0].datetimeUtc, imported[1].datetimeUtc)
   assert.ok(imported[0].gameCompletedAtUtc! > imported[1].gameCompletedAtUtc!)
 
   const lineup = createPlayerDirectory(build(imported)).currentLineups[alphaId]
   assert.equal(lineup?.starters.find((player) => player.role === 'Mid')?.playerId, 'reserve-Mid')
+})
+
+test('opaque imported game IDs do not turn duration into lineup order', () => {
+  const imported = importedSeriesWithSubstitution((game) => `ESPORTSTMNT01/${3218488 + game}`)
+  const merged = mergeCommunityMatchSources({ oracleMatches: imported, leaguepediaMatches: [] })
+  assert.equal(merged.length, 2)
+  assert.equal(createPlayerDirectory(build(merged)).currentLineups[alphaId], undefined)
+  assert.equal(createPlayerDirectory(build(merged.toReversed())).currentLineups[alphaId], undefined)
+  assert.equal(createPlayerDirectory(build(merged)).currentLineups[teamIdFor({ team: 'Beta', code: 'BET' })]?.completeness, 'complete-five-role')
 })
 
 test('unordered complementary partial rosters cannot form a five-role observed lineup', () => {

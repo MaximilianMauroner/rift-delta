@@ -1861,7 +1861,7 @@ function observedLineupGameIsLater(left: ObservedLineupGame, right: ObservedLine
   const rightGame = gameNumberFor(right.match)
   const gameOrder = left.seriesId !== undefined && left.seriesId === right.seriesId
     && leftGame !== Number.MAX_SAFE_INTEGER && rightGame !== Number.MAX_SAFE_INTEGER ? leftGame - rightGame : 0
-  if (sameStart && gameOrder !== 0) return gameOrder > 0
+  if (sameStart) return gameOrder > 0
   if (left.match.gameCompletedAtUtc && right.match.gameCompletedAtUtc) {
     const timeDifference = Date.parse(left.match.gameCompletedAtUtc) - Date.parse(right.match.gameCompletedAtUtc)
     if (timeDifference !== 0) return timeDifference > 0
