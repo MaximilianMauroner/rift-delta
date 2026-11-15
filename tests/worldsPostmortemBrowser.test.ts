@@ -41,9 +41,7 @@ function generation({ legacy = false, updated = false } = {}) {
     observed: { matches, teams: reportTeams },
     ratedMatches: matches,
     ratedTeams: reportTeams,
-    source: data.source,
     dataMode: data.dataMode,
-    sources: [],
     modelVersion: data.model.version,
     modelConfigHash: data.model.configHash,
   })

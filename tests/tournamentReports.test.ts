@@ -26,9 +26,7 @@ const buildInput = (matches = [reportGame()]) => ({
   observed: retainTournamentReportInput(matches, reportTeams),
   ratedMatches: matches,
   ratedTeams: reportTeams,
-  source: 'Explicitly synthetic tournament report test fixture',
   dataMode: 'seeded-sample',
-  sources: [],
   modelVersion: 'fixture-model',
   modelConfigHash: 'fixture-config',
 })

@@ -1,5 +1,5 @@
 import type { PublicArtifactFamily } from '../published/writePlan.ts'
-import type { DataSourceInfo, MatchRecord, TeamProfile } from '../../types.ts'
+import type { MatchRecord, TeamProfile } from '../../types.ts'
 import { teamIdFor } from '../published/schema.ts'
 import { tournamentInstanceForEvent } from '../evidence/internationalTournaments.ts'
 import { buildRankingModel } from '../replay/model.ts'
@@ -65,9 +65,7 @@ type ReportBuildInput = {
   observed: TournamentReportInput
   ratedMatches: MatchRecord[]
   ratedTeams: Record<string, TeamProfile>
-  source: string
   dataMode: string
-  sources: DataSourceInfo[]
   modelVersion: string
   modelConfigHash: string
 }
@@ -169,7 +167,6 @@ export function buildTournamentReports(
         officialCompletion: 'unknown',
       },
       provenance: {
-        source: input.source,
         dataMode: input.dataMode,
         inputDigest: stableDigest({
           matches,
@@ -183,11 +180,6 @@ export function buildTournamentReports(
         files: [
           ...new Set(matches.flatMap((match) => match.sourceFileName ?? [])),
         ].sort(compareCodeUnits),
-        sources: input.sources.map(({ name, url, retrievedAt }) => ({
-          name,
-          ...(url ? { url } : {}),
-          ...(retrievedAt ? { retrievedAt } : {}),
-        })),
       },
       method: {
         version: 'event-stats-power-v1',

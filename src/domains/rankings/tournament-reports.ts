@@ -63,18 +63,10 @@ const power = z.object({
   ),
 })
 const provenance = z.object({
-  source: text,
   dataMode: text,
   inputDigest: z.string().regex(/^fnv1a64-[a-f0-9]{16}$/),
   providers: z.array(text),
   files: z.array(text),
-  sources: z.array(
-    z.object({
-      name: text,
-      url: text.optional(),
-      retrievedAt: text.optional(),
-    }),
-  ),
 })
 const method = z.object({
   version: z.literal('event-stats-power-v1'),

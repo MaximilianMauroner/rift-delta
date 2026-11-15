@@ -158,7 +158,7 @@ const publicPlan = createPublicArtifactWritePlan(snapshot, {
   ...(options.previousArtifacts ? { previousArtifacts: options.previousArtifacts } : {}),
   families: [scoutingFamily(snapshot.matches), tournamentReportFamily({
     observed: tournamentReportInput, ratedMatches: matches, ratedTeams: teams,
-    source: sourceData.source, dataMode: sourceData.dataMode, sources: sourceData.externalSources,
+    dataMode: sourceData.dataMode,
     modelVersion: snapshot.model.version, modelConfigHash: snapshot.model.configHash,
   })],
 })

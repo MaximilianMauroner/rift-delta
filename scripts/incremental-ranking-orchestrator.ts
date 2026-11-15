@@ -802,7 +802,7 @@ function ledgerContext(sourceData: RankingSourceImport, previous?: CanonicalMatc
   const reports = retainTournamentReportInput(sourceData.importedMatches, sourceData.mergedTeams)
   const scheduleCausalRows = [
     ...scheduleCausalRowsFor(sourceData),
-    ...reports.matches.map(match => ({ key: `tournament-report:${match.id}`, utcDate: match.date, digest: stableDigest({ match, teams: reports.teams, sources: sourceData.externalSources }) })),
+    ...reports.matches.map(match => ({ key: `tournament-report:${match.id}`, utcDate: match.date, digest: stableDigest({ match, teams: reports.teams }) })),
   ].sort((a, b) => compareCodeUnits(a.utcDate ?? '', b.utcDate ?? '') || compareCodeUnits(a.key, b.key))
   return {
     modelVersion: transparentGprModelMetadata.version,

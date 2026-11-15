@@ -298,20 +298,13 @@ function ReportBody({ report }: { report: TournamentReport }) {
             Method {report.method.version}
           </p>
           <p>
-            Source {report.provenance.source} · Data mode{' '}
-            {report.provenance.dataMode} · Input digest{' '}
+            Data mode {report.provenance.dataMode} · Input digest{' '}
             {report.provenance.inputDigest}
           </p>
           <p>
             Providers {report.provenance.providers.join(', ')} · Files{' '}
             {report.provenance.files.join(', ') || 'No file names supplied'}
           </p>
-          {report.provenance.sources.map((source, index) => (
-            <p key={index}>
-              {source.name}
-              {source.retrievedAt ? ` · Retrieved ${source.retrievedAt}` : ''}
-            </p>
-          ))}
         </div>
       </details>
     </>

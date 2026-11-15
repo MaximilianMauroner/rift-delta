@@ -100,6 +100,42 @@ test('unrated-only Worlds corrections bypass no-change, preserve all 17 source-o
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 
+test('source receipt updates preserve a one-game append with retained Worlds reports', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'worlds-receipt-append-'))
+  try {
+    const observed = [reportGame('one'), reportGame('two', '2025-10-16', -200), scoutingGame({ id: 'regular', date: '2025-12-30' })]
+    const source = reportSource(observed)
+    const baseline = await run(root, 'receipt-base', structuredClone(source), { mode: 'gated', cause: 'manual-force', enabled: false })
+    const restored = restoreFrom(baseline)
+    const appended = scoutingGame({ id: 'append', date: '2025-12-31' })
+    const next = reportSource([...observed, appended])
+    next.source = 'Oracle primary with an additional Leaguepedia receipt'
+    next.externalSources = [{ name: 'New provider receipt', kind: 'game-stats', status: 'active', description: 'Synthetic receipt metadata', retrievedAt: '2026-01-02T00:00:00.000Z' }]
+    const receiptOnly = { ...structuredClone(source), source: next.source, externalSources: next.externalSources }
+    const metadata = await run(root, 'receipt-only', structuredClone(receiptOnly), { mode: 'gated', cause: 'pending-match', enabled: true, restored })
+    assert.equal(metadata.action, 'publish-incremental')
+    assert.equal(metadata.metrics.classification, 'metadata-only')
+    assert.equal(metadata.metrics.replayedMatchCount, 0)
+    assert.deepEqual(metadata.metrics.changedPaths, ['/data/ranking-summary.json'])
+    const metadataFull = await run(root, 'receipt-only-full', structuredClone(receiptOnly), { mode: 'gated', cause: 'manual-force', enabled: false })
+    const metadataMap = semanticMap(metadata)
+    const metadataFullMap = semanticMap(metadataFull)
+    assert.deepEqual(metadata.rootManifest?.sources, next.externalSources)
+    assert.equal(metadata.rootManifest?.source, next.source)
+    for (const path of ['/data/tournament-reports/index.json', '/data/tournament-reports/events/worlds-2025.json']) {
+      assert.ok(metadataMap[path])
+      assert.equal(metadataMap[path], metadataFullMap[path], `Receipt-only report parity for ${path}`)
+    }
+    const candidate = await run(root, 'receipt-append', structuredClone(next), { mode: 'gated', cause: 'pending-match', enabled: true, restored })
+    assert.equal(candidate.action, 'publish-incremental', candidate.metrics.fallbackReason)
+    assert.equal(candidate.metrics.classification, 'latest-append')
+    assert.equal(candidate.metrics.replayedMatchCount, 1)
+    if (candidate.action !== 'publish-incremental') throw new Error('Expected an incremental append')
+    const full = await run(root, 'receipt-full', structuredClone(next), { mode: 'gated', cause: 'manual-force', enabled: false })
+    assert.deepEqual(semanticMap(candidate), semanticMap(full))
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 test('partial player directory preserves valid unaffected season players and diagnostics', () => {
   const merged = mergePartialPlayerDirectoryArtifact({
     artifactKind: 'player-directory',
