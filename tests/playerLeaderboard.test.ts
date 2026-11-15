@@ -34,29 +34,38 @@ function directory(): PublicPlayerDirectory {
   }
 }
 
-test('player leaderboard reads only the selected source scope and orders by the published primary rating', () => {
+function priorOnly(anchor: number): PlayerStatsPower {
+  return { ...statsPower(anchor), sampleGames: 0, priorOnly: true, leagueAnchor: anchor }
+}
+
+function standings(rows: ReturnType<typeof playerLeaderboardForScope>['rows']) {
+  return rows.map((row) => [row.id, row.leaderboardRank, row.leaderboardScore])
+}
+
+test('player leaderboard reads only the selected source scope and ranks an all-legacy scope by Role Power', () => {
   const data = directory()
   const before = structuredClone(data)
-  const rows = playerLeaderboardForScope(data, season)
-  assert.deepEqual(rows.map(({ id, rating, rank, games }) => ({ id, rating, rank, games })), [
-    { id: 'First', rating: 300, rank: 1, games: 30 },
-    { id: 'Second', rating: 200, rank: 2, games: 30 },
-    { id: 'Third', rating: 100, rank: 3, games: 30 },
+  const { scoreFamily, rows } = playerLeaderboardForScope(data, season)
+  assert.equal(scoreFamily, 'role-power')
+  assert.deepEqual(rows.map(({ id, rating, rank, games, leaderboardRank }) => ({ id, rating, rank, games, leaderboardRank })), [
+    { id: 'First', rating: 300, rank: 1, games: 30, leaderboardRank: 1 },
+    { id: 'Second', rating: 200, rank: 2, games: 30, leaderboardRank: 2 },
+    { id: 'Third', rating: 100, rank: 3, games: 30, leaderboardRank: 3 },
   ])
   assert.deepEqual(data, before, 'Reading a leaderboard must preserve stored rows and their history')
-  assert.equal(rows.filter((row) => row.name === 'Third')[0].rank, 3, 'Filtering keeps source-scope rank')
-  assert.deepEqual(playerLeaderboardForScope(data, all).map((row) => row.id), ['Previous season only'])
+  assert.deepEqual(playerLeaderboardForScope(data, all).rows.map((row) => row.id), ['Previous season only'])
 })
 
 test('missing and explicitly empty exact scopes never borrow season or all-season rows', () => {
   const data = directory()
-  assert.deepEqual(playerLeaderboardForScope(undefined, season), [])
-  assert.deepEqual(playerLeaderboardForScope(data, { ...season, season: '2024' }), [])
-  assert.deepEqual(playerLeaderboardForScope(data, { ...season, checkpoint: 'split-2' }), [])
-  assert.deepEqual(playerLeaderboardForScope(data, { ...season, event: 'Synthetic event' }), [])
-  assert.deepEqual(playerLeaderboardForScope(data, { ...all, region: 'LCK' }), [])
+  const empty = { scoreFamily: 'role-power', rows: [] }
+  assert.deepEqual(playerLeaderboardForScope(undefined, season), empty)
+  assert.deepEqual(playerLeaderboardForScope(data, { ...season, season: '2024' }), empty)
+  assert.deepEqual(playerLeaderboardForScope(data, { ...season, checkpoint: 'split-2' }), empty)
+  assert.deepEqual(playerLeaderboardForScope(data, { ...season, event: 'Synthetic event' }), empty)
+  assert.deepEqual(playerLeaderboardForScope(data, { ...all, region: 'LCK' }), empty)
   data.scopedPlayers!['2026__All__All'] = []
-  assert.deepEqual(playerLeaderboardForScope(data, season), [])
+  assert.deepEqual(playerLeaderboardForScope(data, season), empty)
 })
 
 test('team drawers keep their real fallback while the leaderboard stays exact', () => {
@@ -67,35 +76,58 @@ test('team drawers keep their real fallback while the leaderboard stays exact', 
   assert.match(resolvePlayerScope(data, season).label, /all-season sources/)
 })
 
-test('equal ratings use source rank and stable identity without changing either score or rank', () => {
+test('equal Role Power shares a competition rank and keeps stored rank and stable identity order', () => {
   const data = directory()
-  data.scopedPlayers!['2026__All__All'] = [player('B', 100, 2), player('C', 100, 1), player('A', 100, 2)]
-  assert.deepEqual(playerLeaderboardForScope(data, season).map((row) => [row.id, row.rank, row.rating, row.leaderboardRank]), [
-    ['C', 1, 100, 1], ['A', 2, 100, 1], ['B', 2, 100, 1],
+  data.scopedPlayers!['2026__All__All'] = [player('B', 100, 2), player('D', 90, 4), player('C', 100, 1), player('A', 100, 2)]
+  assert.deepEqual(playerLeaderboardForScope(data, season).rows.map((row) => [row.id, row.rank, row.leaderboardRank]), [
+    ['C', 1, 1], ['A', 2, 1], ['B', 2, 1], ['D', 4, 4],
   ])
 })
 
-test('Stats Power orders the leaderboard against Role Power, and only exact selected-score ties share a rank', () => {
+test('a mixed scope ranks only observed Stats Power and lists Role Power-only and prior-only rows as unranked', () => {
   const data = directory()
   data.scopedPlayers!['2026__All__All'] = [
     { ...player('Ash', 300, 1), statsPower: statsPower(101.25) },
     { ...player('Birch', 200, 2), statsPower: statsPower(104.5) },
     { ...player('Cypress', 100, 3), statsPower: statsPower(104.5) },
-    player('Dune', 50, 4),
+    player('Dune', 5000, 4),
     { ...player('Elm', 10, 5), statsPower: statsPower(104.5 + 1e-12) },
+    { ...player('Fir', 4000, 0), statsPower: priorOnly(120) },
   ]
   const before = structuredClone(data)
-  const rows = playerLeaderboardForScope(data, season)
-  assert.deepEqual(rows.map((row) => [row.id, row.leaderboardRank, row.leaderboardScore.kind, row.leaderboardScore.value, row.rank, row.rating]), [
-    ['Elm', 1, 'stats-power', 104.5 + 1e-12, 5, 10],
-    ['Birch', 2, 'stats-power', 104.5, 2, 200],
-    ['Cypress', 2, 'stats-power', 104.5, 3, 100],
-    ['Ash', 4, 'stats-power', 101.25, 1, 300],
-    ['Dune', 5, 'role-power', 50, 4, 50],
-  ])
+  const { scoreFamily, rows } = playerLeaderboardForScope(data, season)
+  assert.equal(scoreFamily, 'stats-power')
+  assert.deepEqual(standings(rows), [
+    ['Elm', 1, { status: 'ranked', value: 104.5 + 1e-12 }],
+    ['Birch', 2, { status: 'ranked', value: 104.5 }],
+    ['Cypress', 2, { status: 'ranked', value: 104.5 }],
+    ['Ash', 4, { status: 'ranked', value: 101.25 }],
+    ['Fir', null, { status: 'unranked', reason: 'no-stat-games' }],
+    ['Dune', null, { status: 'unranked', reason: 'no-score' }],
+  ], 'A high Role Power or a league-anchor score must not enter the Stats Power ranking')
   assert.deepEqual(data, before, 'Selecting a score must not rewrite stored rows')
-  assert.deepEqual(playerLeaderboardScore({ rating: 80, statsPower: { ...statsPower(120), score: Number.NaN } }), { kind: 'role-power', value: 80 })
-  assert.deepEqual(playerLeaderboardScore({ rating: 80, statsPower: statsPower(-3) }), { kind: 'stats-power', value: -3 })
+})
+
+test('a scope with only prior-only Stats Power has no ranked rows and invents no rank', () => {
+  const data = directory()
+  data.scopedPlayers!['2026__All__All'] = [
+    { ...player('Late', 300, 2), statsPower: priorOnly(100) },
+    { ...player('Early', 200, 1), statsPower: priorOnly(100) },
+  ]
+  const { scoreFamily, rows } = playerLeaderboardForScope(data, season)
+  assert.equal(scoreFamily, 'stats-power')
+  assert.deepEqual(standings(rows), [
+    ['Early', null, { status: 'unranked', reason: 'no-stat-games' }],
+    ['Late', null, { status: 'unranked', reason: 'no-stat-games' }],
+  ])
+})
+
+test('one player score reads only its scope family and rejects non-finite values', () => {
+  assert.deepEqual(playerLeaderboardScore({ rating: 80, statsPower: { ...statsPower(120), score: Number.NaN } }, 'stats-power'), { status: 'unranked', reason: 'no-score' })
+  assert.deepEqual(playerLeaderboardScore({ rating: 80, statsPower: statsPower(-3) }, 'stats-power'), { status: 'ranked', value: -3 })
+  assert.deepEqual(playerLeaderboardScore({ rating: 80 }, 'stats-power'), { status: 'unranked', reason: 'no-score' })
+  assert.deepEqual(playerLeaderboardScore({ rating: 80, statsPower: statsPower(120) }, 'role-power'), { status: 'ranked', value: 80 })
+  assert.deepEqual(playerLeaderboardScore({ rating: Number.NaN }, 'role-power'), { status: 'unranked', reason: 'no-score' })
 })
 
 test('Players addresses select the Players shell and preserve its query when the scope changes', () => {

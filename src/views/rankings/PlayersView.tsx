@@ -41,13 +41,16 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
   }
   useHashSync('players', { player: filters.search, role: filters.role === 'All' ? '' : filters.role })
   const directory = state.status === 'ready' ? state.data : undefined
-  const players = useMemo(() => playerLeaderboardForScope(directory, filter), [directory, filter])
-  const scoreRange = useMemo(() => {
-    const values = players.map((player) => player.leaderboardScore.value)
-    return values.length ? { min: Math.min(...values), max: Math.max(...values) } : undefined
-  }, [players])
+  const { scoreFamily, rows: players } = useMemo(() => playerLeaderboardForScope(directory, filter), [directory, filter])
+  const rankedScores = players.flatMap((player) => player.leaderboardScore.status === 'ranked' ? [player.leaderboardScore.value] : [])
+  const scoreRange = rankedScores.length ? { min: Math.min(...rankedScores), max: Math.max(...rankedScores) } : undefined
+  const unrankedCount = players.length - rankedScores.length
   const statsPowerVersion = players.find((player) => player.statsPower)?.statsPower?.version
-  const scoreLabel = statsPowerVersion ? 'Stats Power' : 'Role Power'
+  const statsFamily = scoreFamily === 'stats-power'
+  const scoreLabel = statsFamily ? 'Stats Power' : 'Role Power'
+  const unrankedNote = unrankedCount > 0
+    ? `Players without a usable ${scoreLabel} score are unranked, show a dash, and follow the ranked players.`
+    : ''
   const teamLabel = filter.season === 'All' ? 'Latest team' : 'Season team'
   const teamAttribution = filter.season === 'All'
     ? 'Latest team is the latest observed team across all seasons.'
@@ -65,8 +68,11 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
     <details className="players-method">
       <summary>Method</summary>
       <div className="grid gap-1.5 text-xs leading-relaxed text-muted-foreground">
-        {statsPowerVersion ? <p>Stats Power compares selected stats within each role. It does not measure overall player ability. Newer games get more weight, with a 90-day half-life. Inactivity alone does not lower Stats Power. Rows without a stat score show Role Power.</p> : null}
-        <p>Role Power includes individual stats, results, opponent strength and event context.</p>
+        {statsFamily
+          ? <p>Stats Power compares selected stats within each role. It does not measure overall player ability. Its ordering across roles is not validated as a measure of player ability or role importance. Newer games get more weight, with a 90-day half-life. Inactivity alone does not lower Stats Power. Only players with stat games in this scope get a rank. A player without stat games is unranked, because a league-anchor score is not an observation. Role Power stays in its own column and never sets a Stats Power rank.</p>
+          : <p>This scope has no Stats Power, so ranks use Role Power.</p>}
+        <p>Role Power includes individual stats, team results, opponent strength and event context. Because it includes team results, it does not measure individual skill alone.</p>
+        {unrankedNote ? <p>{unrankedNote}</p> : null}
         <p>{teamAttribution} Games count games credited to that team where available, otherwise all rated games.</p>
       </div>
     </details>
@@ -135,6 +141,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
         <>
           <p className="players-count flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-muted-foreground" role="status">
             <span>{formatNumber(visible.length)} of {formatNumber(players.length)} players in {scopeLabel}. Ranks stay tied to this scope when filtered.</span>
+            {unrankedCount > 0 ? <span>{formatNumber(rankedScores.length)} ranked by {scoreLabel}. {formatNumber(unrankedCount)} unranked without a usable {scoreLabel} score.</span> : null}
             <span>Scores are rounded. Ranks use full precision.</span>
             {scoreRange && visible.length > 0 ? (
               <span className="player-score-key" title="Markers show position in the full scope's score range. Filters keep the same scale.">
@@ -150,8 +157,8 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
             </Card>
           ) : (
             <Card className="players-board min-w-0 overflow-hidden p-0">
-              <Table role="table" data-stat-games={Boolean(statsPowerVersion)} aria-label="Player rankings" tabIndex={0} className="players-table focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--focus)]">
-                <caption className="sr-only">Player rankings for {scopeLabel}, ordered by {scoreLabel}, highest first. Ranks use full precision. Equal full-precision scores share a rank. Displayed scores are rounded. {teamAttribution}{statsPowerVersion ? ' Stat games count games with usable role stats in this scope, including previous teams.' : ''} Games count games credited to the displayed team where available, otherwise all rated games.</caption>
+              <Table role="table" data-stat-games={statsFamily} aria-label="Player rankings" tabIndex={0} className="players-table focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--focus)]">
+                <caption className="sr-only">Player rankings for {scopeLabel}, ordered by {scoreLabel}, highest first. {unrankedNote ? `${unrankedNote} ` : ''}Ranks use full precision. Equal full-precision scores share a rank. Displayed scores are rounded. {teamAttribution}{statsFamily ? ' Stat games count games with usable role stats in this scope, including previous teams.' : ''} Games count games credited to the displayed team where available, otherwise all rated games.</caption>
                 <TableHeader role="rowgroup">
                   <TableRow role="row">
                     <TableHead role="columnheader" scope="col" className="player-col-rank pl-4">Rank</TableHead>
@@ -159,7 +166,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                     <TableHead role="columnheader" scope="col" className="player-col-team" title={teamAttribution}>{teamLabel}</TableHead>
                     <TableHead role="columnheader" scope="col" className="player-col-role">Role</TableHead>
                     <TableHead role="columnheader" scope="col" className="player-col-score text-right" aria-sort="descending">{scoreLabel}</TableHead>
-                    {statsPowerVersion ? (
+                    {statsFamily ? (
                       <>
                         <TableHead role="columnheader" scope="col" className="player-col-stat-games text-right">Stat games</TableHead>
                         <TableHead role="columnheader" scope="col" className="player-col-role-power text-right">Role Power</TableHead>
@@ -172,15 +179,18 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                   {visible.map((player) => {
                     const branding = teamBrandingFor(player.team)
                     const logo = branding?.logo && branding.logoTreatment !== 'code' ? branding.logo : undefined
-                    const scoreText = player.leaderboardScore.kind === 'stats-power' ? formatDecimal(player.leaderboardScore.value) : formatRating(player.leaderboardScore.value)
-                    const evidenceThrough = player.leaderboardScore.kind === 'stats-power' ? player.statsPower?.evidenceThrough : player.latestObservedAt
+                    const score = player.leaderboardScore
+                    const scoreValue = score.status === 'ranked' ? score.value : undefined
+                    const scoreText = statsFamily ? formatDecimal(scoreValue) : formatRating(scoreValue)
+                    const evidenceThrough = score.status === 'unranked' ? undefined : statsFamily ? player.statsPower?.evidenceThrough : player.latestObservedAt
                     const decimalIndex = scoreText.lastIndexOf('.')
-                    const scorePosition = scoreRange && scoreRange.max !== scoreRange.min
-                      ? 100 * (player.leaderboardScore.value - scoreRange.min) / (scoreRange.max - scoreRange.min)
-                      : 50
+                    const scorePosition = scoreValue === undefined || !scoreRange ? undefined
+                      : scoreRange.max === scoreRange.min ? 50 : 100 * (scoreValue - scoreRange.min) / (scoreRange.max - scoreRange.min)
                     return (
                       <TableRow role="row" key={player.id}>
-                        <TableCell role="cell" className="player-col-rank pl-4 font-mono text-muted-foreground tabular-nums">{player.leaderboardRank}</TableCell>
+                        <TableCell role="cell" className="player-col-rank pl-4 font-mono text-muted-foreground tabular-nums">
+                          {player.leaderboardRank ?? <><span aria-hidden="true">—</span><span className="sr-only">Unranked</span></>}
+                        </TableCell>
                         <TableCell role="cell" className="player-col-name text-md font-semibold text-[var(--text-strong)]"><span className="player-identity">
                           {logo ? <img src={`${logo}?v=icon-128`} className={branding?.logoTreatment === 'invert' ? 'player-identity-mark invert' : 'player-identity-mark'} alt="" aria-hidden="true" width={20} height={20} loading="lazy" decoding="async" /> : null}
                           <a
@@ -196,13 +206,18 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                         </span></TableCell>
                         <TableCell role="cell" className="player-col-role text-muted-foreground"><span className="player-role">{player.role}</span></TableCell>
                         <TableCell role="cell" className="player-col-score text-right font-mono font-semibold text-[var(--text-strong)] tabular-nums">
-                          <span className="player-score-position" aria-hidden="true"><i style={{ left: `${scorePosition}%` }} /></span>
+                          {scorePosition === undefined
+                            ? <span className="player-score-position invisible" aria-hidden="true" />
+                            : <span className="player-score-position" aria-hidden="true"><i style={{ left: `${scorePosition}%` }} /></span>}
                           <span className="player-score-figure"><span>{decimalIndex < 0 ? scoreText : scoreText.slice(0, decimalIndex)}</span><span>{decimalIndex < 0 ? '' : scoreText.slice(decimalIndex)}</span></span>
                           {evidenceThrough ? <span className="player-score-evidence block text-2xs font-normal text-muted-foreground">Through {formatDate(evidenceThrough)}</span> : null}
-                          {statsPowerVersion && player.leaderboardScore.kind === 'role-power' ? <span className="block text-2xs font-normal text-muted-foreground">Role Power</span> : null}
-                          {player.statsPower?.priorOnly ? <span className="block text-2xs font-normal text-muted-foreground">League anchor</span> : null}
+                          {score.status === 'unranked' ? (
+                            <span className="player-score-unranked block text-2xs font-normal whitespace-normal text-muted-foreground">
+                              Unranked. {score.reason === 'no-stat-games' ? 'No stat games.' : `No ${scoreLabel}.`}
+                            </span>
+                          ) : null}
                         </TableCell>
-                        {statsPowerVersion ? (
+                        {statsFamily ? (
                           <>
                             <TableCell role="cell" className="player-col-stat-games text-right font-mono text-muted-foreground tabular-nums">{formatNumber(player.statsPower?.sampleGames)}</TableCell>
                             <TableCell role="cell" className="player-col-role-power text-right font-mono text-muted-foreground tabular-nums">{formatRating(player.rating)}</TableCell>
