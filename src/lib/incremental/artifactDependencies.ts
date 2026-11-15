@@ -30,6 +30,7 @@ export type PublicArtifactDependencyInventory = {
   matchHistoryIndexPath: string
   replayPredictionsPath: string
   scoutingIndexPath: string
+  tournamentReportIndexPath?: string
   scopes: readonly ArtifactScopeDependency[]
   teamHistoryPaths: Readonly<Record<string, readonly string[]>>
   playerPaths?: Readonly<Record<string, readonly string[]>>
@@ -92,6 +93,7 @@ export function affectedPublicArtifacts({
     add(inventory.matchHistoryIndexPath, 'match-history-index')
     if (change.tournamentIds?.length) add(inventory.tournamentMovementIndexPath, 'tournament-movement-index')
     add(inventory.scoutingIndexPath, 'scouting-index')
+    if (inventory.tournamentReportIndexPath) add(inventory.tournamentReportIndexPath, 'event-scores-and-league-anchors')
 
     for (const team of teams) {
       for (const path of inventory.teamHistoryPaths[team] ?? []) add(path, `team:${team}`)

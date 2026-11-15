@@ -1,3 +1,4 @@
+import { retainTournamentReportInput, TOURNAMENT_REPORT_INDEX_PATH, TOURNAMENT_REPORT_SHARD_DIR } from '../src/domains/rankings/build.ts'
 import { diagnosticBegin, diagnosticEnd } from './benchmark-diagnostics.mjs'
 import { mapBucketObjects } from './bucket-object-concurrency.mjs'
 import { createHash } from 'node:crypto'
@@ -296,6 +297,7 @@ export async function buildRankingIncrementally({
   sourceReceiptDigest?: string
 }): Promise<IncrementalRankingBuildResult> {
   const sourceData = providedSourceData ?? await importRankingSourceData({ manifestPath })
+  const tournamentReportInput = retainTournamentReportInput(sourceData.importedMatches, sourceData.mergedTeams)
   const importedMatchCount = sourceData.importedMatches.length
   restored = restored ? { ...restored } : undefined
   const ledger = buildCurrentCanonicalLedger(sourceData, restored)
@@ -304,7 +306,7 @@ export async function buildRankingIncrementally({
   const forceFull = !enabled || cause === 'manual-force'
   if (forceFull) {
     const fullSnapshotSpan = diagnosticBegin('build.full-snapshot')
-    const full = await buildSnapshot({ output, publicDataDir, reconciliationOutput, sourceData, generatedAt, env, silent })
+    const full = await buildSnapshot({ output, publicDataDir, reconciliationOutput, sourceData, tournamentReportInput, generatedAt, env, silent })
     diagnosticEnd(fullSnapshotSpan)
     const state = buildStateFromFullReplay(sourceData, ledger, generatedAt, sourceReceiptDigest)
     return {
@@ -330,7 +332,7 @@ export async function buildRankingIncrementally({
       return { action: 'no-change', sourceData, metrics: baseMetrics('no-change', ledger) }
     }
     if (classification.kind === 'no-change' && auditComparison) {
-      const full = await buildSnapshot({ output, publicDataDir, reconciliationOutput, sourceData, generatedAt, env, silent })
+      const full = await buildSnapshot({ output, publicDataDir, reconciliationOutput, sourceData, tournamentReportInput, generatedAt, env, silent })
       const fullState = buildStateFromFullReplay(sourceData, ledger, generatedAt, sourceReceiptDigest)
       const candidateState = await stateFromRestoredAudit(restored, ledger)
       const parity = compareSemanticArtifactMaps(semanticMapFromWrites(full.publicPlan.writes), semanticMapFromGeneration(restored.publicManifest))
@@ -434,6 +436,7 @@ export async function buildRankingIncrementally({
       generatedAt,
       precomputedGlobalRanking: replayModel,
       affectedLogicalPaths,
+      tournamentReportInput,
       retainedLogicalPaths: new Set(Object.keys(previousSemantic)),
       affectedSnapshotKeys,
       affectedTournamentIds,
@@ -493,7 +496,7 @@ export async function buildRankingIncrementally({
     let parity: boolean | null = null
 
     if (comparisonMode) {
-      const full = await buildSnapshot({ output, publicDataDir, reconciliationOutput, sourceData, generatedAt, env, silent })
+      const full = await buildSnapshot({ output, publicDataDir, reconciliationOutput, sourceData, tournamentReportInput, generatedAt, env, silent })
       const fullState = buildStateFromFullReplay(sourceData, ledger, generatedAt, sourceReceiptDigest)
       const report = compareSemanticArtifactMaps(
         semanticMapFromWrites(full.publicPlan.writes),
@@ -544,7 +547,7 @@ export async function buildRankingIncrementally({
       } : {}),
     })
     const fallbackSpan = diagnosticBegin('build.fallback-full-snapshot')
-    const full = await buildSnapshot({ output, publicDataDir, reconciliationOutput, sourceData, generatedAt, importedMatchCount, env, silent })
+    const full = await buildSnapshot({ output, publicDataDir, reconciliationOutput, sourceData, tournamentReportInput, generatedAt, importedMatchCount, env, silent })
     diagnosticEnd(fallbackSpan)
     const state = buildStateFromFullReplay(sourceData, ledger, generatedAt, sourceReceiptDigest)
     const metrics = baseMetrics(classification?.kind ?? 'full-invalidation', ledger, {
@@ -727,7 +730,7 @@ function mergeUnaffectedScopedRecords(
   ])
 }
 
-function obsoletePublicArtifactPaths({
+export function obsoletePublicArtifactPaths({
   previousPaths,
   previousRoot,
   candidateWrites,
@@ -764,6 +767,13 @@ function obsoletePublicArtifactPaths({
       if (path.startsWith(`/data/${SCOUTING_SHARD_DIR}/`) && !listed.has(path)) removed.add(path)
     }
   }
+  const reportIndex = optionalRecord(candidateWrites.find(write => write.relativePath === TOURNAMENT_REPORT_INDEX_PATH)?.value)
+  if (reportIndex && Array.isArray(reportIndex.tournaments)) {
+    const listed = new Set(reportIndex.tournaments.flatMap(event => logicalUrlPath(optionalRecord(event)?.url) ?? []))
+    for (const path of previousPaths) {
+      if (path.startsWith(`/data/${TOURNAMENT_REPORT_SHARD_DIR}/`) && !listed.has(path)) removed.add(path)
+    }
+  }
   for (const write of candidateWrites) {
     if (!write.relativePath.startsWith(`${PUBLIC_ARTIFACT_PATHS.matchHistoryShardDir}/`)
       || write.relativePath === PUBLIC_ARTIFACT_PATHS.matchHistoryIndex
@@ -789,7 +799,11 @@ function isNumberedPagePath(path: string, prefix: string) {
 
 function ledgerContext(sourceData: RankingSourceImport, previous?: CanonicalMatchLedger) {
   const previousByKey = new Map(previous?.rows.map((row) => [row.key, row]) ?? [])
-  const scheduleCausalRows = scheduleCausalRowsFor(sourceData)
+  const reports = retainTournamentReportInput(sourceData.importedMatches, sourceData.mergedTeams)
+  const scheduleCausalRows = [
+    ...scheduleCausalRowsFor(sourceData),
+    ...reports.matches.map(match => ({ key: `tournament-report:${match.id}`, utcDate: match.date, digest: stableDigest({ match, teams: reports.teams, sources: sourceData.externalSources }) })),
+  ].sort((a, b) => compareCodeUnits(a.utcDate ?? '', b.utcDate ?? '') || compareCodeUnits(a.key, b.key))
   return {
     modelVersion: transparentGprModelMetadata.version,
     modelConfigHash: transparentGprModelMetadata.configHash,
@@ -1232,7 +1246,7 @@ function scopedDependencyPlan(
   const inventory = dependencyInventory(rootArtifact, publicManifest, changes, artifacts)
   const plan = affectedPublicArtifacts({ changes, inventory })
   if (classification.reasons.some((reason) => reason.startsWith('schedule-context'))) {
-    const additions = [inventory.manifestPath, inventory.regionHistoryPath, inventory.tournamentMovementIndexPath, inventory.replayPredictionsPath,
+    const additions = [inventory.manifestPath, inventory.regionHistoryPath, inventory.tournamentMovementIndexPath, inventory.replayPredictionsPath, `/data/${TOURNAMENT_REPORT_INDEX_PATH}`,
       ...inventory.scopes.map((scope) => scope.rankingPath), ...Object.values(inventory.tournamentMovementPaths)]
     plan.logicalPaths = [...new Set([...plan.logicalPaths, ...additions])].sort()
   }
@@ -1307,6 +1321,7 @@ function dependencyInventory(
     teamHistoryIndexPath: '/data/history/team-series/index.json', tournamentMovementIndexPath: '/data/history/tournament-moves/index.json',
     matchHistoryIndexPath: '/data/matches/index.json', replayPredictionsPath: `/data/${PUBLIC_ARTIFACT_PATHS.replayPredictions}`, scopes,
     scoutingIndexPath: `/data/${SCOUTING_INDEX_PATH}`,
+    tournamentReportIndexPath: `/data/${TOURNAMENT_REPORT_INDEX_PATH}`,
     teamHistoryPaths: Object.fromEntries([...changedTeams].map((team) => [team, historyPaths])),
     tournamentMovementPaths,
   }

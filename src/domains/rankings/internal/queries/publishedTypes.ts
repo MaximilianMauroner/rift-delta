@@ -741,6 +741,7 @@ export type PublicRankingManifest = {
   matchHistoryIndexUrl?: string
   replayPredictionsUrl?: string
   scoutingIndexUrl?: string
+  tournamentReportIndexUrl?: string
   teamCount: number
   snapshotIndex: Record<string, PublicSnapshotIndexEntry>
   snapshots?: Record<string, never>

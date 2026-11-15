@@ -388,6 +388,7 @@ export function parsePublicRankingManifest(value: unknown): PublicRankingManifes
   assertOptionalDataUrlPath(value.matchHistoryIndexUrl, 'ranking manifest matchHistoryIndexUrl', '/data/matches')
   assertOptionalDataUrlPath(value.replayPredictionsUrl, 'ranking manifest replayPredictionsUrl', '/data/evaluation')
   assertOptionalDataUrlPath(value.scoutingIndexUrl, 'ranking manifest scoutingIndexUrl', '/data/scouting')
+  assertOptionalDataUrlPath(value.tournamentReportIndexUrl, 'ranking manifest tournamentReportIndexUrl', '/data/tournament-reports')
   if (value.replayEvidence !== undefined || value.predictions !== undefined) throw new Error('Ranking manifest must not embed replay predictions')
   assertOptionalDataUrlPath(value.regionHistoryUrl, 'ranking manifest regionHistoryUrl', '/data/history')
   assertArtifactUrl(value.tournamentMovementIndexUrl, 'ranking manifest tournamentMovementIndexUrl', '/data/history/tournament-moves')

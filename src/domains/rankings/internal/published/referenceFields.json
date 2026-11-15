@@ -9,7 +9,8 @@
       "tournamentMovementIndexUrl": "required",
       "matchHistoryIndexUrl": "required",
       "replayPredictionsUrl": "required",
-      "scoutingIndexUrl": "required"
+      "scoutingIndexUrl": "required",
+      "tournamentReportIndexUrl": "required"
     },
     "records": ["snapshotIndex"]
   },
@@ -17,5 +18,6 @@
   "match-history-index": { "records": ["scopeIndex"] },
   "tournament-movement-index": { "arrays": ["tournaments"] },
   "match-history-catalog": { "arrays": ["pages"] },
-  "scouting-index": { "arrays": ["players"] }
+  "scouting-index": { "arrays": ["players"] },
+  "tournament-report-index": { "arrays": ["tournaments"] }
 }
