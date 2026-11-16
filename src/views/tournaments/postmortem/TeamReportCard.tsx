@@ -24,22 +24,19 @@ export function TeamReportCard({
   )
   const extent = Math.max(1, ...allGold.map(Math.abs))
   return (
-    <Card className="gap-0">
-      <CardHeader className="gap-5 border-b border-border pb-5">
-        <div className="flex min-w-0 items-center gap-4">
-          <TeamMark team={team.name} code={team.code} className="size-12" />
+    <Card className="gap-0 py-0">
+      <CardHeader className="gap-3 border-b border-border bg-[var(--surface-2)] py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <TeamMark team={team.name} code={team.code} className="size-11" />
           <div className="min-w-0">
-            <p className="text-2xs font-semibold uppercase tracking-label text-[var(--accent)]">
-              Team report
-            </p>
-            <h4 className="break-words text-2xl font-bold tracking-tight">{team.name}</h4>
+            <h4 className="break-words text-lg font-bold">{team.name}</h4>
             <p className="text-xs text-muted-foreground">
               {team.league} · {team.wins}W {team.losses}L · {team.observedGames}{' '}
               observed games
             </p>
           </div>
         </div>
-        <div className="grid gap-2 min-[440px]:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2">
           <Award
             label="Best StatsPower"
             players={awards.best}
@@ -52,14 +49,16 @@ export function TeamReportCard({
           />
         </div>
       </CardHeader>
-      <CardContent className="grid min-w-0 gap-3 pt-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <h5 className="text-base font-bold">Observed lineup</h5>
-          <span className="text-xs text-muted-foreground">Select a player to explore</span>
+      <CardContent className="grid min-w-0 gap-2 px-0 pb-3 pt-3">
+        <h5 className="px-4 text-sm font-bold">Lineup</h5>
+        <div aria-hidden="true" className="grid grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] gap-2 px-4 text-2xs text-muted-foreground sm:hidden">
+          <span>Role</span>
+          <span>Player</span>
+          <span className="text-right">StatsPower</span>
         </div>
         <div
           aria-hidden="true"
-          className="hidden grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_4.5rem] items-end gap-2 px-2 text-2xs text-muted-foreground sm:grid"
+          className="hidden grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_4.5rem] items-end gap-2 px-4 text-2xs text-muted-foreground sm:grid"
         >
           <span>Role</span>
           <span>Player</span>
@@ -96,17 +95,14 @@ export function TeamReportCard({
                 aria-pressed={player.key === selected}
                 aria-label={`View ${player.name}, ${player.role}`}
                 onClick={() => onSelect(player)}
-                className="grid h-auto min-h-14 w-full min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] items-center gap-2 rounded-none border-l-2 border-transparent px-2 py-2 text-left whitespace-normal transition-colors hover:bg-[var(--surface-2)] aria-pressed:border-l-[var(--accent)] aria-pressed:bg-[var(--accent-soft)] sm:grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_4.5rem]"
+                className="grid h-auto min-h-14 w-full min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] items-center gap-2 rounded-none border-l-2 border-transparent px-4 py-2 text-left whitespace-normal hover:bg-[var(--surface-2)] aria-pressed:border-l-[var(--accent)] aria-pressed:bg-[var(--accent-soft)] sm:grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_4.5rem]"
               >
                 <span className="text-xs font-normal text-muted-foreground">
                   {player.role}
                 </span>
                 <span className="grid min-w-0 gap-0.5">
-                  <span className="break-words text-base font-semibold">
+                  <span className="break-words text-sm font-semibold">
                     {player.name}
-                  </span>
-                  <span className="text-2xs font-normal text-muted-foreground">
-                    {player.games.length} team games
                   </span>
                 </span>
                 <span className="hidden min-w-0 sm:block">
@@ -142,11 +138,8 @@ export function TeamReportCard({
                   )}
                 </span>
                 <span className="grid justify-items-end gap-0.5">
-                  <span className="font-mono text-base font-semibold tabular-nums">
+                  <span className="text-sm font-bold tabular-nums">
                     {observedScore ? player.statsPower!.score.toFixed(2) : '—'}
-                  </span>
-                  <span className="text-2xs font-normal text-muted-foreground sm:hidden">
-                    StatsPower
                   </span>
                   {!observedScore ? (
                     <span className="text-2xs font-normal text-muted-foreground">
@@ -158,12 +151,15 @@ export function TeamReportCard({
             )
           })}
         </div>
-        <p className="text-2xs text-muted-foreground">
-          All observed roles and substitutes. GD15 compares gold with the
-          opposing role at 15 minutes. {awards.eligible} of{' '}
-          {team.participants.length} participants have observed score evidence.
-          Tied scores share the callout.
-        </p>
+        <details className="px-4 text-xs text-muted-foreground">
+          <summary className="cursor-pointer">About the lineup</summary>
+          <p className="mt-2">
+            All observed roles and substitutes. GD15 compares gold with the
+            opposing role at 15 minutes. {awards.eligible} of{' '}
+            {team.participants.length} participants have observed score evidence.
+            Tied scores share the callout.
+          </p>
+        </details>
       </CardContent>
     </Card>
   )
@@ -179,8 +175,8 @@ function Award({
   onSelect: (player: TournamentReportPlayer) => void
 }) {
   return (
-    <div className="min-w-0 rounded-md bg-[var(--surface-2)] px-3 py-2.5">
-      <h5 className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="min-w-0 rounded-md bg-card px-3 py-2">
+      <h5 className="text-xs text-muted-foreground">
         {label}
         {players.length > 1 ? ' · Tie' : ''}
       </h5>
@@ -189,16 +185,13 @@ function Award({
           <Button
             key={player.key}
             variant="ghost"
-            className="h-auto w-full min-w-0 justify-between gap-2 px-0 py-1 whitespace-normal hover:text-[var(--accent)]"
+            className="grid h-auto w-full min-w-0 justify-start justify-items-start gap-0 px-0 py-1 whitespace-normal hover:text-[var(--accent)] min-[440px]:flex min-[440px]:justify-between min-[440px]:gap-2"
             onClick={() => onSelect(player)}
           >
-            <span className="break-words text-left">
+            <span className="min-w-0 break-words text-left">
               {player.name}
-              <span className="block text-2xs font-normal text-muted-foreground">
-                {player.role} · {player.statsPower!.sampleGames} scored games
-              </span>
             </span>
-            <span className="font-mono text-base font-semibold tabular-nums">
+            <span className="font-semibold tabular-nums">
               {player.statsPower!.score.toFixed(2)}
             </span>
           </Button>

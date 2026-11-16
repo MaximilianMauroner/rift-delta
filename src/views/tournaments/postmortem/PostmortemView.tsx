@@ -22,7 +22,7 @@ export function PostmortemView() {
   const { state, retry } = useTournamentReports()
   return (
     <section
-      className="grid min-w-0 gap-4 px-[var(--page-x)] py-5"
+      className="grid min-w-0 gap-3 px-[var(--page-x)] py-4"
       aria-label="Worlds team reports"
     >
       {state.status !== 'ready' ? (
@@ -72,9 +72,9 @@ function ReportCatalog({
   const { state, retry } = useTournamentReport(index, entry)
   return (
     <>
-      <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-3">
-          <label htmlFor="report-event" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <label htmlFor="report-event" className="sr-only">
             Report event
           </label>
           <Select
@@ -92,7 +92,7 @@ function ReportCatalog({
             ))}
           </Select>
         </div>
-        <Button variant="outline" onClick={retryCatalog}>
+        <Button variant="ghost" onClick={retryCatalog}>
           Refresh reports
         </Button>
       </div>
@@ -140,13 +140,10 @@ function ReportBody({ report }: { report: TournamentReport }) {
   const { coverage } = report
   return (
     <>
-      <header className="grid gap-3 border-y border-border py-5">
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-8 gap-y-4">
-          <div className="grid gap-1.5">
-            <p className="text-xs font-semibold uppercase tracking-label text-[var(--accent)]">
-              Tournament report
-            </p>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{report.label}</h2>
+      <header className="grid gap-3 rounded-md border border-border bg-card p-4">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-8 gap-y-3">
+          <div className="grid gap-1">
+            <h2 className="text-xl font-bold">{report.label}</h2>
             <p className="text-sm text-muted-foreground">
               {coverage.observedGames} source-observed games ·{' '}
               {coverage.observedTeams} teams · {coverage.participants}{' '}
@@ -157,8 +154,8 @@ function ReportBody({ report }: { report: TournamentReport }) {
               completion is unknown.
             </p>
           </div>
-          <div className="min-w-0 border-l-2 border-[var(--accent-line)] pl-4 sm:min-w-60">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="min-w-0 rounded-md bg-[var(--surface-2)] px-3 py-2 sm:min-w-56">
+            <p className="text-xs font-semibold text-muted-foreground">
               {uniqueMvp.length > 1 ? 'Statistical MVP tie' : 'Statistical MVP'}
             </p>
             {uniqueMvp.length ? (
@@ -177,18 +174,13 @@ function ReportBody({ report }: { report: TournamentReport }) {
                   }
                 >
                   <span className="grid">
-                    <span className="text-xl font-bold">
-                      {player.name}{' '}
-                      <span aria-hidden="true" className="text-[var(--accent)]">
-                        →
-                      </span>
-                    </span>
+                    <span className="font-bold text-[var(--accent)]">{player.name}</span>
                     <span className="text-xs font-normal text-muted-foreground">
                       {player.role} · {player.statsPower!.sampleGames} scored
                       games
                     </span>
                   </span>
-                  <span className="font-mono text-xl font-semibold tabular-nums">
+                  <span className="text-lg font-bold tabular-nums">
                     {player.statsPower!.score.toFixed(2)}
                   </span>
                 </Button>
@@ -224,8 +216,8 @@ function ReportBody({ report }: { report: TournamentReport }) {
           </div>
         </details>
       </header>
-      <div className="flex min-w-0 flex-wrap items-center gap-3">
-        <label htmlFor="report-team" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <label htmlFor="report-team" className="text-sm font-semibold">
           Report team
         </label>
         <Select
@@ -258,7 +250,7 @@ function ReportBody({ report }: { report: TournamentReport }) {
           Choose a team to continue.
         </Alert>
       ) : selection.team ? (
-        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
+        <div className="grid min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <TeamReportCard
             team={selection.team}
             selected={selection.player?.key}

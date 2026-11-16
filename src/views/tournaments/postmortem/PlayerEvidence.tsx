@@ -31,45 +31,27 @@ export function PlayerEvidence({
   }))
   return (
     <Card
+      className="gap-0 py-0"
       role="region"
       aria-label={`Evidence for ${player.name}, ${player.role}`}
     >
-      <CardHeader className="gap-3 border-b border-border pb-5">
-        <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
+      <CardHeader className="gap-3 border-b border-border bg-[var(--surface-2)] py-4">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-2xs font-semibold uppercase tracking-label text-[var(--accent)]">
-              Player report
-            </p>
-            <h4 className="break-words text-3xl font-bold tracking-tight">{player.name}</h4>
+            <h4 className="break-words text-lg font-bold">{player.name}</h4>
             <p className="text-xs text-muted-foreground">
               {player.role} · {player.games.length} observed team games
             </p>
           </div>
-          <div className="grid gap-0.5">
-            <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="grid justify-items-end gap-0.5">
+            <span className="text-xs text-muted-foreground">
               StatsPower
             </span>
-            <strong className="font-mono text-2xl tabular-nums">
+            <strong className="text-xl font-bold tabular-nums text-[var(--accent)]">
               {score ? score.score.toFixed(2) : 'unavailable'}
             </strong>
-            {score ? (
-              <span className="text-2xs text-muted-foreground">
-                League anchor {score.leagueAnchor.toFixed(2)}
-              </span>
-            ) : null}
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          League anchors are near 100. Higher scores reflect stronger
-          role-metric evidence relative to the event field.
-        </p>
-        {score ? (
-          <p className="text-xs text-muted-foreground">
-            {score.sampleGames} games with usable score evidence ·{' '}
-            {score.eligibleGames} eligible games · Evidence through{' '}
-            {score.evidenceThrough}
-          </p>
-        ) : null}
         {score?.priorOnly ? (
           <Alert role="status">
             This score has only a league prior. It is excluded from report
@@ -91,13 +73,38 @@ export function PlayerEvidence({
           </Alert>
         ) : null}
       </CardHeader>
-      <CardContent className="grid min-w-0 gap-6 pt-2">
+      <CardContent className="grid min-w-0 gap-5 py-4">
+        <section aria-label="Raw aggregate means" className="grid gap-3">
+          <h5 className="text-sm font-bold">Per-game averages</h5>
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md bg-border">
+            {Object.entries(REPORT_METRICS).map(([key, metric]) => {
+              const value =
+                player.performance.metrics[key as keyof typeof REPORT_METRICS]
+              return (
+                <div
+                  key={key}
+                  className="min-w-0 bg-[var(--surface-2)] p-3 last:odd:col-span-2"
+                >
+                  <dt className="text-xs text-muted-foreground">
+                    {metric.label}
+                  </dt>
+                  <dd className="mt-1 text-base font-bold tabular-nums">
+                    {value.value === null
+                      ? 'Unavailable'
+                      : `${(value.value * metric.multiplier).toFixed(1)} ${metric.unit}`}
+                  </dd>
+                  {value.missing > 0 ? (
+                    <dd className="text-2xs text-muted-foreground">
+                      {value.games} observed · {value.missing} missing
+                    </dd>
+                  ) : null}
+                </div>
+              )
+            })}
+          </dl>
+        </section>
         <section className="min-w-0" aria-label="Gold difference at 15 trend">
-          <h5 className="text-base font-bold">Gold difference at 15</h5>
-          <p className="text-xs text-muted-foreground">
-            Observed gold by chronological team game. Missing observations leave
-            gaps.
-          </p>
+          <h5 className="text-sm font-bold">Gold difference at 15</h5>
           <div
             className="mt-3 h-48 min-w-0"
             role="img"
@@ -112,14 +119,16 @@ export function PlayerEvidence({
                   dataKey="game"
                   fontSize={10}
                   tickLine={false}
+                  tick={{ fill: 'var(--muted)' }}
                   label={{
                     value: 'Observed game',
                     position: 'insideBottom',
                     offset: -5,
                     fontSize: 10,
+                    fill: 'var(--muted)',
                   }}
                 />
-                <YAxis width={48} fontSize={10} tickLine={false} />
+                <YAxis width={48} fontSize={10} tickLine={false} tick={{ fill: 'var(--muted)' }} />
                 <ReferenceLine y={0} stroke="var(--line-strong)" />
                 <Tooltip
                   labelFormatter={(value) => `Game ${value}`}
@@ -143,38 +152,18 @@ export function PlayerEvidence({
             </ResponsiveContainer>
           </div>
         </section>
-        <section aria-label="Raw aggregate means" className="grid gap-3">
-          <h5 className="text-base font-bold">Raw per-game means</h5>
-          <dl className="grid gap-2 min-[440px]:grid-cols-2">
-            {Object.entries(REPORT_METRICS).map(([key, metric]) => {
-              const value =
-                player.performance.metrics[key as keyof typeof REPORT_METRICS]
-              return (
-                <div
-                  key={key}
-                  className="min-w-0 rounded-md bg-[var(--surface-2)] p-3"
-                >
-                  <dt className="text-xs text-muted-foreground">
-                    {metric.label}
-                  </dt>
-                  <dd className="mt-1 font-mono text-base font-semibold tabular-nums">
-                    {value.value === null
-                      ? 'Unavailable'
-                      : `${(value.value * metric.multiplier).toFixed(1)} ${metric.unit}`}
-                  </dd>
-                  <dd className="text-2xs text-muted-foreground">
-                    {value.games} observed · {value.missing} missing
-                  </dd>
-                </div>
-              )
-            })}
-          </dl>
-        </section>
         {score ? (
           <details className="text-xs">
             <summary className="cursor-pointer font-semibold">
-              StatsPower metric evidence
+              About StatsPower and metric evidence
             </summary>
+            <p className="mt-2 text-muted-foreground">
+              League anchor {score.leagueAnchor.toFixed(2)}. Higher scores reflect
+              stronger role-metric evidence relative to the event field.{' '}
+              {score.sampleGames} games with usable score evidence ·{' '}
+              {score.eligibleGames} eligible games · Evidence through{' '}
+              {score.evidenceThrough}.
+            </p>
             <ul className="mt-2 grid gap-2">
               {Object.entries(score.metrics).map(([key, evidence]) => (
                 <li key={key}>
@@ -187,16 +176,22 @@ export function PlayerEvidence({
           </details>
         ) : null}
         <section className="grid gap-3" aria-label="Observed games">
-          <h5 className="text-base font-bold">Observed games</h5>
+          <h5 className="text-sm font-bold">Games</h5>
           <ol className="grid min-w-0 gap-2">
             {player.games.map((game, index) => (
               <li
                 key={game.matchId}
-                className="min-w-0 rounded-md border border-border p-3 text-xs"
+                className={`min-w-0 rounded-md p-3 text-xs ${
+                  game.result === 'W'
+                    ? 'bg-[#5383e8]/10'
+                    : game.result === 'L'
+                      ? 'bg-[#d36a6a]/10'
+                      : 'bg-[var(--surface-2)]'
+                }`}
               >
                 <details className="min-w-0 break-words">
                   <summary className="cursor-pointer leading-6">
-                    {index + 1}. {game.date} · {game.result} vs {game.opponent}{' '}
+                    {index + 1}. {game.date} · <strong>{game.result}</strong> vs {game.opponent}{' '}
                     · {game.champion ?? 'Champion unavailable'}
                     <span className="block font-mono">
                       GD15{' '}
