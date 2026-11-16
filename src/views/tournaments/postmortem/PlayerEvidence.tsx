@@ -88,6 +88,7 @@ export function PlayerEvidence({
                   nameFor={(id) => names.get(id) ?? id}
                   within="at the event"
                   minSamples={1}
+                  note={position.missing ? `${position.missing} game${position.missing === 1 ? '' : 's'} without data` : undefined}
                 />
               )
             })}

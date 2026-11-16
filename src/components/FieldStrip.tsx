@@ -20,6 +20,7 @@ export function FieldStrip({
   within,
   minSamples,
   sampleUnit = 'games',
+  note,
 }: {
   label: string
   hint?: string
@@ -32,6 +33,8 @@ export function FieldStrip({
   within: string
   minSamples: number
   sampleUnit?: string
+  /** A caveat that follows the place, such as games the average skips. */
+  note?: string
 }) {
   const { value, field, mean, place, better, standing } = position
   const values = field.map((entry) => entry.value)
@@ -81,6 +84,7 @@ export function FieldStrip({
         <span className="col-span-2 row-start-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 sm:col-span-1 sm:row-start-auto sm:grid sm:justify-items-end sm:gap-1">
           <span className="text-xs text-muted-foreground tabular-nums">
             {place ? `${ordinal(place)} of ${field.length}` : tooFew ? `${position.n} ${sampleUnit}, needs ${minSamples}` : 'No data'}
+            {note ? ` · ${note}` : ''}
           </span>
           {standing ? (
             <Badge variant={standing === 'top' ? 'rank' : 'secondary'} className={cn(standing === 'close' && 'text-[var(--faint)]')}>
