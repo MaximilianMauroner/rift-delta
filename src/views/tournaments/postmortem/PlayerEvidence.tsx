@@ -34,18 +34,31 @@ export function PlayerEvidence({
       role="region"
       aria-label={`Evidence for ${player.name}, ${player.role}`}
     >
-      <CardHeader className="gap-2">
-        <h4 className="break-words text-xl font-semibold">{player.name}</h4>
-        <p className="text-xs text-muted-foreground">
-          {player.role} · {player.games.length} observed team games
-        </p>
-        <p className="text-sm">
-          StatsPower{' '}
-          <strong className="font-mono text-xl">
-            {score ? score.score.toFixed(2) : 'unavailable'}
-          </strong>
-          {score ? ` · League anchor ${score.leagueAnchor.toFixed(2)}` : ''}
-        </p>
+      <CardHeader className="gap-3 border-b border-border pb-5">
+        <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-2xs font-semibold uppercase tracking-label text-[var(--accent)]">
+              Player report
+            </p>
+            <h4 className="break-words text-3xl font-bold tracking-tight">{player.name}</h4>
+            <p className="text-xs text-muted-foreground">
+              {player.role} · {player.games.length} observed team games
+            </p>
+          </div>
+          <div className="grid gap-0.5">
+            <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
+              StatsPower
+            </span>
+            <strong className="font-mono text-2xl tabular-nums">
+              {score ? score.score.toFixed(2) : 'unavailable'}
+            </strong>
+            {score ? (
+              <span className="text-2xs text-muted-foreground">
+                League anchor {score.leagueAnchor.toFixed(2)}
+              </span>
+            ) : null}
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground">
           League anchors are near 100. Higher scores reflect stronger
           role-metric evidence relative to the event field.
@@ -78,9 +91,9 @@ export function PlayerEvidence({
           </Alert>
         ) : null}
       </CardHeader>
-      <CardContent className="grid min-w-0 gap-5">
+      <CardContent className="grid min-w-0 gap-6 pt-2">
         <section className="min-w-0" aria-label="Gold difference at 15 trend">
-          <h5 className="text-sm font-semibold">Gold difference at 15</h5>
+          <h5 className="text-base font-bold">Gold difference at 15</h5>
           <p className="text-xs text-muted-foreground">
             Observed gold by chronological team game. Missing observations leave
             gaps.
@@ -131,20 +144,20 @@ export function PlayerEvidence({
           </div>
         </section>
         <section aria-label="Raw aggregate means" className="grid gap-3">
-          <h5 className="text-sm font-semibold">Raw per-game means</h5>
-          <dl className="grid gap-3 min-[440px]:grid-cols-2">
+          <h5 className="text-base font-bold">Raw per-game means</h5>
+          <dl className="grid gap-2 min-[440px]:grid-cols-2">
             {Object.entries(REPORT_METRICS).map(([key, metric]) => {
               const value =
                 player.performance.metrics[key as keyof typeof REPORT_METRICS]
               return (
                 <div
                   key={key}
-                  className="min-w-0 border-l-2 border-border pl-3"
+                  className="min-w-0 rounded-md bg-[var(--surface-2)] p-3"
                 >
                   <dt className="text-xs text-muted-foreground">
                     {metric.label}
                   </dt>
-                  <dd className="font-mono tabular-nums">
+                  <dd className="mt-1 font-mono text-base font-semibold tabular-nums">
                     {value.value === null
                       ? 'Unavailable'
                       : `${(value.value * metric.multiplier).toFixed(1)} ${metric.unit}`}
@@ -174,7 +187,7 @@ export function PlayerEvidence({
           </details>
         ) : null}
         <section className="grid gap-3" aria-label="Observed games">
-          <h5 className="text-sm font-semibold">Observed games</h5>
+          <h5 className="text-base font-bold">Observed games</h5>
           <ol className="grid min-w-0 gap-2">
             {player.games.map((game, index) => (
               <li

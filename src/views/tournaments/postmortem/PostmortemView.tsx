@@ -22,7 +22,7 @@ export function PostmortemView() {
   const { state, retry } = useTournamentReports()
   return (
     <section
-      className="grid min-w-0 gap-5 px-[var(--page-x)] py-5"
+      className="grid min-w-0 gap-4 px-[var(--page-x)] py-5"
       aria-label="Worlds team reports"
     >
       {state.status !== 'ready' ? (
@@ -73,8 +73,8 @@ function ReportCatalog({
   return (
     <>
       <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
-        <div className="grid min-w-0 gap-1">
-          <label htmlFor="report-event" className="text-sm font-semibold">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
+          <label htmlFor="report-event" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Report event
           </label>
           <Select
@@ -140,11 +140,14 @@ function ReportBody({ report }: { report: TournamentReport }) {
   const { coverage } = report
   return (
     <>
-      <header className="grid gap-3 border-b border-border pb-4">
-        <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-3">
-          <div className="grid gap-1">
-            <h2 className="text-2xl font-semibold">{report.label}</h2>
-            <p className="text-sm">
+      <header className="grid gap-3 border-y border-border py-5">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-8 gap-y-4">
+          <div className="grid gap-1.5">
+            <p className="text-xs font-semibold uppercase tracking-label text-[var(--accent)]">
+              Tournament report
+            </p>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{report.label}</h2>
+            <p className="text-sm text-muted-foreground">
               {coverage.observedGames} source-observed games ·{' '}
               {coverage.observedTeams} teams · {coverage.participants}{' '}
               player-role participants
@@ -154,8 +157,8 @@ function ReportBody({ report }: { report: TournamentReport }) {
               completion is unknown.
             </p>
           </div>
-          <div className="min-w-0 rounded-md border border-[var(--accent-line)] bg-[var(--accent-soft)] px-3 py-2">
-            <p className="text-xs font-semibold">
+          <div className="min-w-0 border-l-2 border-[var(--accent-line)] pl-4 sm:min-w-60">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {uniqueMvp.length > 1 ? 'Statistical MVP tie' : 'Statistical MVP'}
             </p>
             {uniqueMvp.length ? (
@@ -164,7 +167,7 @@ function ReportBody({ report }: { report: TournamentReport }) {
                   key={player.key}
                   variant="ghost"
                   aria-label={`View statistical MVP ${player.name}, ${player.role}`}
-                  className="h-auto w-full min-w-0 justify-between gap-4 px-0 py-1 text-left whitespace-normal"
+                  className="h-auto w-full min-w-0 justify-between gap-4 px-0 py-1 text-left whitespace-normal hover:text-[var(--accent)]"
                   onClick={() =>
                     selectTournamentReport({
                       event: report.id,
@@ -174,13 +177,18 @@ function ReportBody({ report }: { report: TournamentReport }) {
                   }
                 >
                   <span className="grid">
-                    <span className="text-lg font-semibold">{player.name}</span>
+                    <span className="text-xl font-bold">
+                      {player.name}{' '}
+                      <span aria-hidden="true" className="text-[var(--accent)]">
+                        →
+                      </span>
+                    </span>
                     <span className="text-xs font-normal text-muted-foreground">
                       {player.role} · {player.statsPower!.sampleGames} scored
                       games
                     </span>
                   </span>
-                  <span className="font-mono text-lg tabular-nums">
+                  <span className="font-mono text-xl font-semibold tabular-nums">
                     {player.statsPower!.score.toFixed(2)}
                   </span>
                 </Button>
@@ -216,8 +224,8 @@ function ReportBody({ report }: { report: TournamentReport }) {
           </div>
         </details>
       </header>
-      <div className="grid min-w-0 gap-1 justify-start">
-        <label htmlFor="report-team" className="text-sm font-semibold">
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
+        <label htmlFor="report-team" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Report team
         </label>
         <Select
@@ -250,7 +258,7 @@ function ReportBody({ report }: { report: TournamentReport }) {
           Choose a team to continue.
         </Alert>
       ) : selection.team ? (
-        <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
+        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
           <TeamReportCard
             team={selection.team}
             selected={selection.player?.key}

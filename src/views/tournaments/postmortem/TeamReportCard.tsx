@@ -24,19 +24,22 @@ export function TeamReportCard({
   )
   const extent = Math.max(1, ...allGold.map(Math.abs))
   return (
-    <Card size="sm">
-      <CardHeader className="gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <TeamMark team={team.name} code={team.code} className="size-10" />
+    <Card className="gap-0">
+      <CardHeader className="gap-5 border-b border-border pb-5">
+        <div className="flex min-w-0 items-center gap-4">
+          <TeamMark team={team.name} code={team.code} className="size-12" />
           <div className="min-w-0">
-            <h4 className="break-words text-xl font-semibold">{team.name}</h4>
+            <p className="text-2xs font-semibold uppercase tracking-label text-[var(--accent)]">
+              Team report
+            </p>
+            <h4 className="break-words text-2xl font-bold tracking-tight">{team.name}</h4>
             <p className="text-xs text-muted-foreground">
               {team.league} · {team.wins}W {team.losses}L · {team.observedGames}{' '}
               observed games
             </p>
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2 min-[440px]:grid-cols-2">
           <Award
             label="Best StatsPower"
             players={awards.best}
@@ -48,16 +51,15 @@ export function TeamReportCard({
             onSelect={onSelect}
           />
         </div>
-        <p className="text-xs text-muted-foreground">
-          {awards.eligible} of {team.participants.length} participants have
-          observed score evidence. Tied scores share the callout.
-        </p>
       </CardHeader>
-      <CardContent className="grid min-w-0 gap-2">
-        <h5 className="text-sm font-semibold">Observed lineup</h5>
+      <CardContent className="grid min-w-0 gap-3 pt-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h5 className="text-base font-bold">Observed lineup</h5>
+          <span className="text-xs text-muted-foreground">Select a player to explore</span>
+        </div>
         <div
           aria-hidden="true"
-          className="hidden grid-cols-[3.5rem_minmax(0,1fr)_minmax(5rem,1.2fr)_4.5rem] items-end gap-2 px-2 text-2xs text-muted-foreground sm:grid"
+          className="hidden grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_4.5rem] items-end gap-2 px-2 text-2xs text-muted-foreground sm:grid"
         >
           <span>Role</span>
           <span>Player</span>
@@ -72,7 +74,7 @@ export function TeamReportCard({
           <span className="text-right">StatsPower</span>
         </div>
         <div
-          className="grid min-w-0 divide-y divide-border"
+          className="grid min-w-0 divide-y divide-border border-y border-border"
           role="group"
           aria-label="Observed lineup"
         >
@@ -94,13 +96,13 @@ export function TeamReportCard({
                 aria-pressed={player.key === selected}
                 aria-label={`View ${player.name}, ${player.role}`}
                 onClick={() => onSelect(player)}
-                className="grid h-auto min-h-12 w-full min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] items-center gap-2 rounded-none px-2 py-2 text-left whitespace-normal aria-pressed:bg-[var(--accent-soft)] sm:grid-cols-[3.5rem_minmax(0,1fr)_minmax(5rem,1.2fr)_4.5rem]"
+                className="grid h-auto min-h-14 w-full min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] items-center gap-2 rounded-none border-l-2 border-transparent px-2 py-2 text-left whitespace-normal transition-colors hover:bg-[var(--surface-2)] aria-pressed:border-l-[var(--accent)] aria-pressed:bg-[var(--accent-soft)] sm:grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_4.5rem]"
               >
                 <span className="text-xs font-normal text-muted-foreground">
                   {player.role}
                 </span>
                 <span className="grid min-w-0 gap-0.5">
-                  <span className="break-words font-semibold">
+                  <span className="break-words text-base font-semibold">
                     {player.name}
                   </span>
                   <span className="text-2xs font-normal text-muted-foreground">
@@ -140,7 +142,7 @@ export function TeamReportCard({
                   )}
                 </span>
                 <span className="grid justify-items-end gap-0.5">
-                  <span className="font-mono text-base tabular-nums">
+                  <span className="font-mono text-base font-semibold tabular-nums">
                     {observedScore ? player.statsPower!.score.toFixed(2) : '—'}
                   </span>
                   <span className="text-2xs font-normal text-muted-foreground sm:hidden">
@@ -158,7 +160,9 @@ export function TeamReportCard({
         </div>
         <p className="text-2xs text-muted-foreground">
           All observed roles and substitutes. GD15 compares gold with the
-          opposing role at 15 minutes.
+          opposing role at 15 minutes. {awards.eligible} of{' '}
+          {team.participants.length} participants have observed score evidence.
+          Tied scores share the callout.
         </p>
       </CardContent>
     </Card>
@@ -175,8 +179,8 @@ function Award({
   onSelect: (player: TournamentReportPlayer) => void
 }) {
   return (
-    <div className="min-w-0 rounded-md border border-border bg-[var(--surface-2)] p-2">
-      <h5 className="text-xs text-muted-foreground">
+    <div className="min-w-0 rounded-md bg-[var(--surface-2)] px-3 py-2.5">
+      <h5 className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
         {players.length > 1 ? ' · Tie' : ''}
       </h5>
@@ -185,7 +189,7 @@ function Award({
           <Button
             key={player.key}
             variant="ghost"
-            className="h-auto w-full min-w-0 justify-between gap-2 px-0 py-1 whitespace-normal"
+            className="h-auto w-full min-w-0 justify-between gap-2 px-0 py-1 whitespace-normal hover:text-[var(--accent)]"
             onClick={() => onSelect(player)}
           >
             <span className="break-words text-left">
@@ -194,7 +198,7 @@ function Award({
                 {player.role} · {player.statsPower!.sampleGames} scored games
               </span>
             </span>
-            <span className="font-mono tabular-nums">
+            <span className="font-mono text-base font-semibold tabular-nums">
               {player.statsPower!.score.toFixed(2)}
             </span>
           </Button>
