@@ -152,13 +152,11 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
       ) : (
         <>
           <p className="players-count flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-muted-foreground" role="status">
-            <span>{formatNumber(visible.length)} of {formatNumber(selectedPlayers.length)} {filters.role === 'All' ? 'players' : `${filters.role} players`} in {scopeLabel}. {filters.role === 'All' ? 'Ranks compare all roles.' : 'Ranks compare players in this role.'} Search keeps these ranks.</span>
+            <span>{formatNumber(visible.length)} of {formatNumber(selectedPlayers.length)} {filters.role === 'All' ? 'players' : `${filters.role} players`} in {scopeLabel}.{filters.role === 'All' ? ' Ranks across roles are rough. Pick a role to compare fairly.' : ''}</span>
             {unrankedCount > 0 ? <span>{formatNumber(rankedCount)} ranked by {scoreLabel}. {formatNumber(unrankedCount)} unranked without a usable {scoreLabel} score.</span> : null}
-            <span>Scores are rounded. Ranks use full precision.</span>
-            {filters.role === 'All' ? <span>Cross-role rankings are not validated. Select a role to compare players in that role.</span> : null}
             {scoreRange && visible.length > 0 ? (
-              <span className="player-score-key" title="Markers show position in the full scope's score range. Filters keep the same scale.">
-                Scope range {formatDecimal(scoreRange.min)} to {formatDecimal(scoreRange.max)}
+              <span className="player-score-key" title="Each bar shows the score on this full range. Filters keep the same scale.">
+                Scores run from {formatDecimal(scoreRange.min)} to {formatDecimal(scoreRange.max)}
               </span>
             ) : null}
           </p>

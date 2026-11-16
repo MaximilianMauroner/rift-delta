@@ -19,6 +19,8 @@ import {
   formatSigned,
 } from '../../shared/display'
 import { DataState, RegionBadge } from '../../components/ui'
+import { FieldStrip, FieldStripKey } from '../../components/FieldStrip'
+import { fieldPosition, type Better } from '../../domains/rankings/field-statistics'
 import { LoadingState } from '../../components/ui/loading'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
@@ -206,6 +208,7 @@ export function RegionsView({
 
       <RegionDetailDrawer
         region={selectedRegion}
+        regions={regions}
         teams={selectedRegionTeams}
         series={selectedRegion ? regionHistory?.regionPowerSeries[selectedRegion.region] : undefined}
         matchHistoryState={matchHistoryState}
@@ -264,8 +267,28 @@ function RegionPowerTrend({ series, region }: { series?: PublicRegionHistorySeri
 }
 
 
+const internationalSeries = (region: RegionStrength) => region.internationalWins + region.internationalLosses
+
+const REGION_STATS: Array<{
+  label: string
+  hint: string
+  better: Better
+  value: (region: RegionStrength) => number | undefined
+  sample: (region: RegionStrength) => number
+  unit: string
+  format: (value: number) => string
+}> = [
+  { label: 'Adjusted win rate', hint: 'International win rate after opponent strength. 50% means as expected.', better: 'higher', value: (region) => region.opponentAdjustedWinRate, sample: internationalSeries, unit: 'international series', format: formatRatio },
+  { label: 'Wins vs expected', hint: 'International wins minus the wins the ratings expected.', better: 'higher', value: (region) => region.winsOverExpected, sample: internationalSeries, unit: 'international series', format: formatSignedDecimal },
+  { label: 'Best team', hint: 'Power of its strongest team.', better: 'higher', value: (region) => region.topTeamRating, sample: (region) => region.teamCount, unit: 'teams', format: formatRating },
+  { label: 'Average team', hint: 'Average Power of all its ranked flagship teams.', better: 'higher', value: displayRegionTotalTeamRating, sample: (region) => region.teamCount, unit: 'teams', format: formatRating },
+  { label: 'Opponent strength', hint: 'Average Power of its international opponents. Context, not better or worse.', better: null, value: (region) => region.averageOpponentRating, sample: internationalSeries, unit: 'international series', format: formatRating },
+  { label: 'International sample', hint: 'How much the region score rests on its own international games. More games give a higher share.', better: null, value: (region) => region.connectivity, sample: internationalSeries, unit: 'international series', format: formatRatio },
+]
+
 function RegionDetailDrawer({
   region,
+  regions,
   teams,
   series,
   matchHistoryState,
@@ -273,6 +296,7 @@ function RegionDetailDrawer({
   onClose,
 }: {
   region: RegionStrength | null
+  regions: RegionStrength[]
   teams: RegionDrawerTeam[]
   series?: PublicRegionHistorySeries
   matchHistoryState: MatchHistoryState
@@ -325,38 +349,33 @@ function RegionDetailDrawer({
                 description={`Win rate ${formatRatio(region.internationalWinRate)}. Bo2 ties count as half.`}
               />
             </div>
-            <details className="rounded-md border border-border bg-card p-3">
-              <summary className="cursor-pointer text-sm font-semibold">More stats</summary>
-            <section className="mt-3 grid grid-cols-3 overflow-hidden rounded-md border border-border bg-card [&>*:nth-child(3n)]:border-r-0 [&>*:nth-last-child(-n+3)]:border-b-0 max-[820px]:grid-cols-2 max-[820px]:[&>*:nth-child(3n)]:border-r max-[820px]:[&>*:nth-child(2n)]:border-r-0 max-[820px]:[&>*:nth-last-child(-n+3)]:border-b max-[820px]:[&>*:nth-last-child(-n+2)]:border-b-0 max-[560px]:grid-cols-1 max-[560px]:[&>*]:border-r-0 max-[560px]:[&>*]:border-b max-[560px]:[&>*:last-child]:border-b-0" aria-label={`${region.region} metrics`}>
-
-              <DetailStat
-                label="Adjusted international rate"
-                value={formatRatio(region.opponentAdjustedWinRate)}
-              />
-              <DetailStat
-                label="Wins vs expected"
-                value={formatSignedDecimal(region.winsOverExpected)}
-              />
-              <DetailStat
-                label="Top team power"
-                value={formatRating(region.topTeamRating)}
-              />
-              <DetailStat
-                label="Flagship-team average"
-                value={formatRating(displayRegionTotalTeamRating(region))}
-                description="Average of all eligible flagship teams."
-              />
-              <DetailStat
-                label="Opponent power"
-                value={formatRating(region.averageOpponentRating)}
-              />
-              <DetailStat
-                label="Connectivity"
-                value={formatRatio(region.connectivity)}
-                description="How strongly this region is linked into the global match graph."
-              />
-            </section>
-
+            <details className="rounded-md border border-border bg-card p-3 max-[560px]:px-3">
+              <summary className="cursor-pointer text-sm font-semibold">Compared with other regions</summary>
+              <div className="mt-2 grid gap-2">
+                <ol className="grid min-w-0 divide-y divide-border" aria-label={`${region.region} compared with other regions`}>
+                  {REGION_STATS.map((stat) => (
+                    <FieldStrip
+                      key={stat.label}
+                      label={stat.label}
+                      hint={stat.hint}
+                      subject={region.region}
+                      subjectId={region.region}
+                      position={fieldPosition(
+                        regions.map((entry) => ({ id: entry.region, value: stat.value(entry) ?? null, n: stat.sample(entry) })),
+                        region.region,
+                        1,
+                        stat.better,
+                      )}
+                      format={stat.format}
+                      nameFor={(id) => id}
+                      within="of all regions"
+                      minSamples={1}
+                      sampleUnit={stat.unit}
+                    />
+                  ))}
+                </ol>
+                <FieldStripKey subject={region.region} others="Other regions" />
+              </div>
             </details>
 
             <RegionMatchHistory key={region.region} region={region} teams={displayedTeams} series={series} state={matchHistoryState} onRequestPages={onRequestMatchHistoryPages} />

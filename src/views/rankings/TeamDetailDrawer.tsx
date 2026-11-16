@@ -3,7 +3,7 @@ import { Suspense, useMemo } from 'react'
 import type {
   TeamHistoryArtifactState
 } from '../../browser/rankings/usePublicArtifacts'
-import type { ChartSeries } from '../../components/LineChart'
+import type { ChartEvent, ChartSeries } from '../../components/LineChart'
 import { TeamMark } from '../../components/TeamMark'
 import { FormDots } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
@@ -109,6 +109,7 @@ export function TeamDetailDrawer({
   playerScopeLabel,
   onRequestPlayers,
   seeded,
+  events,
   onClose,
 }: {
   team: RankingSummaryStanding
@@ -126,6 +127,8 @@ export function TeamDetailDrawer({
   playerScopeLabel?: string
   onRequestPlayers?: () => void
   seeded: boolean
+  /** International events to mark on the season chart. */
+  events: ChartEvent[]
   onClose: () => void
 }) {
   const trendSeries = useMemo<ChartSeries[]>(() => {
@@ -202,9 +205,9 @@ export function TeamDetailDrawer({
               </>
             ) : (
               <>
-                <div title={rankEvidence?.title}><small>Rank from evidence band</small><b>{rankEvidence?.label ?? 'Unavailable'}</b><small>model evidence band</small></div>
+                <div title={rankEvidence?.title}><small>Likely rank</small><b>{rankEvidence?.label ?? 'Unavailable'}</b><small>range its results support</small></div>
                 <div title={rollingMovementTitle(team, 'last 30 days')}><small>Last 30 days</small><b className={cn(movement && (movement.rankMovement ?? 0) > 0 && 'text-[var(--up)]!', movement && (movement.rankMovement ?? 0) < 0 && 'text-[var(--down)]!')}>{movement ? formatRankMovementLabel(movement.rankMovement) : 'No series'}</b><small>{movement ? `${formatRatingMovement(movement.ratingDelta ?? 0)} Power` : 'no scored matches'}</small></div>
-                <div><small>Record</small><b>{formatRecord(team.wins, team.losses)}</b><small>{formatRatio(totalGames > 0 ? team.wins / totalGames : undefined)} · {recordBasisLabel(team.recordBasis)}</small></div>
+                <div title={recordBasisLabel(team.recordBasis)}><small>Record</small><b>{formatRecord(team.wins, team.losses)}</b><small>{formatRatio(totalGames > 0 ? team.wins / totalGames : undefined)} of series won</small></div>
                 <div title={powerResumeGap?.title}><small>Rank on results alone</small><b>{team.deservedStanding?.rank ? `#${team.deservedStanding.rank}` : 'Unavailable'}</b><small>{powerResumeGap?.rankDetail ?? 'results rank unavailable'}</small></div>
               </>
             )}
@@ -229,7 +232,7 @@ export function TeamDetailDrawer({
             {trendSeries.length > 0 ? (
               <div className="px-2 pb-2 [&_.chart_svg]:min-h-[240px]">
                 <Suspense fallback={<TrendChartSkeleton />}>
-                  <LazyTeamHistoryLineChart series={trendSeries} height={280} yLabel="Power" />
+                  <LazyTeamHistoryLineChart series={trendSeries} height={280} yLabel="Power" events={tournament ? undefined : events} />
                 </Suspense>
               </div>
             ) : historyState.status === 'loading' ? (

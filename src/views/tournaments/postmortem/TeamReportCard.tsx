@@ -1,4 +1,5 @@
 import { TeamMark } from '../../../components/TeamMark'
+import { signedGold } from '../../../components/fieldFormat'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader } from '../../../components/ui/card'
 import {
@@ -42,13 +43,13 @@ export function TeamReportCard({
         </div>
         <div className="grid grid-cols-2 gap-2">
           <StatHighlight
-            label="Highest avg GD15"
+            label="Best gold lead at 15"
             values={goldLeaders}
-            format={(value) => `${value > 0 ? '+' : ''}${value.toFixed(1)}`}
+            format={signedGold}
             onSelect={onSelect}
           />
           <StatHighlight
-            label="Highest avg kill participation"
+            label="Best kill participation"
             values={participationLeaders}
             format={(value) => `${(value * 100).toFixed(1)}%`}
             onSelect={onSelect}
@@ -60,7 +61,7 @@ export function TeamReportCard({
         <div aria-hidden="true" className="grid grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] gap-2 px-4 text-2xs text-muted-foreground sm:hidden">
           <span>Role</span>
           <span>Player</span>
-          <span className="text-right">Avg GD15</span>
+          <span className="text-right">Average</span>
         </div>
         <div
           aria-hidden="true"
@@ -69,14 +70,14 @@ export function TeamReportCard({
           <span>Role</span>
           <span>Player</span>
           <span className="grid gap-1">
-            <span>GD15 range, gold</span>
+            <span>Gold lead at 15, every game</span>
             <span className="flex justify-between">
               <span>−{extent}</span>
               <span>0</span>
               <span>+{extent}</span>
             </span>
           </span>
-          <span className="text-right">Avg GD15</span>
+          <span className="text-right">Average</span>
         </div>
         <div
           className="grid min-w-0 divide-y divide-border border-y border-border"
@@ -115,8 +116,8 @@ export function TeamReportCard({
                   {gold.length ? (
                     <span
                       role="img"
-                      aria-label={`Observed GD15 range ${minimum} to ${maximum} gold`}
-                      title={`Observed GD15 range ${minimum} to ${maximum} gold. ${gold.length} observed games.`}
+                      aria-label={`Gold lead at 15 ranged from ${minimum} to ${maximum} gold`}
+                      title={`Gold lead at 15 ranged from ${minimum} to ${maximum} gold. ${gold.length} observed games.`}
                       className="relative block h-5"
                     >
                       <span className="absolute inset-x-0 top-1/2 border-t border-border" />
@@ -139,7 +140,7 @@ export function TeamReportCard({
                     </span>
                   ) : (
                     <span className="text-2xs font-normal text-muted-foreground">
-                      No GD15 data
+                      No gold lead data
                     </span>
                   )}
                 </span>
@@ -147,7 +148,7 @@ export function TeamReportCard({
                   <span className="text-sm font-bold tabular-nums">
                     {mean === null
                       ? '—'
-                      : `${mean > 0 ? '+' : ''}${mean.toFixed(1)}`}
+                      : signedGold(mean)}
                   </span>
                 </span>
               </Button>
@@ -157,8 +158,9 @@ export function TeamReportCard({
         <details className="px-4 text-xs text-muted-foreground">
           <summary className="cursor-pointer">About the lineup</summary>
           <p className="mt-2">
-            GD15 compares gold with the opposing role at 15 minutes. The range
-            and average use this team's games.
+            Gold lead at 15 is the player's gold against the lane opponent at
+            15 minutes. The bar spans this team's games and the tick marks the
+            average.
           </p>
         </details>
       </CardContent>

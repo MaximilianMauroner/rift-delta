@@ -1,9 +1,10 @@
+import { ordinal } from '../../components/fieldFormat'
 import type { CSSProperties } from 'react'
 import { Badge } from '../../components/ui/badge'
 import { Panel, PanelFooter, PanelHeader } from '../../components/ui/panel'
 import { SCOUTING_RULES, type Measure } from '../../domains/scouting/report'
 import type { Role } from '../../domains/rankings/types'
-import { formatMeasure, measureLabel, middleHalf, ordinal, peerNoun, peerRange, trackPosition } from './presentation'
+import { formatMeasure, measureLabel, middleHalf, peerNoun, peerRange, trackPosition } from './presentation'
 
 function Strip({ measure }: { measure: Measure }) {
   const { metric, band, value } = measure
@@ -28,7 +29,8 @@ export function RankStrips({ role, measures }: { role: Role; measures: Measure[]
         <b className="sc-rv sc-num">{formatMeasure(measure.metric, measure.value)}</b>
         <Strip measure={measure} />
         <span className="sc-rr">{measure.rank === null ? <span className="sc-dim" aria-label="Not ranked">{'–'}</span>
-          : measure.rank <= 3 ? <Badge variant="rank">{ordinal(measure.rank)}</Badge> : <span className="sc-rk sc-num">{ordinal(measure.rank)}</span>}</span>
+          : <>{measure.rank <= 3 ? <Badge variant="rank">{ordinal(measure.rank)}</Badge> : <span className="sc-rk sc-num">{ordinal(measure.rank)}</span>}
+            <span className="sc-of"> of {measure.of}</span></>}</span>
       </li>)}
     </ul>
     <PanelFooter className="sc-pfoot">

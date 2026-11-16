@@ -1,3 +1,4 @@
+import { ordinal } from '../../components/fieldFormat'
 import type { Role } from '../../domains/rankings/types'
 import {
   rate, type Band, type ChampionRow, type LaneSplit, type Measure, type Metric, type PlayerReport, type RoleBaseline,
@@ -16,11 +17,6 @@ export function signed(value: number) {
 }
 /** Colour role of a lane lead. A level lane and a missing lead stay neutral. */
 export const leadTone = (value: number | null) => value === null || Math.round(value) === 0 ? 'none' : value < 0 ? 'down' : 'up'
-
-export function ordinal(value: number) {
-  const suffix = value % 100 >= 11 && value % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[value % 10] ?? 'th')
-  return `${value}${suffix}`
-}
 
 /** `2026-06-12` as `12 Jun`. The date string is read as text so no time zone can move it. */
 export function shortDate(date: string) {

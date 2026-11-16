@@ -1,8 +1,9 @@
+import { ordinal } from '../src/components/fieldFormat.ts'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { METRICS, type PlayerReport } from '../src/domains/scouting/report.ts'
 import {
-  formatMeasure, joinNames, leadTone, ordinal, poolRowLabel, poolSegments, readingSentence, shortDate, signed, trackPosition, verdictBadge, middleHalf,
+  formatMeasure, joinNames, leadTone, poolRowLabel, poolSegments, readingSentence, shortDate, signed, trackPosition, verdictBadge, middleHalf,
 } from '../src/views/scouting/presentation.ts'
 import { reportOf, scoutingOf } from './scoutingFixtures.ts'
 

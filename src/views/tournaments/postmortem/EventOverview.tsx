@@ -17,7 +17,8 @@ import {
   type TournamentReport,
 } from '../../../domains/rankings/tournament-reports'
 import type { Rate } from '../../../domains/rankings/field-statistics'
-import { percent, rateInterval, signedGold } from '../../../components/fieldFormat'
+import { percent, signedGold } from '../../../components/fieldFormat'
+import { ReportHighlights } from './ReportHighlights'
 
 const LIST_LENGTH = 5
 const CHAMPION_ROWS = 10
@@ -44,35 +45,32 @@ export function EventOverview({
       <h3 className="text-lg font-bold">Tournament</h3>
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md bg-border lg:grid-cols-4">
         <RateTile label="Blue side wins" rate={summary.blueSide} />
-        <RateTile label="Gold leader at 15 wins" rate={summary.leaderAt15} />
+        <RateTile label="Team ahead at 15 wins" rate={summary.leaderAt15} />
         <Tile
           label="Average game"
           value={summary.minutes.mean === null ? 'Unavailable' : `${summary.minutes.mean.toFixed(1)} min`}
           detail={
             summary.minutes.shortest === null
               ? 'No game lengths'
-              : `Range ${summary.minutes.shortest.toFixed(1)}–${summary.minutes.longest!.toFixed(1)} min`
+              : `Shortest ${summary.minutes.shortest.toFixed(1)} min, longest ${summary.minutes.longest!.toFixed(1)} min`
           }
         />
         <Tile
           label="Wins from behind at 15"
-          value={`${summary.comebacks.length} of ${summary.games}`}
-          detail="Games won by the team behind in gold at 15"
+          value={`${summary.comebacks.length}`}
+          detail={`of ${summary.games} games`}
         />
       </div>
+      <ReportHighlights report={report} />
       <div className="grid min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <Card className="gap-0 py-0">
           <CardContent className="grid min-w-0 gap-2 py-4">
-            <h4 className="text-sm font-bold">Team map</h4>
-            <p className="text-xs text-muted-foreground">
-              Early gold against results. Teams above the dashed win line won
-              more than the field average. Teams to the right led more at 15.
-              Select a dot to open the team.
-            </p>
+            <h4 className="text-sm font-bold">Win rate and gold at 15</h4>
+            <p className="text-xs text-muted-foreground">The dashed line is the average win rate. Select a team to open it.</p>
             <div
               className="h-72 min-w-0"
               role="img"
-              aria-label={`Average gold difference at 15 and win rate for ${points.length} teams`}
+              aria-label={`Average gold lead at 15 and win rate for ${points.length} teams`}
             >
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <ScatterChart margin={{ top: 12, right: 16, bottom: 20, left: 0 }}>
@@ -80,13 +78,13 @@ export function EventOverview({
                   <XAxis
                     type="number"
                     dataKey="gold"
-                    name="Avg gold difference at 15"
+                    name="Average gold lead at 15"
                     fontSize={10}
                     tickLine={false}
                     tick={{ fill: 'var(--muted)' }}
                     tickFormatter={(value: number) => signedGold(value)}
                     label={{
-                      value: 'Avg gold difference at 15',
+                      value: 'Average gold lead at 15',
                       position: 'insideBottom',
                       offset: -12,
                       fontSize: 10,
@@ -144,14 +142,12 @@ export function EventOverview({
         <div className="grid min-w-0 content-start gap-3">
           <GameList
             title="Biggest comebacks"
-            caption="Largest gold deficit at 15 that the team still won"
             rows={summary.comebacks.slice(0, LIST_LENGTH)}
             code={code}
             onSelectTeam={onSelectTeam}
           />
           <GameList
             title="Biggest gold swings after 15"
-            caption="Change in gold difference from 15 minutes to the end"
             rows={summary.swings.slice(0, LIST_LENGTH)}
             code={code}
             onSelectTeam={onSelectTeam}
@@ -168,7 +164,7 @@ export function EventOverview({
                 <th className="py-1 text-right font-normal">Picks</th>
                 <th className="hidden py-1 text-right font-normal sm:table-cell">Teams</th>
                 <th className="py-1 text-right font-normal">W–L</th>
-                <th className="w-[38%] py-1 pl-3 font-normal">Win rate, 95% interval</th>
+                <th className="w-[38%] py-1 pl-3 font-normal">Win rate and likely range</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -187,10 +183,7 @@ export function EventOverview({
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-muted-foreground">
-            Wide intervals mean few games. An interval that covers 50% does not
-            separate the champion from an even result.
-          </p>
+          <p className="text-xs text-muted-foreground">The bar shows the likely range of the true win rate.</p>
         </CardContent>
       </Card>
     </section>
@@ -201,7 +194,7 @@ function Tile({ label, value, detail }: { label: string; value: string; detail: 
   return (
     <div className="min-w-0 bg-[var(--surface-2)] p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-xl font-bold tabular-nums">{value}</p>
+      <p className="mt-1 text-lg font-bold tabular-nums sm:text-xl">{value}</p>
       <p className="mt-1 text-2xs text-muted-foreground">{detail}</p>
     </div>
   )
@@ -212,7 +205,7 @@ function RateTile({ label, rate }: { label: string; rate: Rate }) {
     <Tile
       label={label}
       value={rate.value === null ? 'Unavailable' : percent(rate.value)}
-      detail={rateInterval(rate)}
+      detail={`${rate.successes} of ${rate.trials} games`}
     />
   )
 }
@@ -220,7 +213,10 @@ function RateTile({ label, rate }: { label: string; rate: Rate }) {
 function IntervalBar({ rate }: { rate: Rate }) {
   if (!rate.interval || rate.value === null) return null
   return (
-    <span className="flex items-center gap-2" title={rateInterval(rate)}>
+    <span
+      className="flex items-center gap-2"
+      title={`Likely win rate ${percent(rate.interval.low)}–${percent(rate.interval.high)} after ${rate.trials} games`}
+    >
       <span className="relative block h-3 min-w-0 flex-1" aria-hidden="true">
         <span className="absolute inset-x-0 top-1/2 border-t border-border" />
         <span className="absolute inset-y-0 left-1/2 border-l border-dashed border-[var(--line-strong)]" />
@@ -243,13 +239,11 @@ function IntervalBar({ rate }: { rate: Rate }) {
 
 function GameList({
   title,
-  caption,
   rows,
   code,
   onSelectTeam,
 }: {
   title: string
-  caption: string
   rows: ReportTeamGame[]
   code: (id: string) => string
   onSelectTeam: (teamId: string) => void
@@ -257,9 +251,9 @@ function GameList({
   return (
     <Card className="gap-0 py-0">
       <CardContent className="grid min-w-0 gap-2 py-4">
-        <div>
+        <div className="flex items-baseline justify-between gap-3">
           <h4 className="text-sm font-bold">{title}</h4>
-          <p className="text-xs text-muted-foreground">{caption}</p>
+          <span className="text-2xs text-muted-foreground">Gold at 15 → end</span>
         </div>
         {rows.length ? (
           <ol className="grid min-w-0 divide-y divide-border">
@@ -281,13 +275,8 @@ function GameList({
                       {row.phase ? ` · ${row.phase}` : ''}
                     </span>
                   </span>
-                  <span className="text-right text-xs tabular-nums">
-                    <span className="block font-semibold">
-                      {signedGold(row.goldDiffAt15!)} → {signedGold(row.goldDiff!)}
-                    </span>
-                    <span className="block font-normal text-muted-foreground">
-                      gold at 15 → end
-                    </span>
+                  <span className="self-center text-right text-xs font-semibold tabular-nums">
+                    {signedGold(row.goldDiffAt15!)} → {signedGold(row.goldDiff!)}
                   </span>
                 </Button>
               </li>

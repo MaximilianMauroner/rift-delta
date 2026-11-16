@@ -1,6 +1,6 @@
 import type { PublicTeamStanding } from './internal/queries/publishedTypes.ts'
 import type { CompactPlayer } from './internal/queries/publishedTypes.ts'
-import { playerPerformanceMetricKeys } from './internal/players/playerPerformance.ts'
+import { playerPerformanceMetricKeys, playerPerformanceMetrics } from './internal/players/playerPerformance.ts'
 import type { PlayerPerformanceMetric } from './types.ts'
 
 export type Interval = { low: number; high: number }
@@ -31,12 +31,11 @@ export function wilsonRate(successes: number, trials: number): Rate {
   }
 }
 
-export type FieldBand =
-  | 'Far above field'
-  | 'Above field'
-  | 'Typical'
-  | 'Below field'
-  | 'Far below field'
+/** Which way a measure gets better. `null` marks a style measure, where higher is not better. */
+export type Better = 'higher' | 'lower' | null
+
+/** Plain verdict for one entry against its field, in the direction of `better`. */
+export type FieldStanding = 'top' | 'above' | 'close' | 'below'
 
 export type FieldEntry = { id: string; value: number | null; n: number }
 
@@ -45,27 +44,28 @@ export type FieldPosition = {
   n: number
   field: Array<{ id: string; value: number; n: number }>
   mean: number | null
-  z: number | null
-  percentile: number | null
-  band: FieldBand | null
+  /** 1 is best, or highest for a style measure. Ties share the better place. */
+  place: number | null
+  better: Better
+  standing: FieldStanding | null
 }
 
-function band(z: number): FieldBand {
-  if (z >= 1.5) return 'Far above field'
-  if (z >= 0.5) return 'Above field'
-  if (z > -0.5) return 'Typical'
-  if (z > -1.5) return 'Below field'
-  return 'Far below field'
+/** Place of a value in a field: 1 plus the entries strictly better. Ties share the better place. */
+export function fieldPlace(field: ReadonlyArray<{ value: number }>, value: number, better: Better) {
+  const sign = better === 'lower' ? -1 : 1
+  return 1 + field.filter((entry) => sign * entry.value > sign * value).length
 }
 
 /**
- * Places one entry in its field: z uses the population standard deviation,
- * percentile counts ties as half below. Entries under minSamples stay out.
+ * Places one entry in its field. Entries under minSamples stay out. The standing
+ * is "top" for first place, else above or below when the entry is at least half
+ * a population standard deviation from the field average.
  */
 export function fieldPosition(
   entries: readonly FieldEntry[],
   ownId: string,
   minSamples: number,
+  better: Better,
 ): FieldPosition {
   const field = entries.flatMap(({ id, value, n }) =>
     value === null || n < minSamples ? [] : [{ id, value, n }],
@@ -76,34 +76,17 @@ export function fieldPosition(
   const mean = values.length
     ? values.reduce((sum, value) => sum + value, 0) / values.length
     : null
-  const deviation =
-    mean === null
-      ? 0
-      : Math.sqrt(
-          values.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
-            values.length,
-        )
-  const others = field.filter((entry) => entry.id !== ownId)
-  const z =
-    !ranked || mean === null || values.length < 3 || !deviation
-      ? null
-      : (ranked.value - mean) / deviation
-  return {
-    value: own?.value ?? null,
-    n: own?.n ?? 0,
-    field,
-    mean,
-    z,
-    percentile:
-      !ranked || !others.length
-        ? null
-        : (100 *
-            (others.filter((entry) => entry.value < ranked.value).length +
-              others.filter((entry) => entry.value === ranked.value).length /
-                2)) /
-          others.length,
-    band: z === null ? null : band(z),
+  const sign = better === 'lower' ? -1 : 1
+  const place = ranked ? fieldPlace(field, ranked.value, better) : null
+  let standing: FieldStanding | null = null
+  if (ranked && mean !== null && field.length >= 3) {
+    const deviation = Math.sqrt(
+      values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length,
+    )
+    const z = deviation ? (sign * (ranked.value - mean)) / deviation : 0
+    standing = place === 1 ? 'top' : z >= 0.5 ? 'above' : z <= -0.5 ? 'below' : 'close'
   }
+  return { value: own?.value ?? null, n: own?.n ?? 0, field, mean, place, better, standing }
 }
 
 export const PLAYER_FIELD_MIN_GAMES = 10
@@ -138,6 +121,7 @@ export function playerRoleProfile(
         }),
         player.id,
         PLAYER_FIELD_MIN_GAMES,
+        playerPerformanceMetrics[metric].better,
       ),
     })),
   }
@@ -146,11 +130,11 @@ export function playerRoleProfile(
 export const TEAM_FIELD_MIN_MATCHES = 5
 
 export const TEAM_FIELD_METRICS = {
-  rating: { label: 'Power rating', unit: 'rating' },
-  winRate: { label: 'Series win rate', unit: '%' },
-  winsAboveExpectation: { label: 'Wins above expectation', unit: 'wins' },
-  recentForm: { label: 'Recent form', unit: '%' },
-} as const
+  rating: { label: 'Power', unit: 'rating', better: 'higher', hint: 'Team strength from match results.' },
+  winRate: { label: 'Series win rate', unit: '%', better: 'higher', hint: 'Share of series won.' },
+  winsAboveExpectation: { label: 'Wins vs expected', unit: 'wins', better: 'higher', hint: 'Series won minus the wins the ratings expected.' },
+  recentForm: { label: 'Recent form', unit: '%', better: 'higher', hint: 'Share of the latest results won.' },
+} as const satisfies Record<string, { label: string; unit: string; better: Better; hint: string }>
 export type TeamFieldMetric = keyof typeof TEAM_FIELD_METRICS
 
 /** Places a ranked team among teams of its league on rating, record and form. */
@@ -184,13 +168,13 @@ export function teamLeagueProfile(
   }
   return {
     team,
-    record: wilsonRate(team.wins, team.wins + team.losses),
     positions: (Object.keys(TEAM_FIELD_METRICS) as TeamFieldMetric[]).map((metric) => ({
       metric,
       ...fieldPosition(
         field.map((entry) => measure(entry, metric)),
         team.teamId,
         metric === 'recentForm' ? 3 : TEAM_FIELD_MIN_MATCHES,
+        TEAM_FIELD_METRICS[metric].better,
       ),
     })),
   }

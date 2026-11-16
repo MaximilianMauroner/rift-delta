@@ -1,4 +1,4 @@
-import { FieldStrip } from '../../components/FieldStrip'
+import { FieldStrip, FieldStripKey } from '../../components/FieldStrip'
 import { Card } from '../../components/ui/card'
 import { Select } from '../../components/ui/select'
 import { PLAYER_FIELD_MIN_GAMES, playerRoleProfile } from '../../domains/rankings/field-statistics'
@@ -22,16 +22,11 @@ export function PlayerRoleProfile({
   const { player } = profile
   const names = new Map(players.map((entry) => [entry.id, `${entry.name} (${entry.teamCode ?? entry.team})`]))
   const games = player.diagnostics?.sampleGames ?? 0
+  const peers = `${profile.league ? `${profile.league} ` : ''}${player.role.toLowerCase()} players`
   return (
-    <Card className="min-w-0 gap-3 p-4" role="region" aria-label="Role profile">
+    <Card className="min-w-0 gap-3 overflow-visible p-4" role="region" aria-label="Role profile">
       <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-sm font-bold">Role profile</h3>
-          <p className="text-xs text-muted-foreground">
-            {player.name}'s raw averages against {[profile.league, player.role].filter(Boolean).join(' ')} players in this
-            scope. Each dot is one player with {PLAYER_FIELD_MIN_GAMES}+ games. The tick is the field average.
-          </p>
-        </div>
+        <h3 className="min-w-0 text-base font-semibold text-[var(--text-strong)]">Against other {peers}</h3>
         <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
           Profile player
           <Select aria-label="Profile player" value={player.id} onChange={(event) => onSelect(event.target.value)}>
@@ -50,10 +45,12 @@ export function PlayerRoleProfile({
             <FieldStrip
               key={position.metric}
               label={playerPerformanceMetrics[position.metric].label}
+              hint={playerPerformanceMetrics[position.metric].hint}
+              within={profile.league ? `in ${profile.league}` : 'in the field'}
               subject={player.name}
               subjectId={player.id}
               position={position}
-              format={(value) => formatMetric(position.metric, value)}
+              format={(value, scale) => formatMetric(position.metric, value, scale)}
               nameFor={(id) => names.get(id) ?? id}
               minSamples={PLAYER_FIELD_MIN_GAMES}
             />
@@ -62,11 +59,9 @@ export function PlayerRoleProfile({
       ) : (
         <p className="text-sm text-muted-foreground">No stat games for {player.name} in this scope.</p>
       )}
-      <p className="text-xs text-muted-foreground">
-        σ is the distance from the field average in standard deviations. p is the share of the field below. Raw averages
-        are not adjusted for league strength, champions or team, so the field stays inside one league. They do not set
-        Stats Power.
-      </p>
+      <FieldStripKey subject={player.name} others={`Other ${peers}`}>
+        <span>Players need {PLAYER_FIELD_MIN_GAMES} games to count. Not adjusted for champion or team.</span>
+      </FieldStripKey>
     </Card>
   )
 }

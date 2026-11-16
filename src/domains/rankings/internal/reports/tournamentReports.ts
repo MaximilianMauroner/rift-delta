@@ -8,13 +8,13 @@ import { eventWeightContextForMatches } from '../replay/eventWeighting.ts'
 import { buildPlayerStatsPower } from '../players/playerStatsPower.ts'
 import {
   createPlayerPerformanceAccumulator,
+  playerPerformanceMetricKeys,
   playerPerformanceValues,
   summarizePlayerPerformance,
 } from '../players/playerPerformance.ts'
 import { stableDigest } from '../replay/incremental/types.ts'
 import { compareCodeUnits } from '../../../../shared/codeUnitOrder.mjs'
 import {
-  REPORT_METRICS,
   REPORT_ROLES,
   parseTournamentReport,
   parseTournamentReportIndex,
@@ -325,10 +325,7 @@ function observedTeams(
                 : 'T',
           champion: appearance.stats?.champion || null,
           metrics: Object.fromEntries(
-            Object.keys(REPORT_METRICS).map((key) => [
-              key,
-              values[key as keyof typeof values] ?? null,
-            ]),
+            playerPerformanceMetricKeys.map((key) => [key, values[key] ?? null]),
           ) as TournamentReportPlayer['games'][number]['metrics'],
         })
       }
@@ -338,9 +335,7 @@ function observedTeams(
     for (const player of team.participants) {
       const accumulator = createPlayerPerformanceAccumulator()
       for (const game of player.games) {
-        for (const key of Object.keys(REPORT_METRICS) as Array<
-          keyof typeof REPORT_METRICS
-        >) {
+        for (const key of playerPerformanceMetricKeys) {
           const value = game.metrics[key]
           if (value === null) continue
           accumulator[key].total += value

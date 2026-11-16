@@ -252,15 +252,18 @@ test(
           'Synthetic test fixture. These player stats and results are synthetic.',
         )
         .waitFor()
-      await page.getByText('Highest avg GD15', { exact: true }).waitFor()
+      await page.getByText('Best gold lead at 15', { exact: true }).waitFor()
       const overview = page.getByRole('region', {
         name: 'Tournament statistics',
         exact: true,
       })
       await overview.getByText('Blue side wins', { exact: true }).waitFor()
-      await overview
-        .getByText('95% interval 34%–100%, 2 of 2', { exact: true })
-        .waitFor()
+      const blueSide = overview
+        .locator('div')
+        .filter({ has: page.getByText('Blue side wins', { exact: true }) })
+        .last()
+      await blueSide.getByText('100%', { exact: true }).waitFor()
+      await blueSide.getByText('2 of 2 games', { exact: true }).waitFor()
       await page
         .getByRole('region', { name: 'Alpha compared with the field' })
         .getByText('Win rate', { exact: true })
@@ -293,15 +296,15 @@ test(
       const beta = team(report, 'Beta')
       await teamPicker(page).selectOption(beta.id)
       await teamPicker(page).selectOption(team(report, 'Alpha').id)
-      await page.getByText('Highest avg kill participation', { exact: false }).waitFor()
+      await page.getByText('Best kill participation', { exact: false }).waitFor()
       await page.getByRole('button', {
-        name: 'View a-0, Top, Highest avg kill participation',
+        name: 'View a-0, Top, Best kill participation',
         exact: true,
       }).click()
       await page.getByRole('region', { name: 'Evidence for a-0, Top' }).waitFor()
       await page
         .getByRole('button', {
-          name: 'View Focal, Mid, Highest avg GD15',
+          name: 'View Focal, Mid, Best gold lead at 15',
           exact: true,
         })
         .click()
@@ -359,23 +362,23 @@ test(
         .click()
       await evidence(page).waitFor()
       const goldAverage = evidence(page)
-        .getByRole('region', { name: 'Raw aggregate means', exact: true })
-        .locator('dl > div')
+        .getByRole('region', { name: 'Event averages', exact: true })
+        .locator('li')
         .filter({
-          has: page.getByText('Gold difference at 15', { exact: true }),
+          has: page.getByText('Gold lead at 15', { exact: true }),
         })
-      await goldAverage.getByText('500.0 gold', { exact: true }).waitFor()
+      const goldPlace = goldAverage.locator(':scope > span').first()
+      const goldHead = goldAverage.locator(':scope > span').last().locator(':scope > span').first()
+      await goldPlace.getByText('1st', { exact: true }).waitFor()
+      await goldPlace.getByText('of 2', { exact: true }).waitFor()
+      await goldHead.getByText('+500', { exact: true }).waitFor()
+      await goldHead.getByText('1 game without data', { exact: true }).waitFor()
       await goldAverage
-        .getByText('#1 of 2 · 1 game missing', { exact: true })
+        .getByRole('slider', { name: /^Gold lead at 15: Focal \+500, 1st of 2\./ })
         .waitFor()
-      await page
-        .getByRole('img', {
-          name: 'Observed GD15 range 500 to 500 gold',
-          exact: true,
-        })
-        .waitFor()
+      await evidence(page).getByText(/^All \d+ games$/).click()
       await evidence(page)
-        .getByText('GD15 unavailable', { exact: true })
+        .getByText('Gold lead at 15: unavailable', { exact: true })
         .waitFor()
       for (const width of [320, 360]) {
         await page.setViewportSize({ width, height: 844 })

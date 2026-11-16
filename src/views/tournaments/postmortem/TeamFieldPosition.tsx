@@ -1,7 +1,7 @@
 import { Card, CardContent } from '../../../components/ui/card'
 import { cn } from '../../../shared/utils'
-import { FieldStrip } from '../../../components/FieldStrip'
-import { percent, rateInterval, signedGold } from '../../../components/fieldFormat'
+import { FieldStrip, FieldStripKey } from '../../../components/FieldStrip'
+import { percent, signedGold } from '../../../components/fieldFormat'
 import {
   REPORT_FIELD_MIN_GAMES,
   REPORT_TEAM_METRICS,
@@ -27,16 +27,9 @@ export function TeamFieldPosition({
   const positions = reportTeamFieldPositions(report, team.id)
   const codes = new Map(report.teams.map((entry) => [entry.id, entry.code]))
   return (
-    <Card className="gap-0 py-0" role="region" aria-label={`${team.name} compared with the field`}>
+    <Card className="gap-0 overflow-visible py-0" role="region" aria-label={`${team.name} compared with the field`}>
       <CardContent className="grid min-w-0 gap-3 py-4">
-        <div>
-          <h4 className="text-sm font-bold">Compared with the field</h4>
-          <p className="text-xs text-muted-foreground">
-            Each dot is one team. The large dot is {team.code}, the tick is
-            the field average. σ is the distance from the average in standard
-            deviations. p is the share of other teams below {team.code}.
-          </p>
-        </div>
+        <h4 className="text-base font-semibold text-[var(--text-strong)]">Compared with the field</h4>
         <ol className="grid min-w-0 divide-y divide-border">
           {positions.map((position) => {
             const metric = REPORT_TEAM_METRICS[position.metric]
@@ -44,22 +37,21 @@ export function TeamFieldPosition({
               <FieldStrip
                 key={position.metric}
                 label={metric.label}
+                hint={metric.hint}
                 subject={team.code}
                 subjectId={team.id}
                 position={position}
                 format={(value) => formatTeamMetric(metric.unit, value)}
                 nameFor={(id) => codes.get(id) ?? id}
-                detail={position.rate ? rateInterval(position.rate) : undefined}
+                within="at the event"
                 minSamples={REPORT_FIELD_MIN_GAMES}
               />
             )
           })}
         </ol>
-        <p className="text-xs text-muted-foreground">
-          A team enters a comparison after {REPORT_FIELD_MIN_GAMES} qualifying
-          games. Rates show a 95% interval on hover. Higher is not always
-          better: game length and gold change after 15 describe style.
-        </p>
+        <FieldStripKey subject={team.code} others="Other teams">
+          <span>Teams need {REPORT_FIELD_MIN_GAMES} games to count.</span>
+        </FieldStripKey>
       </CardContent>
     </Card>
   )
@@ -89,7 +81,7 @@ export function TeamGameSwings({
         <div>
           <h4 className="text-sm font-bold">Game by game</h4>
           <p className="text-xs text-muted-foreground">
-            Team gold difference at 15 (ring) and at the end (dot). The line
+            Team gold lead at 15 minutes (ring) and at the end (dot). The line
             shows how the lead changed after 15.
           </p>
         </div>

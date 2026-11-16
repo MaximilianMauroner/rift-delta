@@ -2,16 +2,16 @@ import { playerPerformancePolicy } from '../policy/playerPerformancePolicy.ts'
 import type { PlayerGameStats, PlayerPerformanceMetric, PlayerPerformanceSummary } from '../../types.ts'
 
 export const playerPerformanceMetrics = {
-  killParticipation: { label: 'Kill participation', format: 'percent', decimals: 4, description: 'Average of (kills + assists) / team kills per game. Games with zero or unknown team kills are unavailable.' },
-  damageGoldShareGap: { label: 'Damage–gold share gap', format: 'points', decimals: 4, description: 'Damage share minus earned gold share in the same game, in percentage points. Describes resource/output balance; it is not adjusted for champion or role.' },
-  goldDiffAt15: { label: 'Gold difference at 15', format: 'signed', decimals: 1, description: 'Gold relative to the opposing player at 15 minutes. Includes team assistance and matchup effects.' },
-  xpDiffAt15: { label: 'XP difference at 15', format: 'signed', decimals: 1, description: 'Experience relative to the opposing player at 15 minutes.' },
-  csDiffAt15: { label: 'CS difference at 15', format: 'signed', decimals: 1, description: 'Creep score relative to the opposing player at 15 minutes.' },
-  damagePerMinute: { label: 'Damage / min', format: 'number', decimals: 1, description: 'Champion damage per minute. Depends on champion, role, opponents, and game state.' },
-  csPerMinute: { label: 'CS / min', format: 'number', decimals: 2, description: 'Creep score per minute. Describes farming and resource allocation.' },
-  wardsPlacedPerMinute: { label: 'Wards placed / min', format: 'number', decimals: 2, description: 'Ward placement activity per minute; does not measure ward quality.' },
-  wardsClearedPerMinute: { label: 'Wards cleared / min', format: 'number', decimals: 2, description: 'Ward clearing activity per minute; depends on available enemy wards and map control.' },
-} as const satisfies Record<PlayerPerformanceMetric, { label: string; format: string; decimals: number; description: string }>
+  killParticipation: { label: 'Kill participation', format: 'percent', decimals: 4, better: 'higher', hint: 'Share of team kills they took part in.' },
+  damageGoldShareGap: { label: 'Damage for gold', format: 'points', decimals: 4, better: null, hint: 'Damage share minus gold share. A style, not better or worse.' },
+  goldDiffAt15: { label: 'Gold lead at 15', format: 'signed', decimals: 1, better: 'higher', hint: 'Gold ahead of the lane opponent at 15 minutes.' },
+  xpDiffAt15: { label: 'XP lead at 15', format: 'signed', decimals: 1, better: 'higher', hint: 'Experience ahead of the lane opponent at 15 minutes.' },
+  csDiffAt15: { label: 'CS lead at 15', format: 'signed', decimals: 1, better: 'higher', hint: 'Minions and monsters ahead of the lane opponent at 15 minutes.' },
+  damagePerMinute: { label: 'Damage per minute', format: 'number', decimals: 1, better: 'higher', hint: 'Damage to champions per minute.' },
+  csPerMinute: { label: 'CS per minute', format: 'number', decimals: 2, better: 'higher', hint: 'Minions and monsters killed per minute.' },
+  wardsPlacedPerMinute: { label: 'Wards placed per minute', format: 'number', decimals: 2, better: 'higher', hint: 'Wards put down per minute.' },
+  wardsClearedPerMinute: { label: 'Wards cleared per minute', format: 'number', decimals: 2, better: 'higher', hint: 'Enemy wards destroyed per minute.' },
+} as const satisfies Record<PlayerPerformanceMetric, { label: string; format: string; decimals: number; better: 'higher' | null; hint: string }>
 
 export const playerPerformanceMetricKeys = Object.keys(playerPerformanceMetrics) as PlayerPerformanceMetric[]
 
