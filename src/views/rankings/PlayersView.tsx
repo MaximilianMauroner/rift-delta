@@ -43,10 +43,15 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
   }
   useHashSync('players', { player: filters.search, role: filters.role === 'All' ? '' : filters.role, profile: filters.profile })
   const directory = state.status === 'ready' ? state.data : undefined
-  const { scoreFamily, rows: players } = useMemo(() => playerLeaderboardForScope(directory, filter), [directory, filter])
+  const scopeBoard = useMemo(() => playerLeaderboardForScope(directory, filter), [directory, filter])
+  const { scoreFamily, rows: players } = scopeBoard
+  const selectedPlayers = useMemo(() => filters.role === 'All'
+    ? players
+    : playerLeaderboardForScope(directory, filter, filters.role).rows, [directory, filter, filters.role, players])
   const rankedScores = players.flatMap((player) => player.leaderboardScore.status === 'ranked' ? [player.leaderboardScore.value] : [])
   const scoreRange = rankedScores.length ? { min: Math.min(...rankedScores), max: Math.max(...rankedScores) } : undefined
-  const unrankedCount = players.length - rankedScores.length
+  const rankedCount = selectedPlayers.filter((player) => player.leaderboardScore.status === 'ranked').length
+  const unrankedCount = selectedPlayers.length - rankedCount
   const statsPowerVersion = players.find((player) => player.statsPower)?.statsPower?.version
   const statsFamily = scoreFamily === 'stats-power'
   const scoreLabel = statsFamily ? 'Stats Power' : 'Role Power'
@@ -61,9 +66,8 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
   const statSource = providerFreshness([], manifest.sources.filter((source) => source.kind !== 'seed'))
     .find((provider) => provider.label === "Oracle's Elixir")
   const search = filters.search.trim().toLowerCase()
-  const visible = players.filter((player) =>
-    (filters.role === 'All' || player.role === filters.role)
-    && (!search || [player.name, player.team, player.teamCode ?? ''].some((value) => value.toLowerCase().includes(search))),
+  const visible = selectedPlayers.filter((player) =>
+    !search || [player.name, player.team, player.teamCode ?? ''].some((value) => value.toLowerCase().includes(search)),
   )
 
   const profileId = players.some((player) => player.id === filters.profile) ? filters.profile : visible[0]?.id
@@ -148,9 +152,10 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
       ) : (
         <>
           <p className="players-count flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-muted-foreground" role="status">
-            <span>{formatNumber(visible.length)} of {formatNumber(players.length)} players in {scopeLabel}. Ranks stay tied to this scope when filtered.</span>
-            {unrankedCount > 0 ? <span>{formatNumber(rankedScores.length)} ranked by {scoreLabel}. {formatNumber(unrankedCount)} unranked without a usable {scoreLabel} score.</span> : null}
+            <span>{formatNumber(visible.length)} of {formatNumber(selectedPlayers.length)} {filters.role === 'All' ? 'players' : `${filters.role} players`} in {scopeLabel}. {filters.role === 'All' ? 'Ranks compare all roles.' : 'Ranks compare players in this role.'} Search keeps these ranks.</span>
+            {unrankedCount > 0 ? <span>{formatNumber(rankedCount)} ranked by {scoreLabel}. {formatNumber(unrankedCount)} unranked without a usable {scoreLabel} score.</span> : null}
             <span>Scores are rounded. Ranks use full precision.</span>
+            {filters.role === 'All' ? <span>Cross-role rankings are not validated. Select a role to compare players in that role.</span> : null}
             {scoreRange && visible.length > 0 ? (
               <span className="player-score-key" title="Markers show position in the full scope's score range. Filters keep the same scale.">
                 Scope range {formatDecimal(scoreRange.min)} to {formatDecimal(scoreRange.max)}
@@ -174,7 +179,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
           ) : (
             <Card className="players-board min-w-0 overflow-hidden p-0">
               <Table role="table" data-stat-games={statsFamily} aria-label="Player rankings" tabIndex={0} className="players-table focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--focus)]">
-                <caption className="sr-only">Player rankings for {scopeLabel}, ordered by {scoreLabel}, highest first. {unrankedNote ? `${unrankedNote} ` : ''}Ranks use full precision. Equal full-precision scores share a rank. Displayed scores are rounded. {teamAttribution}{statsFamily ? ' Stat games count games with usable role stats in this scope, including previous teams.' : ''} Games count games credited to the displayed team where available, otherwise all rated games.</caption>
+                <caption className="sr-only">Player rankings for {scopeLabel}, {filters.role === 'All' ? 'all roles' : `${filters.role} players`}, ordered by {scoreLabel}, highest first. {unrankedNote ? `${unrankedNote} ` : ''}Ranks use full precision. Equal full-precision scores share a rank. Displayed scores are rounded. {teamAttribution}{statsFamily ? ' Stat games count games with usable role stats in this scope, including previous teams.' : ''} Games count games credited to the displayed team where available, otherwise all rated games.</caption>
                 <TableHeader role="rowgroup">
                   <TableRow role="row">
                     <TableHead role="columnheader" scope="col" className="player-col-rank pl-4">Rank</TableHead>

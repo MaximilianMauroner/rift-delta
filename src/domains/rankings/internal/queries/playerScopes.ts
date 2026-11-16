@@ -1,4 +1,4 @@
-import type { CompactPlayer, PublicPlayerDirectory, SnapshotFilter } from '../../types.ts'
+import type { CompactPlayer, PublicPlayerDirectory, Role, SnapshotFilter } from '../../types.ts'
 import { snapshotKey } from '../published/schema.ts'
 import { compareCodeUnits } from '../../../../shared/codeUnitOrder.mjs'
 
@@ -44,19 +44,21 @@ export function playerLeaderboardScore(
 
 /**
  * Ranks one exact scope by one score family: Stats Power when any row has it, otherwise
- * Role Power. Equal full-precision scores share a rank. Unranked rows follow ranked rows.
+ * Role Power. A selected role narrows the ranking population after the family is chosen.
+ * Equal full-precision scores share a rank. Unranked rows follow ranked rows.
  * Stored strength rank and stable IDs only order rows that the score does not separate.
  */
 export function playerLeaderboardForScope(
   directory: PublicPlayerDirectory | undefined,
   filter: SnapshotFilter,
+  role: Role | 'All' = 'All',
 ): PlayerLeaderboard {
   if (!directory) return { scoreFamily: 'role-power', rows: [] }
   const players = filter.season === 'All' && filter.event === 'All' && filter.region === 'All' && !filter.checkpoint
     ? directory.players
     : directory.scopedPlayers?.[snapshotKey(filter)] ?? []
   const scoreFamily: PlayerScoreFamily = players.some((player) => player.statsPower) ? 'stats-power' : 'role-power'
-  const ordered = players
+  const ordered = (role === 'All' ? players : players.filter((player) => player.role === role))
     .map((player) => ({ player, score: playerLeaderboardScore(player, scoreFamily) }))
     .sort((left, right) =>
       compareScores(left.score, right.score) || left.player.rank - right.player.rank || compareCodeUnits(left.player.id, right.player.id),
