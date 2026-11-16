@@ -17,6 +17,8 @@ const badgeVariants = cva(
         warning: 'border-transparent bg-[var(--warn-soft)] text-[var(--warn)]',
         /* Rank quality. --rank-gold carries this meaning and no other. */
         rank: 'border-[color-mix(in_oklch,var(--rank-gold),var(--line)_54%)] bg-[color-mix(in_oklch,var(--rank-gold)_12%,transparent)] font-bold text-[var(--rank-gold)]',
+        rankSilver: 'border-[color-mix(in_srgb,#c6d7eb,var(--line)_54%)] bg-[color-mix(in_srgb,#c6d7eb_12%,transparent)] font-bold text-[#c6d7eb]',
+        rankBronze: 'border-[color-mix(in_srgb,#eab08d,var(--line)_54%)] bg-[color-mix(in_srgb,#eab08d_12%,transparent)] font-bold text-[#eab08d]',
         /* Competition and event labels. */
         event: 'border-border bg-[color-mix(in_oklch,var(--surface-2)_72%,transparent)] text-[var(--faint)]',
         /* Match outcome. */

@@ -8,7 +8,8 @@ import {
 import {
   parseTournamentReport,
   parseTournamentReportIndex,
-  reportAwards,
+  reportTeamMetricLeaders,
+  reportRoleMetricRanks,
   resolveReportSelection,
 } from '../src/domains/rankings/tournament-reports.ts'
 import { createStaticRankingData } from '../src/domains/rankings/build.ts'
@@ -121,14 +122,9 @@ test('source-observed teams and low-game substitutions and role changes remain v
       ?.priorOnly,
     true,
   )
-  assert.ok(
-    reportAwards(team.participants).best.every(
-      (player) => !player.statsPower?.priorOnly,
-    ),
-  )
 })
 
-test('event-role scores disclose teams and award exact ties without prior-only or absent scores', () => {
+test('event-role records retain team stints and validate selection', () => {
   const first = reportGame('one')
   const second = reportGame('two', '2025-10-16')
   second.teamBRoster!.players[2]!.id = 'a-2'
@@ -145,23 +141,6 @@ test('event-role scores disclose teams and award exact ties without prior-only o
         player.statsPower?.eligibleGames === 3,
     ),
   )
-  const candidates = structuredClone(players.slice(0, 3))
-  for (const candidate of candidates)
-    candidate.statsPower = {
-      ...shared[0]!.statsPower!,
-      role: candidate.role,
-      priorOnly: false,
-      sampleGames: 1,
-      score: 103,
-    }
-  const excluded = structuredClone(candidates[0]!)
-  excluded.key = 'prior'
-  excluded.statsPower!.priorOnly = true
-  excluded.statsPower!.sampleGames = 0
-  excluded.statsPower!.score = 200
-  assert.equal(reportAwards([...candidates, excluded]).best.length, 3)
-  assert.equal(reportAwards([...candidates, excluded]).lowest.length, 3)
-  assert.equal(reportAwards([{ ...excluded, statsPower: null }]).eligible, 0)
   assert.equal(
     resolveReportSelection(report, { player: shared[1]!.key }).kind,
     'ready',
@@ -183,22 +162,94 @@ test('event-role scores disclose teams and award exact ties without prior-only o
   )
 })
 
-test('a team opens its best observed player and falls back when all scores lack evidence', () => {
+test('role metric ranks combine team stints, handle ties and exclude missing or different-role players', () => {
+  const report = parseTournamentReport(Object.values(build().shards)[0])
+  const participants = report.teams.flatMap((team) => team.participants)
+  const selected = structuredClone(participants.find((p) => p.role === 'Mid')!)
+  const otherStint = structuredClone(selected)
+  otherStint.teamId = 'another-team'
+  otherStint.games[0]!.matchId = 'transfer-game'
+  selected.games[0]!.metrics.goldDiffAt15 = 500
+  otherStint.games[0]!.metrics.goldDiffAt15 = -100
+
+  const tie = structuredClone(selected)
+  tie.playerId = 'tie'
+  tie.games[0]!.metrics.goldDiffAt15 = 200
+  const leader = structuredClone(selected)
+  leader.playerId = 'leader'
+  leader.games[0]!.metrics.goldDiffAt15 = 300
+  const missing = structuredClone(selected)
+  missing.playerId = 'missing'
+  missing.games[0]!.metrics.goldDiffAt15 = null
+  const otherRole = structuredClone(selected)
+  otherRole.playerId = 'top'
+  otherRole.role = 'Top'
+  otherRole.games[0]!.metrics.goldDiffAt15 = 9000
+  selected.games[0]!.metrics.killParticipation = 0.6
+  otherStint.games[0]!.metrics.killParticipation = null
+  tie.games[0]!.metrics.killParticipation = 0.6
+  leader.games[0]!.metrics.killParticipation = 0.9
+  missing.games[0]!.metrics.killParticipation = 0.8
+  const field = [selected, otherStint, tie, leader, missing, otherRole]
+
+  assert.deepEqual(reportRoleMetricRanks(field, selected).goldDiffAt15, {
+    value: 200,
+    games: 2,
+    missing: 0,
+    rank: 2,
+    players: 3,
+  })
+  assert.equal(reportRoleMetricRanks(field, tie).goldDiffAt15.rank, 2)
+  assert.deepEqual(reportRoleMetricRanks(field, selected).killParticipation, {
+    value: 0.6,
+    games: 1,
+    missing: 1,
+    rank: 3,
+    players: 4,
+  })
+  assert.deepEqual(reportRoleMetricRanks(field, missing).goldDiffAt15, {
+    value: null,
+    games: 0,
+    missing: 1,
+    rank: null,
+    players: 3,
+  })
+  assert.deepEqual(
+    reportRoleMetricRanks(field, otherStint).goldDiffAt15,
+    reportRoleMetricRanks(field, selected).goldDiffAt15,
+  )
+})
+
+test('team stat leaders use full precision, preserve ties and exclude missing values', () => {
+  const report = parseTournamentReport(Object.values(build().shards)[0])
+  const players = structuredClone(report.teams[0]!.participants.slice(0, 4))
+  for (const player of players) player.games[0]!.metrics.goldDiffAt15 = null
+  players[0]!.games[0]!.metrics.goldDiffAt15 = 0
+  players[1]!.games[0]!.metrics.goldDiffAt15 = -0.001
+  players[2]!.games[0]!.metrics.goldDiffAt15 = 0
+  assert.deepEqual(
+    reportTeamMetricLeaders(players, 'goldDiffAt15').map(({ player, value }) => [player.key, value]),
+    [[players[0]!.key, 0], [players[2]!.key, 0]],
+  )
+  assert.deepEqual(reportTeamMetricLeaders(players, 'xpDiffAt15'), [])
+})
+
+test('a team opens its first player regardless of score', () => {
   const report = parseTournamentReport(Object.values(build().shards)[0])
   const team = report.teams[0]!
-  const best = reportAwards(team.participants).best[0]!
+  const scored = team.participants.find(
+    (player) => player.statsPower && !player.statsPower.priorOnly,
+  )!
+  assert.ok(scored)
+  const first = team.participants.find((player) => player.key !== scored.key)!
   team.participants = [
-    ...team.participants.filter((player) => player.key !== best.key),
-    best,
+    first,
+    ...team.participants.filter((player) => player.key !== first.key),
   ]
   const selection = resolveReportSelection(report, { team: team.id })
   assert.equal(selection.kind, 'ready')
-  if (selection.kind === 'ready') assert.equal(selection.player?.key, best.key)
-  for (const player of team.participants) player.statsPower = null
-  const fallback = resolveReportSelection(report, { team: team.id })
-  assert.equal(fallback.kind, 'ready')
-  if (fallback.kind === 'ready')
-    assert.equal(fallback.player?.key, team.participants[0]!.key)
+  if (selection.kind === 'ready')
+    assert.equal(selection.player?.key, first.key)
 })
 
 test('league anchors stop at the event boundary and later games cannot alter an archived report', () => {
@@ -321,7 +372,6 @@ test('incomplete roster evidence stays observable without a fabricated score or 
   assert.equal(report.coverage.participants, 10)
   assert.equal(report.coverage.scoredParticipants, 0)
   assert.ok(players.every((player) => player.statsPower === null))
-  assert.equal(reportAwards(players).eligible, 0)
   const missing = players.find((player) => player.playerId === 'a-2')!
   assert.equal(missing.games[0]!.metrics.goldDiffAt15, null)
   assert.deepEqual(missing.performance.metrics.goldDiffAt15, {

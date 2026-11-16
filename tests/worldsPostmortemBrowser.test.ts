@@ -252,6 +252,8 @@ test(
           'Synthetic test fixture. These player stats and results are synthetic.',
         )
         .waitFor()
+      await page.getByText('Highest avg GD15', { exact: true }).waitFor()
+      assert.equal(await page.getByText(/StatsPower|league anchor/i).count(), 0)
       assert.equal(
         await page
           .getByRole('link', { name: 'Tournaments', exact: true })
@@ -265,9 +267,16 @@ test(
       const report = control.generation.reports['worlds:2025']!
       const beta = team(report, 'Beta')
       await teamPicker(page).selectOption(beta.id)
+      await teamPicker(page).selectOption(team(report, 'Alpha').id)
+      await page.getByText('Highest avg kill participation', { exact: false }).waitFor()
+      await page.getByRole('button', {
+        name: 'View a-0, Top, Highest avg kill participation',
+        exact: true,
+      }).click()
+      await page.getByRole('region', { name: 'Evidence for a-0, Top' }).waitFor()
       await page
         .getByRole('button', {
-          name: 'View statistical MVP Focal, Mid',
+          name: 'View Focal, Mid, Highest avg GD15',
           exact: true,
         })
         .click()
@@ -324,6 +333,16 @@ test(
         .getByRole('button', { name: 'View Focal, Mid', exact: true })
         .click()
       await evidence(page).waitFor()
+      const goldAverage = evidence(page)
+        .getByRole('region', { name: 'Raw aggregate means', exact: true })
+        .locator('dl > div')
+        .filter({
+          has: page.getByText('Gold difference at 15', { exact: true }),
+        })
+      await goldAverage.getByText('500.0 gold', { exact: true }).waitFor()
+      await goldAverage
+        .getByText('#1 of 2 · 1 game missing', { exact: true })
+        .waitFor()
       await page
         .getByRole('img', {
           name: 'Observed GD15 range 500 to 500 gold',
@@ -338,6 +357,8 @@ test(
         await page
           .getByText('Method and source provenance', { exact: true })
           .click()
+        await page.getByText(/Missing values are excluded from each average/).waitFor()
+        assert.equal(await page.getByText(/StatsPower|league anchor/i).count(), 0)
         assert.ok(
           await page.evaluate(
             () => document.documentElement.scrollWidth <= window.innerWidth,
