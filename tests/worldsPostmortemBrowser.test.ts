@@ -332,7 +332,7 @@ test(
         })
       await goldAverage.getByText('500.0 gold', { exact: true }).waitFor()
       await goldAverage
-        .getByText('#1 of 2 · 1 observed · 1 missing', { exact: true })
+        .getByText('#1 of 2 · 1 game missing', { exact: true })
         .waitFor()
       await page
         .getByRole('img', {

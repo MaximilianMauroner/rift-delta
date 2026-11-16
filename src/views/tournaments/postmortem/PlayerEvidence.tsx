@@ -101,9 +101,9 @@ export function PlayerEvidence({
                     {value.rank === null
                       ? 'No rank'
                       : `#${value.rank} of ${value.players}`}
-                    {' · '}
-                    {value.games} observed
-                    {value.missing ? ` · ${value.missing} missing` : ''}
+                    {value.missing
+                      ? ` · ${value.missing} game${value.missing === 1 ? '' : 's'} missing`
+                      : ''}
                   </dd>
                 </div>
               )
