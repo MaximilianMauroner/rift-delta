@@ -84,6 +84,18 @@ test('equal Role Power shares a competition rank and keeps stored rank and stabl
   ])
 })
 
+test('role rankings also work in a Role Power-only scope', () => {
+  const data = directory()
+  data.scopedPlayers!['2026__All__All'] = [
+    player('Mid', 300, 1),
+    { ...player('Support first', 200, 2), role: 'Support' },
+    { ...player('Support second', 100, 3), role: 'Support' },
+  ]
+  const board = playerLeaderboardForScope(data, season, 'Support')
+  assert.equal(board.scoreFamily, 'role-power')
+  assert.deepEqual(board.rows.map((row) => [row.id, row.leaderboardRank]), [['Support first', 1], ['Support second', 2]])
+})
+
 test('a mixed scope ranks only observed Stats Power and lists Role Power-only and prior-only rows as unranked', () => {
   const data = directory()
   data.scopedPlayers!['2026__All__All'] = [
@@ -106,6 +118,33 @@ test('a mixed scope ranks only observed Stats Power and lists Role Power-only an
     ['Dune', null, { status: 'unranked', reason: 'no-score' }],
   ], 'A high Role Power or a league-anchor score must not enter the Stats Power ranking')
   assert.deepEqual(data, before, 'Selecting a score must not rewrite stored rows')
+})
+
+test('role rankings compare players within the role without changing the scope score family', () => {
+  const data = directory()
+  data.scopedPlayers!['2026__All__All'] = [
+    { ...player('Mid first', 200, 1), statsPower: statsPower(105) },
+    { ...player('Top', 200, 2), role: 'Top', statsPower: { ...statsPower(104.5), role: 'Top' } },
+    { ...player('Mid tie B', 200, 4), statsPower: statsPower(104) },
+    { ...player('Mid tie A', 200, 3), statsPower: statsPower(104) },
+    { ...player('Mid fourth', 200, 5), statsPower: statsPower(101) },
+    { ...player('Mid prior', 200, 6), statsPower: priorOnly(100) },
+    { ...player('Support without stats', 999, 7), role: 'Support' },
+  ]
+  const before = structuredClone(data)
+  const allRoles = playerLeaderboardForScope(data, season)
+  const mids = playerLeaderboardForScope(data, season, 'Mid')
+  assert.deepEqual(mids.rows.map((row) => [row.id, row.leaderboardRank]), [
+    ['Mid first', 1], ['Mid tie A', 2], ['Mid tie B', 2], ['Mid fourth', 4], ['Mid prior', null],
+  ])
+  assert.deepEqual(mids.rows.map((row) => row.id), allRoles.rows.filter((row) => row.role === 'Mid').map((row) => row.id))
+  assert.deepEqual(playerLeaderboardForScope(data, season, 'All'), allRoles)
+  assert.deepEqual(standings(playerLeaderboardForScope(data, season, 'Support').rows), [
+    ['Support without stats', null, { status: 'unranked', reason: 'no-score' }],
+  ])
+  assert.equal(playerLeaderboardForScope(data, season, 'Support').scoreFamily, 'stats-power')
+  assert.deepEqual(playerLeaderboardForScope(data, season, 'Jungle'), { scoreFamily: 'stats-power', rows: [] })
+  assert.deepEqual(data, before)
 })
 
 test('a scope with only prior-only Stats Power has no ranked rows and invents no rank', () => {
