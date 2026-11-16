@@ -23,14 +23,17 @@ const podium = {
   1: {
     variant: 'rank',
     surface: 'bg-[color-mix(in_srgb,var(--rank-gold)_9%,var(--surface-2))]',
+    rail: 'bg-[var(--rank-gold)]',
   },
   2: {
     variant: 'rankSilver',
     surface: 'bg-[color-mix(in_srgb,#c6d7eb_8%,var(--surface-2))]',
+    rail: 'bg-[#c6d7eb]',
   },
   3: {
     variant: 'rankBronze',
     surface: 'bg-[color-mix(in_srgb,#eab08d_9%,var(--surface-2))]',
+    rail: 'bg-[#eab08d]',
   },
 } as const
 
@@ -136,6 +139,20 @@ export function PlayerEvidence({
                     {value.missing
                       ? ` · ${value.missing} game${value.missing === 1 ? '' : 's'} missing`
                       : ''}
+                    {value.rank !== null && value.players > 1 ? (
+                      <span aria-hidden="true" className="mt-2 flex h-1.5 gap-px">
+                        {Array.from({ length: value.players }, (_, index) => (
+                          <span
+                            key={index}
+                            className={cn(
+                              'min-w-0 flex-1 rounded-sm bg-[var(--line-strong)]',
+                              index + 1 === value.rank &&
+                                (highlight?.rail ?? 'bg-[var(--accent)]'),
+                            )}
+                          />
+                        ))}
+                      </span>
+                    ) : null}
                   </dd>
                 </div>
               )
@@ -143,7 +160,7 @@ export function PlayerEvidence({
           </dl>
           <p className="text-xs text-muted-foreground">
             Ranked against {player.role} players in this event. Higher averages
-            rank first. Ranks use unrounded values and sample sizes vary.
+            rank first, on the left. Ranks use unrounded values and sample sizes vary.
           </p>
         </section>
         <section className="min-w-0" aria-label="Gold difference at 15 trend">
