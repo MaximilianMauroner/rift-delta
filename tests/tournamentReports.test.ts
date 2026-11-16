@@ -13,6 +13,7 @@ import {
   resolveReportSelection,
   reportEventSummary,
   reportTeamFieldPositions,
+  reportTeamGames,
 } from '../src/domains/rankings/tournament-reports.ts'
 import { createStaticRankingData } from '../src/domains/rankings/build.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/artifact-write.ts'
@@ -24,6 +25,7 @@ import { parsePublicRankingManifest } from '../src/domains/rankings/published-re
 import { prepareSemanticArtifact } from '../scripts/public-artifact-storage.mjs'
 import { playerBaselineForLeague } from '../src/domains/rankings/internal/policy/playerPolicy.ts'
 import { wilsonRate } from '../src/domains/rankings/field-statistics.ts'
+import type { MatchRecord } from '../src/domains/rankings/types.ts'
 import { reportGame, reportTeams } from './tournamentReportFixtures.ts'
 
 const buildInput = (matches = [reportGame()]) => ({
@@ -422,8 +424,14 @@ test('reports record each game and summarize sides, comebacks and gold swings', 
     lengthSeconds: 1980,
     winnerId: alpha,
     sides: [
-      { teamId: alpha, side: 'blue', kills: 18, gold: 70_000, towers: 9, dragons: 3, barons: 1 },
-      { teamId: beta, side: 'red', kills: 9, gold: 64_000, towers: 3, dragons: 2, barons: 0 },
+      {
+        teamId: alpha, side: 'blue', kills: 18, gold: 70_000, towers: 9, dragons: 3, barons: 1,
+        champions: ['a-Top', 'a-Jungle', 'Pick', 'a-Bot', 'a-Support'],
+      },
+      {
+        teamId: beta, side: 'red', kills: 9, gold: 64_000, towers: 3, dragons: 2, barons: 0,
+        champions: ['b-Top', 'b-Jungle', 'Foe', 'b-Bot', 'b-Support'],
+      },
     ],
   })
   assert.equal(report.games![1]!.sides[0].side, 'red')
@@ -451,6 +459,36 @@ test('reports record each game and summarize sides, comebacks and gold swings', 
     [['comeback', alpha, 7200], ['lead', beta, 800]],
   )
   assert.equal(summary.champions.find((entry) => entry.champion === 'Pick')?.picks, 2)
+})
+
+test('result-only games keep picks but leave gold and kills unavailable', () => {
+  const resultOnly = {
+    ...reportGame('result-only', '2025-10-16'),
+    dataCompleteness: 'match-result-only',
+    teamARoster: undefined,
+    teamBRoster: undefined,
+    teamAKills: 0,
+    teamBKills: 0,
+    teamAGold: 0,
+    teamBGold: 0,
+    teamAPicks: ['Ksante', 'Vi', 'Azir', 'Varus', 'Rell'],
+    teamBPicks: ['Rumble', 'Xin Zhao', 'Taliyah', 'Ezreal', null],
+  } satisfies MatchRecord
+  const { index, shards } = build([reportGame(), resultOnly])
+  const report = parseTournamentReport(Object.values(shards)[0], index.tournaments[0])
+  const alpha = report.teams.find((team) => team.name === 'Alpha')!.id
+  const game = report.games!.find((entry) => entry.matchId === 'result-only')!
+  assert.deepEqual(
+    game.sides.map((side) => [side.gold, side.kills, side.champions.length]),
+    [[null, null, 5], [null, null, 4]],
+  )
+  const row = reportTeamGames(report).find((entry) => entry.matchId === 'result-only' && entry.teamId === alpha)!
+  assert.equal(row.goldDiff, null)
+  assert.equal(row.kills, null)
+  assert.deepEqual(
+    reportEventSummary(report).champions.find((entry) => entry.champion === 'Azir')?.picks,
+    1,
+  )
 })
 
 test('rates use Wilson intervals and empty samples stay unavailable', () => {

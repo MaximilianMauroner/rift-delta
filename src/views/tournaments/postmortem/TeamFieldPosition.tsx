@@ -72,7 +72,11 @@ export function TeamGameSwings({
   report: TournamentReport
   team: TournamentReportTeam
 }) {
-  const rows = reportTeamGames(report).filter((row) => row.teamId === team.id)
+  const rows = reportTeamGames(report).flatMap((row) =>
+    row.teamId === team.id && row.goldDiff !== null
+      ? [{ ...row, goldDiff: row.goldDiff }]
+      : [],
+  )
   const codes = new Map(report.teams.map((entry) => [entry.id, entry.code]))
   const extent = Math.max(
     1,

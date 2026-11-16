@@ -2,6 +2,7 @@ import type { PublicArtifactFamily } from '../published/writePlan.ts'
 import type { MatchRecord, TeamProfile } from '../../types.ts'
 import { teamIdFor } from '../published/schema.ts'
 import { tournamentInstanceForEvent } from '../evidence/internationalTournaments.ts'
+import { isResultOnlyGapFill } from '../evidence/communitySources.ts'
 import { buildRankingModel } from '../replay/model.ts'
 import { eventWeightContextForMatches } from '../replay/eventWeighting.ts'
 import { buildPlayerStatsPower } from '../players/playerStatsPower.ts'
@@ -213,18 +214,26 @@ function reportMatch(
   match: MatchRecord,
   teamIds: ReadonlyMap<string, string>,
 ): TournamentReportMatch {
-  const side = (key: 'A' | 'B') => ({
-    teamId: teamIds.get(match[`team${key}`])!,
-    side:
-      match[`team${key}Side`] ??
-      match[`team${key}Roster`]?.players[0]?.stats?.side ??
-      null,
-    kills: match[`team${key}Kills`],
-    gold: match[`team${key}Gold`],
-    towers: match[`team${key}Towers`] ?? null,
-    dragons: match[`team${key}Dragons`] ?? null,
-    barons: match[`team${key}Barons`] ?? null,
-  })
+  const resultOnly = isResultOnlyGapFill(match)
+  const side = (key: 'A' | 'B') => {
+    const players = match[`team${key}Roster`]?.players ?? []
+    return {
+      teamId: teamIds.get(match[`team${key}`])!,
+      side:
+        match[`team${key}Side`] ??
+        players.find((player) => player.stats?.side)?.stats?.side ??
+        null,
+      kills: resultOnly ? null : match[`team${key}Kills`],
+      gold: resultOnly ? null : match[`team${key}Gold`],
+      towers: match[`team${key}Towers`] ?? null,
+      dragons: match[`team${key}Dragons`] ?? null,
+      barons: match[`team${key}Barons`] ?? null,
+      champions: (
+        match[`team${key}Picks`] ??
+        players.map((player) => player.stats?.champion)
+      ).filter((champion): champion is string => Boolean(champion)),
+    }
+  }
   return {
     matchId: match.id,
     date: match.date,

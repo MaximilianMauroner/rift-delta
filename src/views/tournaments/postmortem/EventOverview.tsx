@@ -283,7 +283,7 @@ function GameList({
                   </span>
                   <span className="text-right text-xs tabular-nums">
                     <span className="block font-semibold">
-                      {signedGold(row.goldDiffAt15!)} → {signedGold(row.goldDiff)}
+                      {signedGold(row.goldDiffAt15!)} → {signedGold(row.goldDiff!)}
                     </span>
                     <span className="block font-normal text-muted-foreground">
                       gold at 15 → end

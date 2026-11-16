@@ -132,11 +132,12 @@ const side = z.enum(['blue', 'red'])
 const gameSide = z.object({
   teamId: text,
   side: side.nullable(),
-  kills: count,
-  gold: z.number().nonnegative(),
+  kills: count.nullable(),
+  gold: z.number().nonnegative().nullable(),
   towers: count.nullable(),
   dragons: count.nullable(),
   barons: count.nullable(),
+  champions: z.array(text).max(5),
 })
 const reportGame = z.object({
   matchId: text,
@@ -464,11 +465,10 @@ export type ReportTeamGame = {
   side: 'blue' | 'red' | null
   result: 'W' | 'L' | 'T'
   goldDiffAt15: number | null
-  goldDiff: number
+  goldDiff: number | null
   goldSwing: number | null
   lengthSeconds: number | null
-  kills: number
-  killsAgainst: number
+  kills: [number, number] | null
   towers: [number, number] | null
   dragons: [number, number] | null
   barons: [number, number] | null
@@ -492,8 +492,9 @@ export function reportTeamGames(report: TournamentReport): ReportTeamGame[] {
         values.length === REPORT_ROLES.length
           ? values.reduce((sum, value) => sum + value, 0)
           : null
-      const goldDiff = own.gold - other.gold
-      const pair = (key: 'towers' | 'dragons' | 'barons') =>
+      const goldDiff =
+        own.gold === null || other.gold === null ? null : own.gold - other.gold
+      const pair = (key: 'kills' | 'towers' | 'dragons' | 'barons') =>
         own[key] === null || other[key] === null
           ? null
           : ([own[key], other[key]] as [number, number])
@@ -513,10 +514,12 @@ export function reportTeamGames(report: TournamentReport): ReportTeamGame[] {
               : 'T',
         goldDiffAt15,
         goldDiff,
-        goldSwing: goldDiffAt15 === null ? null : goldDiff - goldDiffAt15,
+        goldSwing:
+          goldDiffAt15 === null || goldDiff === null
+            ? null
+            : goldDiff - goldDiffAt15,
         lengthSeconds: game.lengthSeconds,
-        kills: own.kills,
-        killsAgainst: other.kills,
+        kills: pair('kills'),
         towers: pair('towers'),
         dragons: pair('dragons'),
         barons: pair('barons'),
@@ -588,7 +591,7 @@ export const REPORT_TEAM_METRICS = {
     label: 'Kill share',
     unit: '%',
     measure: (games: ReportTeamGame[]) =>
-      shareOf(games, (game) => [game.kills, game.killsAgainst]),
+      shareOf(games, (game) => game.kills),
   },
   towerShare: {
     label: 'Tower share',
@@ -663,20 +666,21 @@ export function reportEventSummary(report: TournamentReport) {
     string,
     { picks: number; wins: number; teams: Set<string> }
   >()
-  for (const team of report.teams)
-    for (const player of team.participants)
-      for (const game of player.games) {
-        if (!game.champion || game.result === 'T') continue
-        const entry = champions.get(game.champion) ?? {
+  for (const game of report.games ?? []) {
+    if (game.winnerId === null) continue
+    for (const side of game.sides)
+      for (const champion of side.champions) {
+        const entry = champions.get(champion) ?? {
           picks: 0,
           wins: 0,
           teams: new Set<string>(),
         }
         entry.picks++
-        if (game.result === 'W') entry.wins++
-        entry.teams.add(team.id)
-        champions.set(game.champion, entry)
+        if (game.winnerId === side.teamId) entry.wins++
+        entry.teams.add(side.teamId)
+        champions.set(champion, entry)
       }
+  }
   const teamPoints = report.teams.map((team) => {
     const games = rows.filter((row) => row.teamId === team.id)
     return {
