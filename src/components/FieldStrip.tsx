@@ -100,18 +100,20 @@ export function FieldStrip({
           </span>
         ) : null}
       </span>
-      <span className="grid justify-items-end gap-1 text-right">
-        <span className="text-base leading-none font-bold text-[var(--text-strong)] tabular-nums">
+      <span className="contents sm:grid sm:justify-items-end sm:gap-1 sm:text-right">
+        <span className="col-start-2 row-start-1 self-start text-right text-base leading-none font-bold text-[var(--text-strong)] tabular-nums sm:col-start-auto sm:row-start-auto sm:self-auto">
           {value === null ? '—' : format(value)}
         </span>
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {place ? `${ordinal(place)} of ${field.length}` : tooFew ? `${position.n} ${sampleUnit}, needs ${minSamples}` : 'No data'}
+        <span className="col-span-2 row-start-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 sm:col-span-1 sm:row-start-auto sm:grid sm:justify-items-end sm:gap-1">
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {place ? `${ordinal(place)} of ${field.length}` : tooFew ? `${position.n} ${sampleUnit}, needs ${minSamples}` : 'No data'}
+          </span>
+          {standing ? (
+            <Badge variant={standing === 'top' ? 'rank' : 'secondary'} className={cn(standing === 'close' && 'text-[var(--faint)]')}>
+              {standingLabel(standing, better, within)}
+            </Badge>
+          ) : null}
         </span>
-        {standing ? (
-          <Badge variant={standing === 'top' ? 'rank' : 'secondary'} className={cn(standing === 'close' && 'text-[var(--faint)]')}>
-            {standingLabel(standing, better, within)}
-          </Badge>
-        ) : null}
       </span>
     </li>
   )

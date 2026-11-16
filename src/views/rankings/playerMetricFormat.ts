@@ -14,6 +14,6 @@ export function formatMetric(key: PlayerPerformanceMetric, value: number | null)
   if (value === null) return 'Unavailable'
   const format = playerPerformanceMetrics[key].format
   if (format === 'percent') return `${(value * 100).toFixed(1)}%`
-  if (format === 'points') return `${figure(value * 100, true)} pp`
+  if (format === 'points') return `${figure(value * 100, true)} pts`
   return figure(value, format === 'signed')
 }
