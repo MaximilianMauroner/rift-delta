@@ -17,7 +17,7 @@ import {
   type TournamentReport,
 } from '../../../domains/rankings/tournament-reports'
 import type { Rate } from '../../../domains/rankings/field-statistics'
-import { percent, rateInterval, signedGold } from '../../../components/fieldFormat'
+import { percent, signedGold } from '../../../components/fieldFormat'
 
 const LIST_LENGTH = 5
 const CHAMPION_ROWS = 10
@@ -44,14 +44,14 @@ export function EventOverview({
       <h3 className="text-lg font-bold">Tournament</h3>
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md bg-border lg:grid-cols-4">
         <RateTile label="Blue side wins" rate={summary.blueSide} />
-        <RateTile label="Gold leader at 15 wins" rate={summary.leaderAt15} />
+        <RateTile label="Team ahead at 15 wins" rate={summary.leaderAt15} />
         <Tile
           label="Average game"
           value={summary.minutes.mean === null ? 'Unavailable' : `${summary.minutes.mean.toFixed(1)} min`}
           detail={
             summary.minutes.shortest === null
               ? 'No game lengths'
-              : `Range ${summary.minutes.shortest.toFixed(1)}–${summary.minutes.longest!.toFixed(1)} min`
+              : `Shortest ${summary.minutes.shortest.toFixed(1)} min, longest ${summary.minutes.longest!.toFixed(1)} min`
           }
         />
         <Tile
@@ -72,7 +72,7 @@ export function EventOverview({
             <div
               className="h-72 min-w-0"
               role="img"
-              aria-label={`Average gold difference at 15 and win rate for ${points.length} teams`}
+              aria-label={`Average gold lead at 15 and win rate for ${points.length} teams`}
             >
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <ScatterChart margin={{ top: 12, right: 16, bottom: 20, left: 0 }}>
@@ -80,13 +80,13 @@ export function EventOverview({
                   <XAxis
                     type="number"
                     dataKey="gold"
-                    name="Avg gold difference at 15"
+                    name="Average gold lead at 15"
                     fontSize={10}
                     tickLine={false}
                     tick={{ fill: 'var(--muted)' }}
                     tickFormatter={(value: number) => signedGold(value)}
                     label={{
-                      value: 'Avg gold difference at 15',
+                      value: 'Average gold lead at 15',
                       position: 'insideBottom',
                       offset: -12,
                       fontSize: 10,
@@ -151,7 +151,7 @@ export function EventOverview({
           />
           <GameList
             title="Biggest gold swings after 15"
-            caption="Change in gold difference from 15 minutes to the end"
+            caption="How much the gold lead changed from 15 minutes to the end"
             rows={summary.swings.slice(0, LIST_LENGTH)}
             code={code}
             onSelectTeam={onSelectTeam}
@@ -168,7 +168,7 @@ export function EventOverview({
                 <th className="py-1 text-right font-normal">Picks</th>
                 <th className="hidden py-1 text-right font-normal sm:table-cell">Teams</th>
                 <th className="py-1 text-right font-normal">W–L</th>
-                <th className="w-[38%] py-1 pl-3 font-normal">Win rate, 95% interval</th>
+                <th className="w-[38%] py-1 pl-3 font-normal">Win rate and likely range</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -188,8 +188,9 @@ export function EventOverview({
             </tbody>
           </table>
           <p className="text-xs text-muted-foreground">
-            Wide intervals mean few games. An interval that covers 50% does not
-            separate the champion from an even result.
+            The shaded bar is the likely range of the true win rate. Few games
+            give a wide bar. A bar that crosses the dashed 50% line could still
+            be an even champion.
           </p>
         </CardContent>
       </Card>
@@ -212,7 +213,7 @@ function RateTile({ label, rate }: { label: string; rate: Rate }) {
     <Tile
       label={label}
       value={rate.value === null ? 'Unavailable' : percent(rate.value)}
-      detail={rateInterval(rate)}
+      detail={`${rate.successes} of ${rate.trials} games`}
     />
   )
 }
@@ -220,7 +221,10 @@ function RateTile({ label, rate }: { label: string; rate: Rate }) {
 function IntervalBar({ rate }: { rate: Rate }) {
   if (!rate.interval || rate.value === null) return null
   return (
-    <span className="flex items-center gap-2" title={rateInterval(rate)}>
+    <span
+      className="flex items-center gap-2"
+      title={`Likely win rate ${percent(rate.interval.low)}–${percent(rate.interval.high)} after ${rate.trials} games`}
+    >
       <span className="relative block h-3 min-w-0 flex-1" aria-hidden="true">
         <span className="absolute inset-x-0 top-1/2 border-t border-border" />
         <span className="absolute inset-y-0 left-1/2 border-l border-dashed border-[var(--line-strong)]" />

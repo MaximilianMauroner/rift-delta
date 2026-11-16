@@ -9,7 +9,7 @@ import {
   parseTournamentReport,
   parseTournamentReportIndex,
   reportTeamMetricLeaders,
-  reportRoleMetricRanks,
+  reportRoleFieldPositions,
   resolveReportSelection,
   reportEventSummary,
   reportTeamFieldPositions,
@@ -167,7 +167,7 @@ test('event-role records retain team stints and validate selection', () => {
   )
 })
 
-test('role metric ranks combine team stints, handle ties and exclude missing or different-role players', () => {
+test('role field positions combine team stints, handle ties and exclude missing or different-role players', () => {
   const report = parseTournamentReport(Object.values(build().shards)[0])
   const participants = report.teams.flatMap((team) => team.participants)
   const selected = structuredClone(participants.find((p) => p.role === 'Mid')!)
@@ -197,32 +197,35 @@ test('role metric ranks combine team stints, handle ties and exclude missing or 
   missing.games[0]!.metrics.killParticipation = 0.8
   const field = [selected, otherStint, tie, leader, missing, otherRole]
 
-  assert.deepEqual(reportRoleMetricRanks(field, selected).goldDiffAt15, {
+  const metric = (player: typeof selected, key: 'goldDiffAt15' | 'killParticipation') => {
+    const { value, n, place, missing, field: entries } = reportRoleFieldPositions(field, player).find(
+      (entry) => entry.metric === key,
+    )!
+    return { value, games: n, missing, place, players: entries.length }
+  }
+  assert.deepEqual(metric(selected, 'goldDiffAt15'), {
     value: 200,
     games: 2,
     missing: 0,
-    rank: 2,
+    place: 2,
     players: 3,
   })
-  assert.equal(reportRoleMetricRanks(field, tie).goldDiffAt15.rank, 2)
-  assert.deepEqual(reportRoleMetricRanks(field, selected).killParticipation, {
+  assert.equal(metric(tie, 'goldDiffAt15').place, 2)
+  assert.deepEqual(metric(selected, 'killParticipation'), {
     value: 0.6,
     games: 1,
     missing: 1,
-    rank: 3,
+    place: 3,
     players: 4,
   })
-  assert.deepEqual(reportRoleMetricRanks(field, missing).goldDiffAt15, {
+  assert.deepEqual(metric(missing, 'goldDiffAt15'), {
     value: null,
     games: 0,
     missing: 1,
-    rank: null,
+    place: null,
     players: 3,
   })
-  assert.deepEqual(
-    reportRoleMetricRanks(field, otherStint).goldDiffAt15,
-    reportRoleMetricRanks(field, selected).goldDiffAt15,
-  )
+  assert.deepEqual(metric(otherStint, 'goldDiffAt15'), metric(selected, 'goldDiffAt15'))
 })
 
 test('team stat leaders use full precision, preserve ties and exclude missing values', () => {
@@ -545,14 +548,14 @@ test('field positions use z-scores and percentiles and skip teams with too few g
   const field = [0.8, 0, 1]
   const mean = field.reduce((sum, value) => sum + value, 0) / 3
   const sd = Math.sqrt(field.reduce((sum, value) => sum + (value - mean) ** 2, 0) / 3)
-  assert.ok(Math.abs(alpha.z! - (0.8 - mean) / sd) < 1e-9)
-  assert.equal(alpha.percentile, 50, 'Alpha is above Beta and below Gamma')
-  assert.equal(alpha.band, 'Typical', 'z is 0.46, inside half a standard deviation')
+  assert.ok(Math.abs((0.8 - mean) / sd) < 0.5, 'Alpha is less than half a standard deviation above the mean')
+  assert.equal(alpha.place, 2, 'Alpha is above Beta and below Gamma')
+  assert.equal(alpha.standing, 'close')
   const delta = winRate('Delta')
   assert.equal(delta.value, 0)
   assert.equal(delta.n, 1)
-  assert.equal(delta.z, null)
-  assert.equal(delta.percentile, null)
+  assert.equal(delta.place, null)
+  assert.equal(delta.standing, null)
 })
 
 test('version 1 reports stay readable without game records and version 2 requires them', () => {

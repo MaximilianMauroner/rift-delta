@@ -2,43 +2,16 @@ import { z } from 'zod'
 import {
   fieldPosition,
   wilsonRate,
+  type Better,
   type FieldPosition,
   type Rate,
 } from './field-statistics.ts'
+import { playerPerformanceMetricKeys, playerPerformanceMetrics } from './internal/players/playerPerformance.ts'
+import type { PlayerPerformanceMetric } from './types.ts'
 
 export const REPORT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'] as const
-export const REPORT_METRICS = {
-  killParticipation: {
-    label: 'Kill participation',
-    unit: '%',
-    multiplier: 100,
-  },
-  damageGoldShareGap: {
-    label: 'Damage minus gold share',
-    unit: 'pp',
-    multiplier: 100,
-  },
-  goldDiffAt15: { label: 'Gold difference at 15', unit: 'gold', multiplier: 1 },
-  xpDiffAt15: { label: 'XP difference at 15', unit: 'XP', multiplier: 1 },
-  csDiffAt15: { label: 'CS difference at 15', unit: 'CS', multiplier: 1 },
-  damagePerMinute: { label: 'Damage per minute', unit: '', multiplier: 1 },
-  csPerMinute: { label: 'CS per minute', unit: '', multiplier: 1 },
-  wardsPlacedPerMinute: {
-    label: 'Wards placed per minute',
-    unit: '',
-    multiplier: 1,
-  },
-  wardsClearedPerMinute: {
-    label: 'Wards cleared per minute',
-    unit: '',
-    multiplier: 1,
-  },
-} as const
 const metric = z.enum(
-  Object.keys(REPORT_METRICS) as [
-    keyof typeof REPORT_METRICS,
-    ...Array<keyof typeof REPORT_METRICS>,
-  ],
+  playerPerformanceMetricKeys as [PlayerPerformanceMetric, ...PlayerPerformanceMetric[]],
 )
 const text = z.string().min(1)
 const count = z.number().int().nonnegative()
@@ -208,19 +181,13 @@ export type TournamentReportTeam = z.infer<typeof team>
 export type TournamentReportPlayer = z.infer<typeof participant>
 export type TournamentReportGame = z.infer<typeof game>
 export type TournamentReportMatch = z.infer<typeof reportGame>
-type ReportMetric = keyof typeof REPORT_METRICS
-type RoleMetricRank = {
-  value: number | null
-  games: number
-  missing: number
-  rank: number | null
-  players: number
-}
+export type ReportRolePosition = FieldPosition & { metric: PlayerPerformanceMetric; missing: number }
 
-export function reportRoleMetricRanks(
+/** Places a player's event averages among every player of the same role, across all their teams. */
+export function reportRoleFieldPositions(
   participants: readonly TournamentReportPlayer[],
   selected: TournamentReportPlayer,
-): Record<ReportMetric, RoleMetricRank> {
+): ReportRolePosition[] {
   const gamesByPlayer = new Map<string, TournamentReportGame[]>()
   for (const participant of participants) {
     if (participant.role !== selected.role) continue
@@ -228,42 +195,26 @@ export function reportRoleMetricRanks(
     games.push(...participant.games)
     gamesByPlayer.set(participant.playerId, games)
   }
-
-  return Object.fromEntries(
-    (Object.keys(REPORT_METRICS) as ReportMetric[]).map((key) => {
-      const averages = [...gamesByPlayer].map(([id, games]) => {
-        const values = games.flatMap((game) =>
-          game.metrics[key] === null ? [] : [game.metrics[key]],
-        )
-        return {
-          id,
-          value: values.length
-            ? values.reduce((sum, value) => sum + value, 0) / values.length
-            : null,
-          games: values.length,
-          missing: games.length - values.length,
-        }
-      })
-      const observed = averages.filter((average) => average.value !== null)
-      const current = averages.find(
-        (average) => average.id === selected.playerId,
+  return playerPerformanceMetricKeys.map((metric) => {
+    const averages = [...gamesByPlayer].map(([id, games]) => {
+      const values = games.flatMap((game) =>
+        game.metrics[metric] === null ? [] : [game.metrics[metric]],
       )
-      const value = current?.value ?? null
-      return [
-        key,
-        {
-          value,
-          games: current?.games ?? 0,
-          missing: current?.missing ?? 0,
-          rank:
-            value === null
-              ? null
-              : 1 + observed.filter((other) => other.value! > value).length,
-          players: observed.length,
-        },
-      ]
-    }),
-  ) as Record<ReportMetric, RoleMetricRank>
+      return {
+        id,
+        value: values.length
+          ? values.reduce((sum, value) => sum + value, 0) / values.length
+          : null,
+        n: values.length,
+        missing: games.length - values.length,
+      }
+    })
+    return {
+      metric,
+      missing: averages.find((entry) => entry.id === selected.playerId)?.missing ?? 0,
+      ...fieldPosition(averages, selected.playerId, 1, playerPerformanceMetrics[metric].better),
+    }
+  })
 }
 
 export function reportPlayerKey(
@@ -402,7 +353,7 @@ export function parseTournamentReport(
 
 export function reportTeamMetricLeaders(
   players: readonly TournamentReportPlayer[],
-  metric: ReportMetric,
+  metric: PlayerPerformanceMetric,
 ) {
   const averages = players.flatMap((player) => {
     const values = player.games.flatMap((game) => {
@@ -561,61 +512,81 @@ export const REPORT_TEAM_METRICS = {
   winRate: {
     label: 'Win rate',
     unit: '%',
+    better: 'higher',
+    hint: 'Share of games won.',
     measure: rateOf,
   },
   goldDiffAt15: {
-    label: 'Gold difference at 15',
+    label: 'Gold lead at 15',
     unit: 'gold',
+    better: 'higher',
+    hint: 'Average team gold lead at 15 minutes.',
     measure: (games: ReportTeamGame[]) =>
       meanOf(known(games.map((game) => game.goldDiffAt15))),
   },
   leadConversion: {
     label: 'Wins when ahead at 15',
     unit: '%',
+    better: 'higher',
+    hint: 'Share of games won after leading in gold at 15.',
     measure: (games: ReportTeamGame[]) =>
       rateOf(games.filter((game) => (game.goldDiffAt15 ?? 0) > 0)),
   },
   comebackRate: {
     label: 'Wins when behind at 15',
     unit: '%',
+    better: 'higher',
+    hint: 'Share of games won after trailing in gold at 15.',
     measure: (games: ReportTeamGame[]) =>
       rateOf(games.filter((game) => (game.goldDiffAt15 ?? 0) < 0)),
   },
   goldSwing: {
     label: 'Gold lead change after 15',
     unit: 'gold',
+    better: null,
+    hint: 'How much the gold lead grew after 15 minutes. A style, not better or worse.',
     measure: (games: ReportTeamGame[]) =>
       meanOf(known(games.map((game) => game.goldSwing))),
   },
   killShare: {
     label: 'Kill share',
     unit: '%',
+    better: 'higher',
+    hint: 'Share of all kills in its games.',
     measure: (games: ReportTeamGame[]) =>
       shareOf(games, (game) => game.kills),
   },
   towerShare: {
     label: 'Tower share',
     unit: '%',
+    better: 'higher',
+    hint: 'Share of all towers taken in its games.',
     measure: (games: ReportTeamGame[]) => shareOf(games, (game) => game.towers),
   },
   dragonShare: {
     label: 'Dragon share',
     unit: '%',
+    better: 'higher',
+    hint: 'Share of all dragons taken in its games.',
     measure: (games: ReportTeamGame[]) =>
       shareOf(games, (game) => game.dragons),
   },
   baronShare: {
     label: 'Baron share',
     unit: '%',
+    better: 'higher',
+    hint: 'Share of all Barons taken in its games.',
     measure: (games: ReportTeamGame[]) => shareOf(games, (game) => game.barons),
   },
   gameMinutes: {
     label: 'Game length',
     unit: 'min',
+    better: null,
+    hint: 'Average game time. A style, not better or worse.',
     measure: (games: ReportTeamGame[]) =>
       meanOf(known(games.map((game) => game.lengthSeconds)).map((s) => s / 60)),
   },
-} as const
+} as const satisfies Record<string, { label: string; unit: string; better: Better; hint: string; measure: (games: ReportTeamGame[]) => MetricValue }>
 export type ReportTeamMetric = keyof typeof REPORT_TEAM_METRICS
 
 export const REPORT_FIELD_MIN_GAMES = 3
@@ -641,7 +612,7 @@ export function reportTeamFieldPositions(
       return {
         metric,
         rate: measured.find((entry) => entry.id === teamId)?.rate ?? null,
-        ...fieldPosition(measured, teamId, REPORT_FIELD_MIN_GAMES),
+        ...fieldPosition(measured, teamId, REPORT_FIELD_MIN_GAMES, REPORT_TEAM_METRICS[metric].better),
       }
     },
   )

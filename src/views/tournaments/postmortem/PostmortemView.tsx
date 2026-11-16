@@ -205,7 +205,7 @@ function ReportBody({ report }: { report: TournamentReport }) {
           Choose a team to continue.
         </Alert>
       ) : selection.team ? (
-        <div className="grid min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="grid min-w-0 items-start gap-3 xl:grid-cols-2 xl:grid-rows-[auto_auto_1fr]">
           <TeamReportCard
             team={selection.team}
             selected={selection.player?.key}
@@ -217,23 +217,25 @@ function ReportBody({ report }: { report: TournamentReport }) {
               })
             }
           />
-          {selection.player ? (
-            <PlayerEvidence
-              key={selection.player.key}
-              player={selection.player}
-              teams={report.teams}
-            />
-          ) : (
-            <Alert role="status">
-              No player roster observations are available for this team.
-            </Alert>
-          )}
-        </div>
-      ) : null}
-      {selection.kind === 'ready' && selection.team && report.games ? (
-        <div className="grid min-w-0 items-start gap-3 xl:grid-cols-2">
-          <TeamFieldPosition report={report} team={selection.team} />
-          <TeamGameSwings report={report} team={selection.team} />
+          <div className="min-w-0 xl:col-start-2 xl:row-span-3 xl:row-start-1">
+            {selection.player ? (
+              <PlayerEvidence
+                key={selection.player.key}
+                player={selection.player}
+                teams={report.teams}
+              />
+            ) : (
+              <Alert role="status">
+                No player roster observations are available for this team.
+              </Alert>
+            )}
+          </div>
+          {report.games ? (
+            <>
+              <TeamFieldPosition report={report} team={selection.team} />
+              <TeamGameSwings report={report} team={selection.team} />
+            </>
+          ) : null}
         </div>
       ) : null}
       <details className="min-w-0 break-words border-t border-border pt-3 text-xs text-muted-foreground">
@@ -254,10 +256,11 @@ function ReportBody({ report }: { report: TournamentReport }) {
           <p>
             Team gold difference at 15 is the sum of the five lane differences
             and is unavailable when a lane value is missing. Gold change after
-            15 is the final gold difference minus the value at 15. Rates use
-            95% Wilson intervals. Field comparisons use the population standard
-            deviation of teams with at least three qualifying games. These are
-            descriptive statistics, not a win probability model.
+            15 is the final gold difference minus the value at 15. Likely
+            ranges are 95% Wilson intervals. A team is above or below average
+            when it is at least half a population standard deviation from the
+            field average, among teams with at least three qualifying games.
+            These are descriptive statistics, not a win probability model.
           </p>
           <p>
             Data mode {report.provenance.dataMode} · Input digest{' '}

@@ -34,7 +34,7 @@ export function PlayerPerformancePanel({ players, scopeLabel }: { players: Compa
                 const metric = performance.metrics[key]
                 return (
                   <TableRow key={key}>
-                    <TableCell className="whitespace-normal" title={playerPerformanceMetrics[key].description}>{playerPerformanceMetrics[key].label}</TableCell>
+                    <TableCell className="whitespace-normal" title={playerPerformanceMetrics[key].hint}>{playerPerformanceMetrics[key].label}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatMetric(key, metric.value)}</TableCell>
                     <TableCell className="text-right tabular-nums" title={`${metric.missing} games unavailable`}>
                       {metric.games}/{diagnostics.sampleGames} games
