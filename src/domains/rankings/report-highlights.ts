@@ -9,7 +9,7 @@ import {
 
 /** What a highlight is about. The view names it; the domain only identifies it. */
 export type HighlightSubject =
-  | { kind: 'game'; matchId: string; date: string; phase: string | null; winnerId: string | null; teamIds: [string, string] }
+  | { kind: 'game'; matchId: string; date: string; phase: string | null; winnerId: string | null; teamIds: [string, string]; holderId: string | null }
   | { kind: 'team'; teamId: string }
   | { kind: 'player'; player: TournamentReportPlayer; game: TournamentReportGame | null }
   | { kind: 'champion'; champion: string; wins: number; games: number }
@@ -27,6 +27,8 @@ type Measure = {
   unit: HighlightUnit
   /** The record is the largest value, or the smallest for `min`. */
   record: 'max' | 'min'
+  /** A record that fails this is not a highlight, such as a "comeback" from ahead. */
+  qualifies?: (record: number) => boolean
   candidates: (context: Context) => Candidate[]
 }
 
@@ -36,17 +38,19 @@ const HIGHLIGHT_MAX_HOLDERS = 2
 const PLAYER_MIN_GAMES = 3
 const CHAMPION_MIN_GAMES = 5
 
-const gameSubject = (game: NonNullable<TournamentReport['games']>[number]): HighlightSubject => ({
+const gameSubject = (game: NonNullable<TournamentReport['games']>[number], holderId: string | null = null): HighlightSubject => ({
   kind: 'game',
   matchId: game.matchId,
   date: game.date,
   phase: game.phase,
   winnerId: game.winnerId,
   teamIds: [game.sides[0].teamId, game.sides[1].teamId],
+  holderId,
 })
 
+/** A game record held by one side, such as its dragons, names that side. */
 const teamGameSubject = (context: Context, row: ReportTeamGame): HighlightSubject =>
-  gameSubject(context.report.games!.find((game) => game.matchId === row.matchId)!)
+  gameSubject(context.report.games!.find((game) => game.matchId === row.matchId)!, row.teamId)
 
 const playerGames = (context: Context) =>
   context.players.flatMap((player) => player.games.map((game) => ({ player, game })))
@@ -118,6 +122,7 @@ export const REPORT_HIGHLIGHT_MEASURES = {
     title: 'Biggest comeback',
     unit: 'goldAt15',
     record: 'min',
+    qualifies: (record) => record < 0,
     candidates: (context) =>
       context.teamGames.flatMap((row) =>
         row.result !== 'W' || row.goldDiffAt15 === null
@@ -160,7 +165,7 @@ export const REPORT_HIGHLIGHT_MEASURES = {
       ),
   },
   damageGame: {
-    title: 'Most damage in one game',
+    title: 'Highest damage per minute in one game',
     unit: 'damage',
     record: 'max',
     candidates: (context) =>
@@ -242,6 +247,7 @@ export function reportHighlights(report: TournamentReport, limit = 6): ReportHig
     const deviation = Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length)
     if (!deviation) return []
     const record = definition.record === 'max' ? Math.max(...values) : Math.min(...values)
+    if (definition.qualifies && !definition.qualifies(record)) return []
     const holders = candidates.filter((candidate) => candidate.value === record)
     if (holders.length > HIGHLIGHT_MAX_HOLDERS) return []
     return [{

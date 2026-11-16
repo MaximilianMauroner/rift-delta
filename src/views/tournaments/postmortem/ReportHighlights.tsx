@@ -17,7 +17,7 @@ const FORMATS: Record<HighlightUnit, (value: number) => string> = {
   champions: (value) => `${value.toFixed(value % 1 ? 1 : 0)} champions`,
   roles: (value) => `${value.toFixed(value % 1 ? 1 : 0)} roles`,
   dragons: (value) => `${value.toFixed(value % 1 ? 1 : 0)} dragons`,
-  damage: (value) => `${Math.round(value).toLocaleString('en-US')} damage a minute`,
+  damage: (value) => `${Math.round(value).toLocaleString('en-US')} a minute`,
 }
 
 function describe(subject: HighlightSubject, report: TournamentReport) {
@@ -27,7 +27,7 @@ function describe(subject: HighlightSubject, report: TournamentReport) {
       const [a, b] = subject.teamIds
       const loser = subject.winnerId === a ? b : a
       const teams = subject.winnerId ? `${code(subject.winnerId)} beat ${code(loser)}` : `${code(a)} vs ${code(b)}`
-      return [teams, subject.date, subject.phase].filter(Boolean).join(' · ')
+      return [subject.holderId ? `${code(subject.holderId)}, in ${teams}` : teams, subject.date, subject.phase].filter(Boolean).join(' · ')
     }
     case 'team':
       return report.teams.find((team) => team.id === subject.teamId)?.name ?? subject.teamId

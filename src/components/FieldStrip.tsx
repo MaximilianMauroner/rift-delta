@@ -122,7 +122,9 @@ function FieldTrack({
   sampleUnit: string
 }) {
   const [active, setActive] = useState<number | null>(null)
+  const subjectIndex = Math.max(0, entries.findIndex((entry) => entry.id === subjectId))
   const current = active === null ? null : entries[active]
+  const selected = Math.min(active ?? subjectIndex, entries.length - 1)
   const stack = current
     ? entries
         .filter((entry) => Math.abs(at(entry.value) - at(current.value)) < STACK_DISTANCE)
@@ -142,8 +144,8 @@ function FieldTrack({
   const step = (event: KeyboardEvent<HTMLSpanElement>) => {
     const last = entries.length - 1
     const next =
-      event.key === 'ArrowRight' || event.key === 'ArrowUp' ? Math.min(last, (active ?? -1) + 1)
-      : event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? Math.max(0, (active ?? last + 1) - 1)
+      event.key === 'ArrowRight' || event.key === 'ArrowUp' ? Math.min(last, active === null ? selected : active + 1)
+      : event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? Math.max(0, active === null ? selected : active - 1)
       : event.key === 'Home' ? 0
       : event.key === 'End' ? last
       : undefined
@@ -155,13 +157,17 @@ function FieldTrack({
   return (
     <span
       className="relative col-span-2 row-start-2 mx-2 block h-12 min-w-0 cursor-crosshair touch-pan-y rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-[var(--focus)] sm:col-span-1 sm:col-start-2 sm:row-start-1"
-      role="slider"
-      tabIndex={entries.length ? 0 : -1}
+      {...(entries.length
+        ? {
+            role: 'slider',
+            tabIndex: 0,
+            'aria-valuemin': 1,
+            'aria-valuemax': entries.length,
+            'aria-valuenow': selected + 1,
+            'aria-valuetext': describe(entries[selected]!),
+          }
+        : { role: 'img' })}
       aria-label={summary}
-      aria-valuemin={1}
-      aria-valuemax={entries.length}
-      aria-valuenow={active === null ? undefined : active + 1}
-      aria-valuetext={current ? describe(current) : 'Use the arrow keys to name each entry'}
       onPointerDown={nearest}
       onPointerMove={(event) => {
         if (event.pointerType === 'mouse' || event.buttons) nearest(event)
