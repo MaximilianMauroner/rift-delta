@@ -11,6 +11,9 @@ import {
   reportTeamMetricLeaders,
   reportRoleMetricRanks,
   resolveReportSelection,
+  reportEventSummary,
+  reportRate,
+  reportTeamFieldPositions,
 } from '../src/domains/rankings/tournament-reports.ts'
 import { createStaticRankingData } from '../src/domains/rankings/build.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/artifact-write.ts'
@@ -379,4 +382,156 @@ test('incomplete roster evidence stays observable without a fabricated score or 
     games: 0,
     missing: 1,
   })
+})
+
+test('reports record each game and summarize sides, comebacks and gold swings', () => {
+  const comeback = {
+    ...reportGame('comeback', '2025-10-15', -1200),
+    teamAGold: 70_000,
+    teamBGold: 64_000,
+    teamAKills: 18,
+    teamBKills: 9,
+    teamATowers: 9,
+    teamBTowers: 3,
+    teamADragons: 3,
+    teamBDragons: 2,
+    teamABarons: 1,
+    teamBBarons: 0,
+    gameLengthSeconds: 1980,
+  }
+  const lead = {
+    ...reportGame('lead', '2025-10-16', 800),
+    teamASide: 'red' as const,
+    teamBSide: 'blue' as const,
+    winner: 'Beta',
+    gameLengthSeconds: 1500,
+  }
+  const { index, shards } = build([comeback, lead])
+  const report = parseTournamentReport(
+    Object.values(shards)[0],
+    index.tournaments[0],
+  )
+  const alpha = report.teams.find((team) => team.name === 'Alpha')!.id
+  const beta = report.teams.find((team) => team.name === 'Beta')!.id
+  assert.deepEqual(report.games![0], {
+    matchId: 'comeback',
+    date: '2025-10-15',
+    gameNumber: null,
+    phase: 'Swiss',
+    patch: null,
+    lengthSeconds: 1980,
+    winnerId: alpha,
+    sides: [
+      { teamId: alpha, side: 'blue', kills: 18, gold: 70_000, towers: 9, dragons: 3, barons: 1 },
+      { teamId: beta, side: 'red', kills: 9, gold: 64_000, towers: 3, dragons: 2, barons: 0 },
+    ],
+  })
+  assert.equal(report.games![1]!.sides[0].side, 'red')
+
+  const summary = reportEventSummary(report)
+  assert.equal(summary.games, 2)
+  assert.deepEqual(
+    [summary.blueSide.successes, summary.blueSide.trials],
+    [2, 2],
+    'Alpha won on blue and Beta won on blue',
+  )
+  assert.deepEqual(
+    [summary.leaderAt15.successes, summary.leaderAt15.trials],
+    [0, 2],
+    'Both gold leaders at 15 lost',
+  )
+  assert.equal(summary.minutes.mean, 29)
+  assert.equal(summary.comebacks.length, 2)
+  assert.deepEqual(
+    summary.comebacks.map((row) => [row.matchId, row.teamId, row.goldDiffAt15]),
+    [['comeback', alpha, -1200], ['lead', beta, -800]],
+  )
+  assert.deepEqual(
+    summary.swings.map((row) => [row.matchId, row.teamId, row.goldSwing]),
+    [['comeback', alpha, 7200], ['lead', beta, 800]],
+  )
+  assert.equal(summary.champions.find((entry) => entry.champion === 'Pick')?.picks, 2)
+})
+
+test('rates use Wilson intervals and empty samples stay unavailable', () => {
+  const rate = reportRate(19, 34)
+  assert.ok(Math.abs(rate.interval!.low - 0.3945) < 0.0005)
+  assert.ok(Math.abs(rate.interval!.high - 0.7112) < 0.0005)
+  assert.deepEqual(reportRate(0, 0), { successes: 0, trials: 0, value: null, interval: null })
+})
+
+test('field positions use z-scores and percentiles and skip teams with too few games', () => {
+  const teams = {
+    ...reportTeams,
+    Gamma: { name: 'Gamma', code: 'GAM', region: 'LCK' as const, league: 'LCK' },
+    Delta: { name: 'Delta', code: 'DEL', region: 'LCK' as const, league: 'LCK' },
+  }
+  const game = (id: string, a: string, b: string, aWins: boolean, day: number) => ({
+    ...reportGame(id, `2025-10-${String(day).padStart(2, '0')}`),
+    teamA: a,
+    teamB: b,
+    winner: aWins ? a : b,
+  })
+  const matches = [
+    game('ab1', 'Alpha', 'Beta', true, 10),
+    game('ab2', 'Alpha', 'Beta', true, 11),
+    game('ab3', 'Alpha', 'Beta', true, 12),
+    game('ag1', 'Alpha', 'Gamma', false, 13),
+    game('bg1', 'Beta', 'Gamma', false, 14),
+    game('bg2', 'Beta', 'Gamma', false, 15),
+    game('ad1', 'Alpha', 'Delta', true, 16),
+  ]
+  const { index, shards } = buildTournamentReports(
+    {
+      observed: retainTournamentReportInput(matches, teams),
+      ratedMatches: matches,
+      ratedTeams: teams,
+      dataMode: 'seeded-sample',
+      modelVersion: 'fixture-model',
+      modelConfigHash: 'fixture-config',
+    },
+    (path) => `/data/${path}`,
+  )
+  const report = parseTournamentReport(Object.values(shards)[0], index.tournaments[0])
+  const id = (name: string) => report.teams.find((team) => team.name === name)!.id
+  const winRate = (name: string) =>
+    reportTeamFieldPositions(report, id(name)).find((entry) => entry.metric === 'winRate')!
+
+  const alpha = winRate('Alpha')
+  assert.equal(alpha.value, 0.8, 'Alpha won 4 of 5')
+  assert.deepEqual(
+    alpha.field.map((entry) => entry.teamId).sort(),
+    [id('Alpha'), id('Beta'), id('Gamma')].sort(),
+    'Delta has one game and stays out of the field',
+  )
+  const field = [0.8, 0, 1]
+  const mean = field.reduce((sum, value) => sum + value, 0) / 3
+  const sd = Math.sqrt(field.reduce((sum, value) => sum + (value - mean) ** 2, 0) / 3)
+  assert.ok(Math.abs(alpha.z! - (0.8 - mean) / sd) < 1e-9)
+  assert.equal(alpha.percentile, 50, 'Alpha is above Beta and below Gamma')
+  assert.equal(alpha.band, 'Typical', 'z is 0.46, inside half a standard deviation')
+  const delta = winRate('Delta')
+  assert.equal(delta.value, 0)
+  assert.equal(delta.n, 1)
+  assert.equal(delta.z, null)
+  assert.equal(delta.percentile, null)
+})
+
+test('version 1 reports stay readable without game records and version 2 requires them', () => {
+  const { index, shards } = build()
+  const current = Object.values(shards)[0]!
+  const withoutGames: Record<string, unknown> = { ...current }
+  delete withoutGames.games
+  assert.equal(
+    parseTournamentReport({ ...withoutGames, version: 1 }, index.tournaments[0]).games,
+    null,
+  )
+  assert.throws(() => parseTournamentReport({ ...withoutGames, version: 2 }))
+  assert.throws(() => parseTournamentReport({ ...current, version: 1 }))
+  assert.throws(() =>
+    parseTournamentReport({
+      ...current,
+      games: current.games!.map((game) => ({ ...game, winnerId: 'team:unknown' })),
+    }),
+  )
 })

@@ -122,6 +122,26 @@ const game = z.object({
   champion: text.nullable(),
   metrics: z.record(metric, z.number().nullable()),
 })
+const side = z.enum(['blue', 'red'])
+const gameSide = z.object({
+  teamId: text,
+  side: side.nullable(),
+  kills: count,
+  gold: z.number().nonnegative(),
+  towers: count.nullable(),
+  dragons: count.nullable(),
+  barons: count.nullable(),
+})
+const reportGame = z.object({
+  matchId: text,
+  date: day,
+  gameNumber: count.nullable(),
+  phase: text.nullable(),
+  patch: text.nullable(),
+  lengthSeconds: z.number().positive().nullable(),
+  winnerId: text.nullable(),
+  sides: z.tuple([gameSide, gameSide]),
+})
 const participant = z.object({
   key: text,
   playerId: text,
@@ -155,24 +175,32 @@ const indexSchema = z.object({
   ...identity,
   tournaments: z.array(entry),
 })
-const reportSchema = z.object({
-  artifactKind: z.literal('tournament-report'),
-  version: z.literal(1),
-  ...identity,
-  id: entry.shape.id,
-  label: text,
-  season: text,
-  coverage,
-  provenance,
-  method,
-  teams: z.array(team),
-})
+const reportSchema = z
+  .object({
+    artifactKind: z.literal('tournament-report'),
+    version: z.union([z.literal(1), z.literal(2)]),
+    ...identity,
+    id: entry.shape.id,
+    label: text,
+    season: text,
+    coverage,
+    provenance,
+    method,
+    teams: z.array(team),
+    games: z.array(reportGame).optional(),
+  })
+  .refine(
+    (report) => (report.version === 2) === (report.games !== undefined),
+    'Report games must match the report version',
+  )
+  .transform((report) => ({ ...report, games: report.games ?? null }))
 export type TournamentReportIndex = z.infer<typeof indexSchema>
 export type TournamentReportEntry = z.infer<typeof entry>
-export type TournamentReport = z.infer<typeof reportSchema>
+export type TournamentReport = z.output<typeof reportSchema>
 export type TournamentReportTeam = z.infer<typeof team>
 export type TournamentReportPlayer = z.infer<typeof participant>
 export type TournamentReportGame = z.infer<typeof game>
+export type TournamentReportMatch = z.infer<typeof reportGame>
 type ReportMetric = keyof typeof REPORT_METRICS
 type RoleMetricRank = {
   value: number | null
@@ -330,6 +358,38 @@ export function parseTournamentReport(
       }
     }
   }
+  if (report.games) {
+    const games = new Map(report.games.map((game) => [game.matchId, game]))
+    if (
+      games.size !== report.games.length ||
+      games.size !== report.coverage.observedGames
+    )
+      throw new Error('Invalid report games')
+    for (const game of report.games) {
+      const [a, b] = game.sides
+      if (
+        a.teamId === b.teamId ||
+        !ids.has(a.teamId) ||
+        !ids.has(b.teamId) ||
+        (a.side !== null && a.side === b.side) ||
+        (game.winnerId !== null &&
+          game.winnerId !== a.teamId &&
+          game.winnerId !== b.teamId) ||
+        game.date < report.coverage.since ||
+        game.date > report.coverage.through
+      )
+        throw new Error('Invalid report game record')
+    }
+    for (const player of players)
+      for (const observed of player.games) {
+        const sides = games.get(observed.matchId)?.sides.map((side) => side.teamId)
+        if (
+          !sides?.includes(player.teamId) ||
+          !sides.includes(observed.opponentId)
+        )
+          throw new Error('Participant game has no report game record')
+      }
+  }
   return report
 }
 
@@ -387,3 +447,367 @@ export function resolveReportSelection(
     player: player ?? team?.participants[0],
   } as const
 }
+
+export type ReportInterval = { low: number; high: number }
+export type ReportRate = {
+  successes: number
+  trials: number
+  value: number | null
+  interval: ReportInterval | null
+}
+
+export function reportRate(successes: number, trials: number): ReportRate {
+  if (!trials) return { successes, trials, value: null, interval: null }
+  const z = 1.959964
+  const p = successes / trials
+  const denominator = 1 + (z * z) / trials
+  const center = (p + (z * z) / (2 * trials)) / denominator
+  const spread =
+    (z / denominator) *
+    Math.sqrt((p * (1 - p)) / trials + (z * z) / (4 * trials * trials))
+  return {
+    successes,
+    trials,
+    value: p,
+    interval: {
+      low: Math.max(0, center - spread),
+      high: Math.min(1, center + spread),
+    },
+  }
+}
+
+export type ReportTeamGame = {
+  matchId: string
+  date: string
+  gameNumber: number | null
+  phase: string | null
+  teamId: string
+  opponentId: string
+  side: 'blue' | 'red' | null
+  result: 'W' | 'L' | 'T'
+  goldDiffAt15: number | null
+  goldDiff: number
+  goldSwing: number | null
+  lengthSeconds: number | null
+  kills: number
+  killsAgainst: number
+  towers: [number, number] | null
+  dragons: [number, number] | null
+  barons: [number, number] | null
+}
+
+export function reportTeamGames(report: TournamentReport): ReportTeamGame[] {
+  const lanes = new Map<string, number[]>()
+  for (const team of report.teams)
+    for (const player of team.participants)
+      for (const game of player.games) {
+        const value = game.metrics.goldDiffAt15
+        if (value === null) continue
+        const key = `${game.matchId}|${team.id}`
+        lanes.set(key, [...(lanes.get(key) ?? []), value])
+      }
+  return (report.games ?? []).flatMap((game) =>
+    game.sides.map((own, index) => {
+      const other = game.sides[1 - index]!
+      const values = lanes.get(`${game.matchId}|${own.teamId}`) ?? []
+      const goldDiffAt15 =
+        values.length === REPORT_ROLES.length
+          ? values.reduce((sum, value) => sum + value, 0)
+          : null
+      const goldDiff = own.gold - other.gold
+      const pair = (key: 'towers' | 'dragons' | 'barons') =>
+        own[key] === null || other[key] === null
+          ? null
+          : ([own[key], other[key]] as [number, number])
+      return {
+        matchId: game.matchId,
+        date: game.date,
+        gameNumber: game.gameNumber,
+        phase: game.phase,
+        teamId: own.teamId,
+        opponentId: other.teamId,
+        side: own.side,
+        result:
+          game.winnerId === own.teamId
+            ? 'W'
+            : game.winnerId === other.teamId
+              ? 'L'
+              : 'T',
+        goldDiffAt15,
+        goldDiff,
+        goldSwing: goldDiffAt15 === null ? null : goldDiff - goldDiffAt15,
+        lengthSeconds: game.lengthSeconds,
+        kills: own.kills,
+        killsAgainst: other.kills,
+        towers: pair('towers'),
+        dragons: pair('dragons'),
+        barons: pair('barons'),
+      }
+    }),
+  )
+}
+
+type MetricValue = { value: number | null; n: number; rate?: ReportRate }
+const meanOf = (values: number[]): MetricValue => ({
+  value: values.length
+    ? values.reduce((sum, value) => sum + value, 0) / values.length
+    : null,
+  n: values.length,
+})
+const rateOf = (games: ReportTeamGame[]): MetricValue => {
+  const rate = reportRate(
+    games.filter((game) => game.result === 'W').length,
+    games.length,
+  )
+  return { value: rate.value, n: rate.trials, rate }
+}
+const shareOf = (
+  games: ReportTeamGame[],
+  pick: (game: ReportTeamGame) => [number, number] | null,
+): MetricValue => {
+  const pairs = games.flatMap((game) => {
+    const pair = pick(game)
+    return pair ? [pair] : []
+  })
+  const own = pairs.reduce((sum, [value]) => sum + value, 0)
+  const total = pairs.reduce((sum, [a, b]) => sum + a + b, 0)
+  return { value: total ? own / total : null, n: pairs.length }
+}
+const known = <T>(values: Array<T | null>) =>
+  values.filter((value): value is T => value !== null)
+
+export const REPORT_TEAM_METRICS = {
+  winRate: {
+    label: 'Win rate',
+    unit: '%',
+    measure: rateOf,
+  },
+  goldDiffAt15: {
+    label: 'Gold difference at 15',
+    unit: 'gold',
+    measure: (games: ReportTeamGame[]) =>
+      meanOf(known(games.map((game) => game.goldDiffAt15))),
+  },
+  leadConversion: {
+    label: 'Wins when ahead at 15',
+    unit: '%',
+    measure: (games: ReportTeamGame[]) =>
+      rateOf(games.filter((game) => (game.goldDiffAt15 ?? 0) > 0)),
+  },
+  comebackRate: {
+    label: 'Wins when behind at 15',
+    unit: '%',
+    measure: (games: ReportTeamGame[]) =>
+      rateOf(games.filter((game) => (game.goldDiffAt15 ?? 0) < 0)),
+  },
+  goldSwing: {
+    label: 'Gold lead change after 15',
+    unit: 'gold',
+    measure: (games: ReportTeamGame[]) =>
+      meanOf(known(games.map((game) => game.goldSwing))),
+  },
+  killShare: {
+    label: 'Kill share',
+    unit: '%',
+    measure: (games: ReportTeamGame[]) =>
+      shareOf(games, (game) => [game.kills, game.killsAgainst]),
+  },
+  towerShare: {
+    label: 'Tower share',
+    unit: '%',
+    measure: (games: ReportTeamGame[]) => shareOf(games, (game) => game.towers),
+  },
+  dragonShare: {
+    label: 'Dragon share',
+    unit: '%',
+    measure: (games: ReportTeamGame[]) =>
+      shareOf(games, (game) => game.dragons),
+  },
+  baronShare: {
+    label: 'Baron share',
+    unit: '%',
+    measure: (games: ReportTeamGame[]) => shareOf(games, (game) => game.barons),
+  },
+  gameMinutes: {
+    label: 'Game length',
+    unit: 'min',
+    measure: (games: ReportTeamGame[]) =>
+      meanOf(known(games.map((game) => game.lengthSeconds)).map((s) => s / 60)),
+  },
+} as const
+export type ReportTeamMetric = keyof typeof REPORT_TEAM_METRICS
+
+export type ReportFieldBand =
+  | 'Far above field'
+  | 'Above field'
+  | 'Typical'
+  | 'Below field'
+  | 'Far below field'
+
+export type ReportFieldPosition = {
+  metric: ReportTeamMetric
+  value: number | null
+  n: number
+  rate: ReportRate | null
+  field: Array<{ teamId: string; value: number; n: number }>
+  mean: number | null
+  z: number | null
+  percentile: number | null
+  band: ReportFieldBand | null
+}
+
+function band(z: number): ReportFieldBand {
+  if (z >= 1.5) return 'Far above field'
+  if (z >= 0.5) return 'Above field'
+  if (z > -0.5) return 'Typical'
+  if (z > -1.5) return 'Below field'
+  return 'Far below field'
+}
+
+export const REPORT_FIELD_MIN_GAMES = 3
+
+export function reportTeamFieldPositions(
+  report: TournamentReport,
+  teamId: string,
+): ReportFieldPosition[] {
+  const rows = reportTeamGames(report)
+  const byTeam = new Map(report.teams.map((team) => [team.id, [] as ReportTeamGame[]]))
+  for (const row of rows) byTeam.get(row.teamId)!.push(row)
+  return (Object.keys(REPORT_TEAM_METRICS) as ReportTeamMetric[]).map(
+    (metric) => {
+      const measured = [...byTeam].map(([id, games]) => ({
+        teamId: id,
+        ...REPORT_TEAM_METRICS[metric].measure(games),
+      }))
+      const field = measured.flatMap(({ teamId: id, value, n }) =>
+        value === null || n < REPORT_FIELD_MIN_GAMES
+          ? []
+          : [{ teamId: id, value, n }],
+      )
+      const own = measured.find((entry) => entry.teamId === teamId)!
+      const ranked = field.find((entry) => entry.teamId === teamId)
+      const values = field.map((entry) => entry.value)
+      const average = values.length
+        ? values.reduce((sum, value) => sum + value, 0) / values.length
+        : null
+      const deviation =
+        average === null
+          ? 0
+          : Math.sqrt(
+              values.reduce((sum, value) => sum + (value - average) ** 2, 0) /
+                values.length,
+            )
+      const others = field.filter((entry) => entry.teamId !== teamId)
+      const z =
+        !ranked || average === null || values.length < 3 || !deviation
+          ? null
+          : (ranked.value - average) / deviation
+      return {
+        metric,
+        value: own.value,
+        n: own.n,
+        rate: own.rate ?? null,
+        field,
+        mean: average,
+        z,
+        percentile:
+          !ranked || !others.length
+            ? null
+            : (100 *
+                (others.filter((entry) => entry.value < ranked.value).length +
+                  others.filter((entry) => entry.value === ranked.value).length /
+                    2)) /
+              others.length,
+        band: z === null ? null : band(z),
+      }
+    },
+  )
+}
+
+export type ReportChampion = {
+  champion: string
+  picks: number
+  teams: number
+  rate: ReportRate
+}
+
+export function reportEventSummary(report: TournamentReport) {
+  const rows = reportTeamGames(report)
+  const decided = rows.filter((row) => row.result !== 'T')
+  const blue = decided.filter((row) => row.side === 'blue')
+  const leaders = decided.filter((row) => (row.goldDiffAt15 ?? 0) > 0)
+  const minutes = known((report.games ?? []).map((game) => game.lengthSeconds))
+    .map((seconds) => seconds / 60)
+    .sort((a, b) => a - b)
+  const champions = new Map<
+    string,
+    { picks: number; wins: number; teams: Set<string> }
+  >()
+  for (const team of report.teams)
+    for (const player of team.participants)
+      for (const game of player.games) {
+        if (!game.champion || game.result === 'T') continue
+        const entry = champions.get(game.champion) ?? {
+          picks: 0,
+          wins: 0,
+          teams: new Set<string>(),
+        }
+        entry.picks++
+        if (game.result === 'W') entry.wins++
+        entry.teams.add(team.id)
+        champions.set(game.champion, entry)
+      }
+  const teamPoints = report.teams.map((team) => {
+    const games = rows.filter((row) => row.teamId === team.id)
+    return {
+      team,
+      games: games.length,
+      winRate: rateOf(games).value,
+      goldDiffAt15: REPORT_TEAM_METRICS.goldDiffAt15.measure(games).value,
+    }
+  })
+  return {
+    games: report.games?.length ?? 0,
+    blueSide: reportRate(
+      blue.filter((row) => row.result === 'W').length,
+      blue.length,
+    ),
+    leaderAt15: reportRate(
+      leaders.filter((row) => row.result === 'W').length,
+      leaders.length,
+    ),
+    minutes: {
+      mean: minutes.length
+        ? minutes.reduce((sum, value) => sum + value, 0) / minutes.length
+        : null,
+      shortest: minutes[0] ?? null,
+      longest: minutes.at(-1) ?? null,
+    },
+    comebacks: decided
+      .filter((row) => row.result === 'W' && (row.goldDiffAt15 ?? 0) < 0)
+      .sort(
+        (a, b) =>
+          a.goldDiffAt15! - b.goldDiffAt15! ||
+          compareText(a.matchId, b.matchId),
+      ),
+    swings: rows
+      .filter((row) => (row.goldSwing ?? 0) > 0)
+      .sort(
+        (a, b) =>
+          b.goldSwing! - a.goldSwing! || compareText(a.matchId, b.matchId),
+      ),
+    champions: [...champions]
+      .map(([champion, entry]) => ({
+        champion,
+        picks: entry.picks,
+        teams: entry.teams.size,
+        rate: reportRate(entry.wins, entry.picks),
+      }))
+      .sort(
+        (a, b) => b.picks - a.picks || compareText(a.champion, b.champion),
+      ) satisfies ReportChampion[],
+    teams: teamPoints,
+  }
+}
+
+const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)

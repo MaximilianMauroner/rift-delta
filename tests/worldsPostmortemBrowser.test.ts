@@ -253,6 +253,31 @@ test(
         )
         .waitFor()
       await page.getByText('Highest avg GD15', { exact: true }).waitFor()
+      const overview = page.getByRole('region', {
+        name: 'Tournament statistics',
+        exact: true,
+      })
+      await overview.getByText('Blue side wins', { exact: true }).waitFor()
+      await overview
+        .getByText('95% interval 34%–100%, 2 of 2', { exact: true })
+        .waitFor()
+      await page
+        .getByRole('region', { name: 'Alpha compared with the field' })
+        .getByText('Win rate', { exact: true })
+        .waitFor()
+      await overview
+        .getByRole('button', {
+          name: 'Open BET team report from Biggest gold swings after 15',
+          exact: true,
+        })
+        .click()
+      await page
+        .getByRole('region', { name: 'Beta game by game' })
+        .getByRole('img', {
+          name: 'Loss against ALP: −500 gold at 15, 0 at the end',
+          exact: true,
+        })
+        .waitFor()
       assert.equal(await page.getByText(/StatsPower|league anchor/i).count(), 0)
       assert.equal(
         await page

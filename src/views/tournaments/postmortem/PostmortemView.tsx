@@ -16,6 +16,8 @@ import {
 } from '../../../domains/rankings/tournament-reports'
 import { TeamReportCard } from './TeamReportCard'
 import { PlayerEvidence } from './PlayerEvidence'
+import { EventOverview } from './EventOverview'
+import { TeamFieldPosition, TeamGameSwings } from './TeamFieldPosition'
 
 export function PostmortemView() {
   const { state, retry } = useTournamentReports()
@@ -156,6 +158,19 @@ function ReportBody({ report }: { report: TournamentReport }) {
           </Alert>
         ) : null}
       </header>
+      {report.games ? (
+        <EventOverview
+          report={report}
+          onSelectTeam={(team) =>
+            selectTournamentReport({ event: report.id, team })
+          }
+        />
+      ) : (
+        <Alert role="status">
+          This published report has no game records. Tournament and team
+          statistics appear after the next report rebuild.
+        </Alert>
+      )}
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <label htmlFor="report-team" className="text-sm font-semibold">
           Report team
@@ -215,6 +230,12 @@ function ReportBody({ report }: { report: TournamentReport }) {
           )}
         </div>
       ) : null}
+      {selection.kind === 'ready' && selection.team && report.games ? (
+        <div className="grid min-w-0 items-start gap-3 xl:grid-cols-2">
+          <TeamFieldPosition report={report} team={selection.team} />
+          <TeamGameSwings report={report} team={selection.team} />
+        </div>
+      ) : null}
       <details className="min-w-0 break-words border-t border-border pt-3 text-xs text-muted-foreground">
         <summary className="cursor-pointer font-semibold text-foreground">
           Method and source provenance
@@ -229,6 +250,14 @@ function ReportBody({ report }: { report: TournamentReport }) {
           <p>
             Team assistance, opponents, champions, and game context affect these
             statistics.
+          </p>
+          <p>
+            Team gold difference at 15 is the sum of the five lane differences
+            and is unavailable when a lane value is missing. Gold change after
+            15 is the final gold difference minus the value at 15. Rates use
+            95% Wilson intervals. Field comparisons use the population standard
+            deviation of teams with at least three qualifying games. These are
+            descriptive statistics, not a win probability model.
           </p>
           <p>
             Data mode {report.provenance.dataMode} · Input digest{' '}
