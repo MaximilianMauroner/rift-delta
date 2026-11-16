@@ -252,6 +252,12 @@ test(
           'Synthetic test fixture. These player stats and results are synthetic.',
         )
         .waitFor()
+      await page
+        .getByText(
+          'League-weighted model score. Cross-role comparisons are unvalidated.',
+          { exact: true },
+        )
+        .waitFor()
       assert.equal(
         await page
           .getByRole('link', { name: 'Tournaments', exact: true })
@@ -267,7 +273,7 @@ test(
       await teamPicker(page).selectOption(beta.id)
       await page
         .getByRole('button', {
-          name: 'View statistical MVP Focal, Mid',
+          name: 'View StatsPower leader Focal, Mid',
           exact: true,
         })
         .click()
@@ -348,6 +354,10 @@ test(
         await page
           .getByText('Method and source provenance', { exact: true })
           .click()
+        await page.getByText(/the prior can determine the order/).waitFor()
+        await page
+          .getByText(/lane stats overlap, and their weights have not been independently validated/)
+          .waitFor()
         assert.ok(
           await page.evaluate(
             () => document.documentElement.scrollWidth <= window.innerWidth,

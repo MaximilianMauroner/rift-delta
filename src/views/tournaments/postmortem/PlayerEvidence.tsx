@@ -201,8 +201,9 @@ export function PlayerEvidence({
               About StatsPower and metric evidence
             </summary>
             <p className="mt-2 text-muted-foreground">
-              League anchor {score.leagueAnchor.toFixed(2)}. Higher scores reflect
-              stronger role-metric evidence relative to the event field.{' '}
+              League anchor {score.leagueAnchor.toFixed(2)}. StatsPower combines
+              a home-league prior with role-specific stats. The prior can outweigh
+              event evidence. Cross-role comparisons have not been validated.{' '}
               {score.sampleGames} games with usable score evidence ·{' '}
               {score.eligibleGames} eligible games · Evidence through{' '}
               {score.evidenceThrough}.
