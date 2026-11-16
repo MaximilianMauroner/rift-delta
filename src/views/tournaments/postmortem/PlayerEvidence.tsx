@@ -7,14 +7,32 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { Medal } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '../../../components/ui/card'
 import { Alert } from '../../../components/ui/alert'
+import { Badge } from '../../../components/ui/badge'
+import { cn } from '../../../shared/utils'
 import {
   REPORT_METRICS,
   reportRoleMetricRanks,
   type TournamentReportPlayer,
   type TournamentReportTeam,
 } from '../../../domains/rankings/tournament-reports'
+
+const podium = {
+  1: {
+    variant: 'rank',
+    surface: 'bg-[color-mix(in_srgb,var(--rank-gold)_9%,var(--surface-2))]',
+  },
+  2: {
+    variant: 'rankSilver',
+    surface: 'bg-[color-mix(in_srgb,#c6d7eb_8%,var(--surface-2))]',
+  },
+  3: {
+    variant: 'rankBronze',
+    surface: 'bg-[color-mix(in_srgb,#eab08d_9%,var(--surface-2))]',
+  },
+} as const
 
 export function PlayerEvidence({
   player,
@@ -84,10 +102,17 @@ export function PlayerEvidence({
           <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md bg-border">
             {Object.entries(REPORT_METRICS).map(([key, metric]) => {
               const value = ranks[key as keyof typeof REPORT_METRICS]
+              const highlight =
+                value.rank === 1 || value.rank === 2 || value.rank === 3
+                  ? podium[value.rank]
+                  : undefined
               return (
                 <div
                   key={key}
-                  className="min-w-0 bg-[var(--surface-2)] p-3 last:odd:col-span-2"
+                  className={cn(
+                    'min-w-0 bg-[var(--surface-2)] p-3 last:odd:col-span-2',
+                    highlight?.surface,
+                  )}
                 >
                   <dt className="text-xs text-muted-foreground">
                     {metric.label}
@@ -98,9 +123,16 @@ export function PlayerEvidence({
                       : `${(value.value * metric.multiplier).toFixed(1)} ${metric.unit}`}
                   </dd>
                   <dd className="mt-1 text-xs text-muted-foreground">
-                    {value.rank === null
-                      ? 'No rank'
-                      : `#${value.rank} of ${value.players}`}
+                    {highlight ? (
+                      <Badge variant={highlight.variant}>
+                        <Medal aria-hidden="true" className="size-3" />
+                        #{value.rank} of {value.players}
+                      </Badge>
+                    ) : value.rank === null ? (
+                      'No rank'
+                    ) : (
+                      `#${value.rank} of ${value.players}`
+                    )}
                     {value.missing
                       ? ` · ${value.missing} game${value.missing === 1 ? '' : 's'} missing`
                       : ''}
