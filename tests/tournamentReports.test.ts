@@ -9,6 +9,7 @@ import {
   parseTournamentReport,
   parseTournamentReportIndex,
   reportAwards,
+  reportRoleMetricRanks,
   resolveReportSelection,
 } from '../src/domains/rankings/tournament-reports.ts'
 import { createStaticRankingData } from '../src/domains/rankings/build.ts'
@@ -180,6 +181,64 @@ test('event-role scores disclose teams and award exact ties without prior-only o
       player: shared[1]!.key,
     }).kind,
     'conflicting-selection',
+  )
+})
+
+test('role metric ranks combine team stints, handle ties and exclude missing or different-role players', () => {
+  const report = parseTournamentReport(Object.values(build().shards)[0])
+  const participants = report.teams.flatMap((team) => team.participants)
+  const selected = structuredClone(participants.find((p) => p.role === 'Mid')!)
+  const otherStint = structuredClone(selected)
+  otherStint.teamId = 'another-team'
+  otherStint.games[0]!.matchId = 'transfer-game'
+  selected.games[0]!.metrics.goldDiffAt15 = 500
+  otherStint.games[0]!.metrics.goldDiffAt15 = -100
+
+  const tie = structuredClone(selected)
+  tie.playerId = 'tie'
+  tie.games[0]!.metrics.goldDiffAt15 = 200
+  const leader = structuredClone(selected)
+  leader.playerId = 'leader'
+  leader.games[0]!.metrics.goldDiffAt15 = 300
+  const missing = structuredClone(selected)
+  missing.playerId = 'missing'
+  missing.games[0]!.metrics.goldDiffAt15 = null
+  const otherRole = structuredClone(selected)
+  otherRole.playerId = 'top'
+  otherRole.role = 'Top'
+  otherRole.games[0]!.metrics.goldDiffAt15 = 9000
+  selected.games[0]!.metrics.killParticipation = 0.6
+  otherStint.games[0]!.metrics.killParticipation = null
+  tie.games[0]!.metrics.killParticipation = 0.6
+  leader.games[0]!.metrics.killParticipation = 0.9
+  missing.games[0]!.metrics.killParticipation = 0.8
+  const field = [selected, otherStint, tie, leader, missing, otherRole]
+
+  assert.deepEqual(reportRoleMetricRanks(field, selected).goldDiffAt15, {
+    value: 200,
+    games: 2,
+    missing: 0,
+    rank: 2,
+    players: 3,
+  })
+  assert.equal(reportRoleMetricRanks(field, tie).goldDiffAt15.rank, 2)
+  assert.deepEqual(reportRoleMetricRanks(field, selected).killParticipation, {
+    value: 0.6,
+    games: 1,
+    missing: 1,
+    rank: 3,
+    players: 4,
+  })
+  assert.deepEqual(reportRoleMetricRanks(field, missing).goldDiffAt15, {
+    value: null,
+    games: 0,
+    missing: 1,
+    rank: null,
+    players: 3,
+  })
+  assert.deepEqual(
+    reportRoleMetricRanks(field, otherStint).goldDiffAt15,
+    reportRoleMetricRanks(field, selected).goldDiffAt15,
   )
 })
 

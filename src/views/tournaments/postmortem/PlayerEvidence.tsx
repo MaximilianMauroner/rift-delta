@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader } from '../../../components/ui/card'
 import { Alert } from '../../../components/ui/alert'
 import {
   REPORT_METRICS,
+  reportRoleMetricRanks,
   type TournamentReportPlayer,
   type TournamentReportTeam,
 } from '../../../domains/rankings/tournament-reports'
@@ -23,6 +24,10 @@ export function PlayerEvidence({
   teams: TournamentReportTeam[]
 }) {
   const score = player.statsPower
+  const ranks = reportRoleMetricRanks(
+    teams.flatMap((team) => team.participants),
+    player,
+  )
   const trend = player.games.map((game, index) => ({
     game: index + 1,
     gold: game.metrics.goldDiffAt15,
@@ -69,17 +74,16 @@ export function PlayerEvidence({
             {player.scoreTeamIds
               .map((id) => teams.find((team) => team.id === id)?.name ?? id)
               .join(', ')}
-            . The raw means and game list below cover the selected team.
+            . The game trend and list below cover the selected team.
           </Alert>
         ) : null}
       </CardHeader>
       <CardContent className="grid min-w-0 gap-5 py-4">
         <section aria-label="Raw aggregate means" className="grid gap-3">
-          <h5 className="text-sm font-bold">Per-game averages</h5>
+          <h5 className="text-sm font-bold">Event averages</h5>
           <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md bg-border">
             {Object.entries(REPORT_METRICS).map(([key, metric]) => {
-              const value =
-                player.performance.metrics[key as keyof typeof REPORT_METRICS]
+              const value = ranks[key as keyof typeof REPORT_METRICS]
               return (
                 <div
                   key={key}
@@ -93,15 +97,22 @@ export function PlayerEvidence({
                       ? 'Unavailable'
                       : `${(value.value * metric.multiplier).toFixed(1)} ${metric.unit}`}
                   </dd>
-                  {value.missing > 0 ? (
-                    <dd className="text-2xs text-muted-foreground">
-                      {value.games} observed · {value.missing} missing
-                    </dd>
-                  ) : null}
+                  <dd className="mt-1 text-xs text-muted-foreground">
+                    {value.rank === null
+                      ? 'No rank'
+                      : `#${value.rank} of ${value.players}`}
+                    {' · '}
+                    {value.games} observed
+                    {value.missing ? ` · ${value.missing} missing` : ''}
+                  </dd>
                 </div>
               )
             })}
           </dl>
+          <p className="text-xs text-muted-foreground">
+            Ranked against {player.role} players in this event. Higher averages
+            rank first. Ranks use unrounded values and sample sizes vary.
+          </p>
         </section>
         <section className="min-w-0" aria-label="Gold difference at 15 trend">
           <h5 className="text-sm font-bold">Gold difference at 15</h5>

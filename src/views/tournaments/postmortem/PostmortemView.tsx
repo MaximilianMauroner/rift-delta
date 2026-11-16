@@ -289,9 +289,10 @@ function ReportBody({ report }: { report: TournamentReport }) {
           </p>
           <p>
             Scores pool each player's games in the same role across this event.
-            Raw means and the gold trend use only that player's games with the
-            selected team. Small samples shrink toward the league anchor. Team
-            assistance, matchups and champions affect the stats.
+            Event averages and role ranks include a player's games across teams.
+            The gold trend and game list cover the selected team. StatsPower
+            shrinks small samples toward the league anchor. Team assistance,
+            matchups and champions affect the stats.
           </p>
           <p>
             Model {report.modelVersion} · Config {report.modelConfigHash} ·

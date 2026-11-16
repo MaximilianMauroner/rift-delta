@@ -324,6 +324,16 @@ test(
         .getByRole('button', { name: 'View Focal, Mid', exact: true })
         .click()
       await evidence(page).waitFor()
+      const goldAverage = evidence(page)
+        .getByRole('region', { name: 'Raw aggregate means', exact: true })
+        .locator('dl > div')
+        .filter({
+          has: page.getByText('Gold difference at 15', { exact: true }),
+        })
+      await goldAverage.getByText('500.0 gold', { exact: true }).waitFor()
+      await goldAverage
+        .getByText('#1 of 2 · 1 observed · 1 missing', { exact: true })
+        .waitFor()
       await page
         .getByRole('img', {
           name: 'Observed GD15 range 500 to 500 gold',

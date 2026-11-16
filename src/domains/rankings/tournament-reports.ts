@@ -174,6 +174,63 @@ export type TournamentReport = z.infer<typeof reportSchema>
 export type TournamentReportTeam = z.infer<typeof team>
 export type TournamentReportPlayer = z.infer<typeof participant>
 export type TournamentReportGame = z.infer<typeof game>
+type ReportMetric = keyof typeof REPORT_METRICS
+type RoleMetricRank = {
+  value: number | null
+  games: number
+  missing: number
+  rank: number | null
+  players: number
+}
+
+export function reportRoleMetricRanks(
+  participants: readonly TournamentReportPlayer[],
+  selected: TournamentReportPlayer,
+): Record<ReportMetric, RoleMetricRank> {
+  const gamesByPlayer = new Map<string, TournamentReportGame[]>()
+  for (const participant of participants) {
+    if (participant.role !== selected.role) continue
+    const games = gamesByPlayer.get(participant.playerId) ?? []
+    games.push(...participant.games)
+    gamesByPlayer.set(participant.playerId, games)
+  }
+
+  return Object.fromEntries(
+    (Object.keys(REPORT_METRICS) as ReportMetric[]).map((key) => {
+      const averages = [...gamesByPlayer].map(([id, games]) => {
+        const values = games.flatMap((game) =>
+          game.metrics[key] === null ? [] : [game.metrics[key]],
+        )
+        return {
+          id,
+          value: values.length
+            ? values.reduce((sum, value) => sum + value, 0) / values.length
+            : null,
+          games: values.length,
+          missing: games.length - values.length,
+        }
+      })
+      const observed = averages.filter((average) => average.value !== null)
+      const current = averages.find(
+        (average) => average.id === selected.playerId,
+      )
+      const value = current?.value ?? null
+      return [
+        key,
+        {
+          value,
+          games: current?.games ?? 0,
+          missing: current?.missing ?? 0,
+          rank:
+            value === null
+              ? null
+              : 1 + observed.filter((other) => other.value! > value).length,
+          players: observed.length,
+        },
+      ]
+    }),
+  ) as Record<ReportMetric, RoleMetricRank>
+}
 
 export function reportPlayerKey(
   teamId: string,
