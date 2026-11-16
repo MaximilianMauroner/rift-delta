@@ -18,6 +18,7 @@ import {
 } from '../../../domains/rankings/tournament-reports'
 import type { Rate } from '../../../domains/rankings/field-statistics'
 import { percent, signedGold } from '../../../components/fieldFormat'
+import { ReportHighlights } from './ReportHighlights'
 
 const LIST_LENGTH = 5
 const CHAMPION_ROWS = 10
@@ -60,6 +61,7 @@ export function EventOverview({
           detail="Games won by the team behind in gold at 15"
         />
       </div>
+      <ReportHighlights report={report} />
       <div className="grid min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <Card className="gap-0 py-0">
           <CardContent className="grid min-w-0 gap-2 py-4">
