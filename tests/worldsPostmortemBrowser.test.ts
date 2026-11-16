@@ -258,12 +258,12 @@ test(
         exact: true,
       })
       await overview.getByText('Blue side wins', { exact: true }).waitFor()
-      await overview
+      const blueSide = overview
         .locator('div')
         .filter({ has: page.getByText('Blue side wins', { exact: true }) })
         .last()
-        .getByText('2 of 2 games', { exact: true })
-        .waitFor()
+      await blueSide.getByText('100%', { exact: true }).waitFor()
+      await blueSide.getByText('2 of 2 games', { exact: true }).waitFor()
       await page
         .getByRole('region', { name: 'Alpha compared with the field' })
         .getByText('Win rate', { exact: true })
@@ -367,6 +367,11 @@ test(
         .filter({
           has: page.getByText('Gold lead at 15', { exact: true }),
         })
+      await goldAverage
+        .locator(':scope > span')
+        .last()
+        .getByText('+500', { exact: true })
+        .waitFor()
       await goldAverage
         .getByText('1st of 2 · 1 game without data', { exact: true })
         .waitFor()
