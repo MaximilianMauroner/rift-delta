@@ -2,6 +2,7 @@ import type { PublicArtifactFamily } from '../published/writePlan.ts'
 import type { MatchRecord, TeamProfile } from '../../types.ts'
 import { teamIdFor } from '../published/schema.ts'
 import { tournamentInstanceForEvent } from '../evidence/internationalTournaments.ts'
+import { isResultOnlyGapFill } from '../evidence/communitySources.ts'
 import { buildRankingModel } from '../replay/model.ts'
 import { eventWeightContextForMatches } from '../replay/eventWeighting.ts'
 import { buildPlayerStatsPower } from '../players/playerStatsPower.ts'
@@ -20,6 +21,7 @@ import {
   reportPlayerKey,
   type TournamentReport,
   type TournamentReportIndex,
+  type TournamentReportMatch,
   type TournamentReportPlayer,
   type TournamentReportTeam,
 } from '../../tournament-reports.ts'
@@ -143,9 +145,10 @@ export function buildTournamentReports(
     const ratedIds = new Set(input.ratedMatches.map((match) => match.id))
     const rated = matches.filter((match) => ratedIds.has(match.id))
     const players = teams.flatMap((team) => team.participants)
+    const teamIds = new Map(teams.map((team) => [team.name, team.id]))
     const report: TournamentReport = {
       artifactKind: 'tournament-report',
-      version: 1,
+      version: 2,
       modelVersion: input.modelVersion,
       modelConfigHash: input.modelConfigHash,
       id: identity.id,
@@ -190,6 +193,7 @@ export function buildTournamentReports(
         leagueEvidenceThrough: through,
       },
       teams,
+      games: matches.map((match) => reportMatch(match, teamIds)),
     }
     const path = tournamentReportShardPath(report.id)
     shards[path] = report
@@ -204,6 +208,42 @@ export function buildTournamentReports(
     })
   }
   return { index, shards }
+}
+
+function reportMatch(
+  match: MatchRecord,
+  teamIds: ReadonlyMap<string, string>,
+): TournamentReportMatch {
+  const resultOnly = isResultOnlyGapFill(match)
+  const side = (key: 'A' | 'B') => {
+    const players = match[`team${key}Roster`]?.players ?? []
+    return {
+      teamId: teamIds.get(match[`team${key}`])!,
+      side:
+        match[`team${key}Side`] ??
+        players.find((player) => player.stats?.side)?.stats?.side ??
+        null,
+      kills: resultOnly ? null : match[`team${key}Kills`],
+      gold: resultOnly ? null : match[`team${key}Gold`],
+      towers: match[`team${key}Towers`] ?? null,
+      dragons: match[`team${key}Dragons`] ?? null,
+      barons: match[`team${key}Barons`] ?? null,
+      champions: (
+        match[`team${key}Picks`] ??
+        players.map((player) => player.stats?.champion)
+      ).filter((champion): champion is string => Boolean(champion)),
+    }
+  }
+  return {
+    matchId: match.id,
+    date: match.date,
+    gameNumber: match.gameNumber ?? null,
+    phase: match.phase || null,
+    patch: match.patch || null,
+    lengthSeconds: match.gameLengthSeconds || null,
+    winnerId: teamIds.get(match.winner) ?? null,
+    sides: [side('A'), side('B')],
+  }
 }
 
 function observedTeams(

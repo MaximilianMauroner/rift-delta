@@ -84,6 +84,7 @@ const domainDefinitions = {
       'types.ts': { browserRuntime: true },
       'read.ts': { browserRuntime: true },
       'tournament-reports.ts': { browserRuntime: true },
+      'field-statistics.ts': { browserRuntime: true },
       'policy.ts': { browserRuntime: true },
       'evidence.ts': { browserRuntime: true },
       'build.ts': {},

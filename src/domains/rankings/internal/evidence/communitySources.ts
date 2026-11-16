@@ -521,6 +521,6 @@ function appendMatch(matches: Map<string, MatchRecord[]>, key: string, match: Ma
   matches.set(key, [...(matches.get(key) ?? []), match])
 }
 
-function isResultOnlyGapFill(match: MatchRecord) {
+export function isResultOnlyGapFill(match: MatchRecord) {
   return match.dataCompleteness === 'match-result-only' || (match.teamAKills === 0 && match.teamBKills === 0 && match.teamAGold === 0 && match.teamBGold === 0)
 }

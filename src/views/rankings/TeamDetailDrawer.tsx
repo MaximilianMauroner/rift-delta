@@ -22,6 +22,7 @@ import { cn } from '../../shared/utils'
 import { TierBadge } from './BoardCells'
 import { activeMovement, formatEventWeight, formatRankMovementLabel, formatRankValue, formatRatingMovement, formatUncertaintyBand, isEventTier, powerResumeGapSummary, rankMovementTone, recordBasisLabel, rollingMovementTitle, teamBoardRankLabel, teamRankFor, teamScoreFor } from './boardFormat'
 import { LazyTeamHistoryLineChart } from './historyChart'
+import { TeamLeagueProfile } from './TeamLeagueProfile'
 import { ComponentBreakdown, PlayerRankingCard } from './PlayerDisclosure'
 import { LeagueSigil, RecentMatches } from './RecentMatches'
 import { dailyChartPointsFromHistoryPoints, tournamentChartPoints } from './teamHistoryChart'
@@ -208,6 +209,8 @@ export function TeamDetailDrawer({
               </>
             )}
           </section>
+
+          {tournament ? null : <TeamLeagueProfile team={team} standings={standings} />}
 
           <section className="overflow-hidden rounded-md border border-[var(--line-strong)] bg-[var(--detail-surface-2,var(--surface))]" aria-label="Power over time">
             <div className="grid gap-2 border-b border-border px-5 pt-4 pb-3">

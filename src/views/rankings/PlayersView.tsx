@@ -15,6 +15,7 @@ import { providerFreshness } from '../../domains/rankings/evidence'
 import { playerLeaderboardForScope } from '../../domains/rankings/read'
 import type { PublicRankingManifest, Role, SnapshotFilter } from '../../domains/rankings/types'
 import { formatDate, formatDecimal, formatNumber, formatRating } from '../../shared/display'
+import { PlayerRoleProfile } from './PlayerRoleProfile'
 
 const ROLES: readonly Role[] = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
 const ROLE_FILTERS = ['All', ...ROLES] as const
@@ -22,6 +23,7 @@ function readFilters(query: URLSearchParams) {
   return {
     search: hashParam('player', query) ?? '',
     role: hashEnum('role', ROLE_FILTERS, 'All', query),
+    profile: hashParam('profile', query) ?? '',
   }
 }
 
@@ -39,7 +41,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
     setAppliedQuery(hashQuery)
     setFilters(readFilters(hashQuery))
   }
-  useHashSync('players', { player: filters.search, role: filters.role === 'All' ? '' : filters.role })
+  useHashSync('players', { player: filters.search, role: filters.role === 'All' ? '' : filters.role, profile: filters.profile })
   const directory = state.status === 'ready' ? state.data : undefined
   const { scoreFamily, rows: players } = useMemo(() => playerLeaderboardForScope(directory, filter), [directory, filter])
   const rankedScores = players.flatMap((player) => player.leaderboardScore.status === 'ranked' ? [player.leaderboardScore.value] : [])
@@ -63,6 +65,8 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
     (filters.role === 'All' || player.role === filters.role)
     && (!search || [player.name, player.team, player.teamCode ?? ''].some((value) => value.toLowerCase().includes(search))),
   )
+
+  const profileId = players.some((player) => player.id === filters.profile) ? filters.profile : visible[0]?.id
 
   const methodDisclosure = (
     <details className="players-method">
@@ -153,9 +157,17 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
               </span>
             ) : null}
           </p>
+          {profileId ? (
+            <PlayerRoleProfile
+              players={players}
+              choices={visible}
+              selectedId={profileId}
+              onSelect={(profile) => setFilters({ ...filters, profile })}
+            />
+          ) : null}
           {visible.length === 0 ? (
             <Card role="status" className="players-empty-result">
-              <DataState icon={<Search size={26} aria-hidden="true" />} title="No players match these filters" action={<Button variant="outline" onClick={() => setFilters({ ...filters, search: '', role: 'All' })}>Clear filters</Button>}>
+              <DataState icon={<Search size={26} aria-hidden="true" />} title="No players match these filters" action={<Button variant="outline" onClick={() => setFilters({ ...filters, search: '', role: 'All', profile: '' })}>Clear filters</Button>}>
                 Try another player or team name, or select all roles.
               </DataState>
             </Card>
