@@ -50,6 +50,12 @@ export type FieldPosition = {
   standing: FieldStanding | null
 }
 
+/** Place of a value in a field: 1 plus the entries strictly better. Ties share the better place. */
+export function fieldPlace(field: ReadonlyArray<{ value: number }>, value: number, better: Better) {
+  const sign = better === 'lower' ? -1 : 1
+  return 1 + field.filter((entry) => sign * entry.value > sign * value).length
+}
+
 /**
  * Places one entry in its field. Entries under minSamples stay out. The standing
  * is "top" for first place, else above or below when the entry is at least half
@@ -71,9 +77,7 @@ export function fieldPosition(
     ? values.reduce((sum, value) => sum + value, 0) / values.length
     : null
   const sign = better === 'lower' ? -1 : 1
-  const place = ranked
-    ? 1 + field.filter((entry) => sign * entry.value > sign * ranked.value).length
-    : null
+  const place = ranked ? fieldPlace(field, ranked.value, better) : null
   let standing: FieldStanding | null = null
   if (ranked && mean !== null && field.length >= 3) {
     const deviation = Math.sqrt(

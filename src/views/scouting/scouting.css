@@ -109,7 +109,7 @@ i[data-part="ahead"] { background: var(--up); }
 .sc-cell [data-slot="badge"] i { font-style: normal; font-size: 0.62rem; }
 
 /* rank strips */
-.sc-ranks li { display: grid; grid-template-columns: minmax(0, 8.5rem) 3.4rem minmax(0, 1fr) 3.6rem; align-items: center; gap: 12px; padding: 11px 16px; }
+.sc-ranks li { display: grid; grid-template-columns: minmax(0, 8.5rem) 3.4rem minmax(0, 1fr) 5rem; align-items: center; gap: 12px; padding: 11px 16px; }
 .sc-ranks[data-has-chart="false"] li { grid-template-columns: minmax(0, 1fr) auto 3.6rem; }
 .sc-ranks[data-has-chart="false"] .sc-track { display: none; }
 .sc-ranks li + li { border-top: 1px solid color-mix(in oklch, var(--line) 60%, transparent); }
@@ -121,7 +121,8 @@ i[data-part="ahead"] { background: var(--up); }
 .sc-band { position: absolute; top: 5px; height: 12px; border-radius: 3px; background: var(--surface-3); }
 .sc-med { position: absolute; top: 2px; bottom: 2px; border-left: 2px solid var(--line-strong); margin-left: -1px; }
 .sc-dot { position: absolute; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%; background: var(--series-4); box-shadow: 0 0 0 3px var(--surface); }
-.sc-rr { text-align: right; }
+.sc-rr { text-align: right; white-space: nowrap; }
+.sc-of { color: var(--faint); font-size: var(--t-1); }
 .sc-rk { color: var(--muted); font: var(--w-figure) var(--t-3) var(--mono); }
 .sc-pfoot { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--faint); font-size: var(--t-1); }
 .sc-pfoot span { display: inline-flex; align-items: center; gap: 6px; }
@@ -190,7 +191,7 @@ i[data-part="ahead"] { background: var(--up); }
   .sc-more { padding-inline: 12px; }
   .sc-lrow { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .sc-duo { grid-template-columns: minmax(0, 1fr); }
-  .sc-ranks li { grid-template-columns: minmax(0, 1fr) 3.4rem 3.6rem; grid-template-areas: "l v r" "t t t"; gap: 6px 10px; padding: 10px 12px; }
+  .sc-ranks li { grid-template-columns: minmax(0, 1fr) 3.4rem 5rem; grid-template-areas: "l v r" "t t t"; gap: 6px 10px; padding: 10px 12px; }
   .sc-ranks[data-has-chart="false"] li { grid-template-areas: "l v r"; }
   .sc-rl { grid-area: l; }
   .sc-rv { grid-area: v; }

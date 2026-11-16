@@ -1,10 +1,11 @@
+import { ordinal } from '../../components/fieldFormat'
 import type { CSSProperties } from 'react'
 import { TeamMark } from '../../components/TeamMark'
 import { Badge } from '../../components/ui/badge'
 import { Panel } from '../../components/ui/panel'
 import { SCOUTING_RULES, STALE_DAYS, staleDays, type Measure, type PlayerReport, type RoleBaseline } from '../../domains/scouting/report'
 import type { Role } from '../../domains/rankings/types'
-import { fullDate, gameCount, leadTone, ordinal, percent, poolSegments, readingSentence, signed, winLoss } from './presentation'
+import { fullDate, gameCount, leadTone, percent, poolSegments, readingSentence, signed, winLoss } from './presentation'
 
 function PoolStrip({ player }: { player: PlayerReport }) {
   const segments = poolSegments(player)

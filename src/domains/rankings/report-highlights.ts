@@ -1,3 +1,4 @@
+import { compareCodeUnits } from '../../shared/codeUnitOrder.mjs'
 import {
   reportTeamGames,
   type ReportTeamGame,
@@ -143,7 +144,7 @@ export const REPORT_HIGHLIGHT_MEASURES = {
         value: longestStreak(
           teamGames
             .filter((row) => row.teamId === team.id)
-            .sort((a, b) => a.date.localeCompare(b.date) || (a.gameNumber ?? 0) - (b.gameNumber ?? 0)),
+            .sort((a, b) => compareCodeUnits(a.date, b.date) || (a.gameNumber ?? 0) - (b.gameNumber ?? 0)),
         ),
       })),
   },
@@ -255,5 +256,5 @@ export function reportHighlights(report: TournamentReport, limit = 6): ReportHig
       score: Math.abs(record - mean) / deviation,
     }]
   })
-  return highlights.sort((a, b) => b.score - a.score || a.measure.localeCompare(b.measure)).slice(0, limit)
+  return highlights.sort((a, b) => b.score - a.score || compareCodeUnits(a.measure, b.measure)).slice(0, limit)
 }
