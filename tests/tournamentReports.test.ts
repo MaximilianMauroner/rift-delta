@@ -12,7 +12,6 @@ import {
   reportRoleMetricRanks,
   resolveReportSelection,
   reportEventSummary,
-  reportRate,
   reportTeamFieldPositions,
 } from '../src/domains/rankings/tournament-reports.ts'
 import { createStaticRankingData } from '../src/domains/rankings/build.ts'
@@ -24,6 +23,7 @@ import {
 import { parsePublicRankingManifest } from '../src/domains/rankings/published-read.ts'
 import { prepareSemanticArtifact } from '../scripts/public-artifact-storage.mjs'
 import { playerBaselineForLeague } from '../src/domains/rankings/internal/policy/playerPolicy.ts'
+import { wilsonRate } from '../src/domains/rankings/field-statistics.ts'
 import { reportGame, reportTeams } from './tournamentReportFixtures.ts'
 
 const buildInput = (matches = [reportGame()]) => ({
@@ -454,10 +454,10 @@ test('reports record each game and summarize sides, comebacks and gold swings', 
 })
 
 test('rates use Wilson intervals and empty samples stay unavailable', () => {
-  const rate = reportRate(19, 34)
+  const rate = wilsonRate(19, 34)
   assert.ok(Math.abs(rate.interval!.low - 0.3945) < 0.0005)
   assert.ok(Math.abs(rate.interval!.high - 0.7112) < 0.0005)
-  assert.deepEqual(reportRate(0, 0), { successes: 0, trials: 0, value: null, interval: null })
+  assert.deepEqual(wilsonRate(0, 0), { successes: 0, trials: 0, value: null, interval: null })
 })
 
 test('field positions use z-scores and percentiles and skip teams with too few games', () => {
@@ -500,7 +500,7 @@ test('field positions use z-scores and percentiles and skip teams with too few g
   const alpha = winRate('Alpha')
   assert.equal(alpha.value, 0.8, 'Alpha won 4 of 5')
   assert.deepEqual(
-    alpha.field.map((entry) => entry.teamId).sort(),
+    alpha.field.map((entry) => entry.id).sort(),
     [id('Alpha'), id('Beta'), id('Gamma')].sort(),
     'Delta has one game and stays out of the field',
   )

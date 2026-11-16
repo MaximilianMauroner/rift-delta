@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import type { CompactPlayer } from '../../domains/rankings/types'
 import { playerPerformanceMetricKeys, playerPerformanceMetrics } from '../../domains/rankings/read'
-import type { PlayerPerformanceMetric } from '../../domains/rankings/types'
 import { Panel, PanelBody, PanelHeader } from '../../components/ui/panel'
 import { Select } from '../../components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
+import { formatMetric } from './playerMetricFormat'
 
 export function PlayerPerformancePanel({ players, scopeLabel }: { players: CompactPlayer[]; scopeLabel: string }) {
   const [selectedId, setSelectedId] = useState('')
@@ -48,12 +48,4 @@ export function PlayerPerformancePanel({ players, scopeLabel }: { players: Compa
       ) : <PanelBody className="text-sm text-muted-foreground">No stats for this player.</PanelBody>}
     </Panel>
   )
-}
-
-function formatMetric(key: PlayerPerformanceMetric, value: number | null) {
-  if (value === null) return 'Unavailable'
-  const format = playerPerformanceMetrics[key].format
-  if (format === 'percent') return `${(value * 100).toFixed(1)}%`
-  if (format === 'points') return `${value > 0 ? '+' : ''}${(value * 100).toFixed(1)} pp`
-  return `${format === 'signed' && value > 0 ? '+' : ''}${value.toLocaleString('en-US', { maximumFractionDigits: 2 })}`
 }

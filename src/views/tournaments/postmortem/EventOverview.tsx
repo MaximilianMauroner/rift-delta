@@ -13,11 +13,11 @@ import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
 import {
   reportEventSummary,
-  type ReportRate,
   type ReportTeamGame,
   type TournamentReport,
 } from '../../../domains/rankings/tournament-reports'
-import { percent, rateInterval, signedGold } from './reportFormat'
+import type { Rate } from '../../../domains/rankings/field-statistics'
+import { percent, rateInterval, signedGold } from '../../../components/fieldFormat'
 
 const LIST_LENGTH = 5
 const CHAMPION_ROWS = 10
@@ -207,7 +207,7 @@ function Tile({ label, value, detail }: { label: string; value: string; detail: 
   )
 }
 
-function RateTile({ label, rate }: { label: string; rate: ReportRate }) {
+function RateTile({ label, rate }: { label: string; rate: Rate }) {
   return (
     <Tile
       label={label}
@@ -217,7 +217,7 @@ function RateTile({ label, rate }: { label: string; rate: ReportRate }) {
   )
 }
 
-function IntervalBar({ rate }: { rate: ReportRate }) {
+function IntervalBar({ rate }: { rate: Rate }) {
   if (!rate.interval || rate.value === null) return null
   return (
     <span className="flex items-center gap-2" title={rateInterval(rate)}>

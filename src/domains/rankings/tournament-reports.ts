@@ -1,4 +1,10 @@
 import { z } from 'zod'
+import {
+  fieldPosition,
+  wilsonRate,
+  type FieldPosition,
+  type Rate,
+} from './field-statistics.ts'
 
 export const REPORT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'] as const
 export const REPORT_METRICS = {
@@ -448,34 +454,6 @@ export function resolveReportSelection(
   } as const
 }
 
-export type ReportInterval = { low: number; high: number }
-export type ReportRate = {
-  successes: number
-  trials: number
-  value: number | null
-  interval: ReportInterval | null
-}
-
-export function reportRate(successes: number, trials: number): ReportRate {
-  if (!trials) return { successes, trials, value: null, interval: null }
-  const z = 1.959964
-  const p = successes / trials
-  const denominator = 1 + (z * z) / trials
-  const center = (p + (z * z) / (2 * trials)) / denominator
-  const spread =
-    (z / denominator) *
-    Math.sqrt((p * (1 - p)) / trials + (z * z) / (4 * trials * trials))
-  return {
-    successes,
-    trials,
-    value: p,
-    interval: {
-      low: Math.max(0, center - spread),
-      high: Math.min(1, center + spread),
-    },
-  }
-}
-
 export type ReportTeamGame = {
   matchId: string
   date: string
@@ -547,7 +525,7 @@ export function reportTeamGames(report: TournamentReport): ReportTeamGame[] {
   )
 }
 
-type MetricValue = { value: number | null; n: number; rate?: ReportRate }
+type MetricValue = { value: number | null; n: number; rate?: Rate }
 const meanOf = (values: number[]): MetricValue => ({
   value: values.length
     ? values.reduce((sum, value) => sum + value, 0) / values.length
@@ -555,7 +533,7 @@ const meanOf = (values: number[]): MetricValue => ({
   n: values.length,
 })
 const rateOf = (games: ReportTeamGame[]): MetricValue => {
-  const rate = reportRate(
+  const rate = wilsonRate(
     games.filter((game) => game.result === 'W').length,
     games.length,
   )
@@ -637,34 +615,12 @@ export const REPORT_TEAM_METRICS = {
 } as const
 export type ReportTeamMetric = keyof typeof REPORT_TEAM_METRICS
 
-export type ReportFieldBand =
-  | 'Far above field'
-  | 'Above field'
-  | 'Typical'
-  | 'Below field'
-  | 'Far below field'
-
-export type ReportFieldPosition = {
-  metric: ReportTeamMetric
-  value: number | null
-  n: number
-  rate: ReportRate | null
-  field: Array<{ teamId: string; value: number; n: number }>
-  mean: number | null
-  z: number | null
-  percentile: number | null
-  band: ReportFieldBand | null
-}
-
-function band(z: number): ReportFieldBand {
-  if (z >= 1.5) return 'Far above field'
-  if (z >= 0.5) return 'Above field'
-  if (z > -0.5) return 'Typical'
-  if (z > -1.5) return 'Below field'
-  return 'Far below field'
-}
-
 export const REPORT_FIELD_MIN_GAMES = 3
+
+export type ReportFieldPosition = FieldPosition & {
+  metric: ReportTeamMetric
+  rate: Rate | null
+}
 
 export function reportTeamFieldPositions(
   report: TournamentReport,
@@ -676,49 +632,13 @@ export function reportTeamFieldPositions(
   return (Object.keys(REPORT_TEAM_METRICS) as ReportTeamMetric[]).map(
     (metric) => {
       const measured = [...byTeam].map(([id, games]) => ({
-        teamId: id,
+        id,
         ...REPORT_TEAM_METRICS[metric].measure(games),
       }))
-      const field = measured.flatMap(({ teamId: id, value, n }) =>
-        value === null || n < REPORT_FIELD_MIN_GAMES
-          ? []
-          : [{ teamId: id, value, n }],
-      )
-      const own = measured.find((entry) => entry.teamId === teamId)!
-      const ranked = field.find((entry) => entry.teamId === teamId)
-      const values = field.map((entry) => entry.value)
-      const average = values.length
-        ? values.reduce((sum, value) => sum + value, 0) / values.length
-        : null
-      const deviation =
-        average === null
-          ? 0
-          : Math.sqrt(
-              values.reduce((sum, value) => sum + (value - average) ** 2, 0) /
-                values.length,
-            )
-      const others = field.filter((entry) => entry.teamId !== teamId)
-      const z =
-        !ranked || average === null || values.length < 3 || !deviation
-          ? null
-          : (ranked.value - average) / deviation
       return {
         metric,
-        value: own.value,
-        n: own.n,
-        rate: own.rate ?? null,
-        field,
-        mean: average,
-        z,
-        percentile:
-          !ranked || !others.length
-            ? null
-            : (100 *
-                (others.filter((entry) => entry.value < ranked.value).length +
-                  others.filter((entry) => entry.value === ranked.value).length /
-                    2)) /
-              others.length,
-        band: z === null ? null : band(z),
+        rate: measured.find((entry) => entry.id === teamId)?.rate ?? null,
+        ...fieldPosition(measured, teamId, REPORT_FIELD_MIN_GAMES),
       }
     },
   )
@@ -728,7 +648,7 @@ export type ReportChampion = {
   champion: string
   picks: number
   teams: number
-  rate: ReportRate
+  rate: Rate
 }
 
 export function reportEventSummary(report: TournamentReport) {
@@ -768,11 +688,11 @@ export function reportEventSummary(report: TournamentReport) {
   })
   return {
     games: report.games?.length ?? 0,
-    blueSide: reportRate(
+    blueSide: wilsonRate(
       blue.filter((row) => row.result === 'W').length,
       blue.length,
     ),
-    leaderAt15: reportRate(
+    leaderAt15: wilsonRate(
       leaders.filter((row) => row.result === 'W').length,
       leaders.length,
     ),
@@ -801,7 +721,7 @@ export function reportEventSummary(report: TournamentReport) {
         champion,
         picks: entry.picks,
         teams: entry.teams.size,
-        rate: reportRate(entry.wins, entry.picks),
+        rate: wilsonRate(entry.wins, entry.picks),
       }))
       .sort(
         (a, b) => b.picks - a.picks || compareText(a.champion, b.champion),
