@@ -24,14 +24,9 @@ export function PlayerRoleProfile({
   const games = player.diagnostics?.sampleGames ?? 0
   const peers = `${profile.league ? `${profile.league} ` : ''}${player.role.toLowerCase()} players`
   return (
-    <Card className="min-w-0 gap-3 p-4" role="region" aria-label="Role profile">
+    <Card className="min-w-0 gap-3 overflow-visible p-4" role="region" aria-label="Role profile">
       <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-sm font-bold">Role profile</h3>
-          <p className="text-xs text-muted-foreground">
-            {player.name}'s season averages against other {peers} with {PLAYER_FIELD_MIN_GAMES} or more games.
-          </p>
-        </div>
+        <h3 className="min-w-0 text-base font-semibold text-[var(--text-strong)]">Against other {peers}</h3>
         <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
           Profile player
           <Select aria-label="Profile player" value={player.id} onChange={(event) => onSelect(event.target.value)}>
@@ -55,7 +50,7 @@ export function PlayerRoleProfile({
               subject={player.name}
               subjectId={player.id}
               position={position}
-              format={(value) => formatMetric(position.metric, value)}
+              format={(value, scale) => formatMetric(position.metric, value, scale)}
               nameFor={(id) => names.get(id) ?? id}
               minSamples={PLAYER_FIELD_MIN_GAMES}
             />
@@ -65,7 +60,7 @@ export function PlayerRoleProfile({
         <p className="text-sm text-muted-foreground">No stat games for {player.name} in this scope.</p>
       )}
       <FieldStripKey subject={player.name} others={`Other ${peers}`}>
-        <span>Averages are not adjusted for champions, team or league, so players are compared only inside one league. They do not set Stats Power.</span>
+        <span>Players need {PLAYER_FIELD_MIN_GAMES} games to count. Not adjusted for champion or team.</span>
       </FieldStripKey>
     </Card>
   )

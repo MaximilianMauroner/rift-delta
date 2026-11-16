@@ -140,13 +140,8 @@ function ReportBody({ report }: { report: TournamentReport }) {
           <div className="grid gap-1">
             <h2 className="text-xl font-bold">{report.label}</h2>
             <p className="text-sm text-muted-foreground">
-              {coverage.observedGames} source-observed games ·{' '}
-              {coverage.observedTeams} teams · {coverage.participants}{' '}
-              player-role participants
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {coverage.since} through {coverage.through}. Official event
-              completion is unknown.
+              {coverage.observedGames} games · {coverage.observedTeams} teams ·{' '}
+              {coverage.participants} players · {coverage.since} to {coverage.through}
             </p>
           </div>
         </div>
@@ -244,7 +239,7 @@ function ReportBody({ report }: { report: TournamentReport }) {
         </summary>
         <div className="mt-3 grid gap-2">
           <p>
-            Event averages and role ranks use each player's available games in
+            Official event completion is unknown. Event averages and role ranks use each player's available games in
             the same role, including games across teams. The lineup, gold trend,
             and game list use the selected team's games. Missing values are
             excluded from each average. Ties use unrounded values.

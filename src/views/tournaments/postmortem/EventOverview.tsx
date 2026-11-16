@@ -57,20 +57,16 @@ export function EventOverview({
         />
         <Tile
           label="Wins from behind at 15"
-          value={`${summary.comebacks.length} of ${summary.games}`}
-          detail="Games won by the team behind in gold at 15"
+          value={`${summary.comebacks.length}`}
+          detail={`of ${summary.games} games`}
         />
       </div>
       <ReportHighlights report={report} />
       <div className="grid min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <Card className="gap-0 py-0">
           <CardContent className="grid min-w-0 gap-2 py-4">
-            <h4 className="text-sm font-bold">Team map</h4>
-            <p className="text-xs text-muted-foreground">
-              Early gold against results. Teams above the dashed win line won
-              more than the field average. Teams to the right led more at 15.
-              Select a dot to open the team.
-            </p>
+            <h4 className="text-sm font-bold">Win rate and gold at 15</h4>
+            <p className="text-xs text-muted-foreground">The dashed line is the average win rate. Select a team to open it.</p>
             <div
               className="h-72 min-w-0"
               role="img"
@@ -146,14 +142,12 @@ export function EventOverview({
         <div className="grid min-w-0 content-start gap-3">
           <GameList
             title="Biggest comebacks"
-            caption="Largest gold deficit at 15 that the team still won"
             rows={summary.comebacks.slice(0, LIST_LENGTH)}
             code={code}
             onSelectTeam={onSelectTeam}
           />
           <GameList
             title="Biggest gold swings after 15"
-            caption="How much the gold lead changed from 15 minutes to the end"
             rows={summary.swings.slice(0, LIST_LENGTH)}
             code={code}
             onSelectTeam={onSelectTeam}
@@ -189,11 +183,7 @@ export function EventOverview({
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-muted-foreground">
-            The shaded bar is the likely range of the true win rate. Few games
-            give a wide bar. A bar that crosses the dashed 50% line could still
-            be an even champion.
-          </p>
+          <p className="text-xs text-muted-foreground">The bar shows the likely range of the true win rate.</p>
         </CardContent>
       </Card>
     </section>
@@ -204,7 +194,7 @@ function Tile({ label, value, detail }: { label: string; value: string; detail: 
   return (
     <div className="min-w-0 bg-[var(--surface-2)] p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-xl font-bold tabular-nums">{value}</p>
+      <p className="mt-1 text-lg font-bold tabular-nums sm:text-xl">{value}</p>
       <p className="mt-1 text-2xs text-muted-foreground">{detail}</p>
     </div>
   )
@@ -249,13 +239,11 @@ function IntervalBar({ rate }: { rate: Rate }) {
 
 function GameList({
   title,
-  caption,
   rows,
   code,
   onSelectTeam,
 }: {
   title: string
-  caption: string
   rows: ReportTeamGame[]
   code: (id: string) => string
   onSelectTeam: (teamId: string) => void
@@ -263,9 +251,9 @@ function GameList({
   return (
     <Card className="gap-0 py-0">
       <CardContent className="grid min-w-0 gap-2 py-4">
-        <div>
+        <div className="flex items-baseline justify-between gap-3">
           <h4 className="text-sm font-bold">{title}</h4>
-          <p className="text-xs text-muted-foreground">{caption}</p>
+          <span className="text-2xs text-muted-foreground">Gold at 15 → end</span>
         </div>
         {rows.length ? (
           <ol className="grid min-w-0 divide-y divide-border">
@@ -287,13 +275,8 @@ function GameList({
                       {row.phase ? ` · ${row.phase}` : ''}
                     </span>
                   </span>
-                  <span className="text-right text-xs tabular-nums">
-                    <span className="block font-semibold">
-                      {signedGold(row.goldDiffAt15!)} → {signedGold(row.goldDiff!)}
-                    </span>
-                    <span className="block font-normal text-muted-foreground">
-                      gold at 15 → end
-                    </span>
+                  <span className="self-center text-right text-xs font-semibold tabular-nums">
+                    {signedGold(row.goldDiffAt15!)} → {signedGold(row.goldDiff!)}
                   </span>
                 </Button>
               </li>

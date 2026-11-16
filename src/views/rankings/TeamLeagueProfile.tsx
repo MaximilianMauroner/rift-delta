@@ -27,18 +27,12 @@ export function TeamLeagueProfile({
   if (!profile) return null
   const codes = new Map(standings.map((entry) => [entry.teamId, entry.code ?? entry.team]))
   const subject = team.code ?? team.team
-  const leagueTeams = standings.filter((entry) => entry.league === team.league).length
   return (
     <section
       className="grid gap-2 rounded-md border border-[var(--line-strong)] bg-[var(--detail-surface-2,var(--surface))] px-5 py-4 max-[900px]:px-4"
       aria-label={`${subject} compared with ${team.league}`}
     >
-      <div>
-        <h3 className="text-base font-semibold text-[var(--text-strong)]">Compared with {team.league}</h3>
-        <p className="text-xs text-muted-foreground">
-          How {subject} stacks up against the {leagueTeams} {team.league} teams in this season view.
-        </p>
-      </div>
+      <h3 className="text-base font-semibold text-[var(--text-strong)]">Compared with {team.league}</h3>
       <ol className="grid min-w-0 divide-y divide-border">
         {profile.positions.map((position) => {
           const metric = TEAM_FIELD_METRICS[position.metric]

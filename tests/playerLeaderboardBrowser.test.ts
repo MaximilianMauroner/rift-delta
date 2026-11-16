@@ -165,7 +165,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.locator('.players-method').getByText(/Because it includes team results, it does not measure individual skill alone/).waitFor()
     await page.getByRole('columnheader', { name: 'Role Power', exact: true }).waitFor()
     await page.getByText('Method', { exact: true }).click()
-    await page.getByText('Scores are rounded. Ranks use the exact score.', { exact: true }).waitFor()
+    await page.locator('.players-count').waitFor()
     await page.getByText(/Seeded sample data. Player-stat freshness is unavailable/).waitFor()
 
     await setHash('#players?scope=all')
@@ -306,7 +306,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.locator('.players-method').getByText(/Support uses kill participation, wards placed per minute, and wards cleared per minute. Ward counts measure activity, not ward quality/).waitFor()
     await page.locator('.players-method').getByText(/Newer games get more weight, with a 90-day half-life/).waitFor()
     await page.getByText('Method', { exact: true }).click()
-    await page.getByText('Scores are rounded. Ranks use the exact score.', { exact: true }).waitFor()
+    await page.locator('.players-count').waitFor()
     const statsDirectory = JSON.parse(bodies.get(playerPath)!) as PublicPlayerDirectory
     statsDirectory.scopedPlayers!['2025__All__All'][1].statsPower!.score = 104.5
     bodies.set(playerPath, JSON.stringify(statsDirectory))
@@ -337,7 +337,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.getByText('Method', { exact: true }).click()
     await page.locator('.players-method').getByText(/A player without stat games is unranked, because a league-anchor score is not an observation/).waitFor()
     await page.getByText('Method', { exact: true }).click()
-    await page.getByText('Ranks across roles are rough. Pick a role for a fair comparison.', { exact: true }).waitFor()
+    await page.locator('.players-count').getByText(/Ranks across roles are rough\. Pick a role to compare fairly\.$/).waitFor()
     await role.selectOption('Top')
     await expectPlayers(page, ['Delta', 'Hotel'])
     assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '—Unranked'], 'Role ranks exclude other roles and keep unranked players unranked')

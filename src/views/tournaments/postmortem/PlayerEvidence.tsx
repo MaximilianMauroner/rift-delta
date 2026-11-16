@@ -42,11 +42,11 @@ export function PlayerEvidence({
   }))
   return (
     <Card
-      className="gap-0 py-0"
+      className="gap-0 overflow-visible py-0"
       role="region"
       aria-label={`Evidence for ${player.name}, ${player.role}`}
     >
-      <CardHeader className="gap-3 border-b border-border bg-[var(--surface-2)] py-4">
+      <CardHeader className="gap-3 rounded-t-lg border-b border-border bg-[var(--surface-2)] py-4">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h4 className="break-words text-lg font-bold">{player.name}</h4>
@@ -67,12 +67,7 @@ export function PlayerEvidence({
       </CardHeader>
       <CardContent className="grid min-w-0 gap-5 py-4">
         <section aria-label="Event averages" className="grid gap-2">
-          <div>
-            <h5 className="text-sm font-bold">Against other {peers}</h5>
-            <p className="text-xs text-muted-foreground">
-              {player.name}'s event averages against every {player.role.toLowerCase()} player at this event.
-            </p>
-          </div>
+          <h5 className="text-base font-semibold text-[var(--text-strong)]">Against other {peers}</h5>
           <ol className="grid min-w-0 divide-y divide-border">
             {positions.map((position) => {
               const metric = playerPerformanceMetrics[position.metric]
@@ -84,7 +79,7 @@ export function PlayerEvidence({
                   subject={player.name}
                   subjectId={player.playerId}
                   position={position}
-                  format={(value) => formatMetric(position.metric, value)}
+                  format={(value, scale) => formatMetric(position.metric, value, scale)}
                   nameFor={(id) => names.get(id) ?? id}
                   within="at the event"
                   minSamples={1}
@@ -97,7 +92,6 @@ export function PlayerEvidence({
         </section>
         <section className="min-w-0" aria-label="Gold lead at 15, game by game">
           <h5 className="text-sm font-bold">Gold lead at 15, game by game</h5>
-          <p className="text-xs text-muted-foreground">Gold ahead of the lane opponent at 15 minutes. Above 0 means ahead.</p>
           <div
             className="mt-3 h-48 min-w-0"
             role="img"

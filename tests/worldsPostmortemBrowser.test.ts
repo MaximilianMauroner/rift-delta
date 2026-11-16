@@ -367,14 +367,12 @@ test(
         .filter({
           has: page.getByText('Gold lead at 15', { exact: true }),
         })
-      await goldAverage
-        .locator(':scope > span')
-        .last()
-        .getByText('+500', { exact: true })
-        .waitFor()
-      await goldAverage
-        .getByText('1st of 2 · 1 game without data', { exact: true })
-        .waitFor()
+      const goldPlace = goldAverage.locator(':scope > span').first()
+      const goldHead = goldAverage.locator(':scope > span').last().locator(':scope > span').first()
+      await goldPlace.getByText('1st', { exact: true }).waitFor()
+      await goldPlace.getByText('of 2', { exact: true }).waitFor()
+      await goldHead.getByText('+500', { exact: true }).waitFor()
+      await goldHead.getByText('1 game without data', { exact: true }).waitFor()
       await goldAverage
         .getByRole('slider', { name: /^Gold lead at 15: Focal \+500, 1st of 2\./ })
         .waitFor()

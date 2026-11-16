@@ -27,14 +27,9 @@ export function TeamFieldPosition({
   const positions = reportTeamFieldPositions(report, team.id)
   const codes = new Map(report.teams.map((entry) => [entry.id, entry.code]))
   return (
-    <Card className="gap-0 py-0" role="region" aria-label={`${team.name} compared with the field`}>
+    <Card className="gap-0 overflow-visible py-0" role="region" aria-label={`${team.name} compared with the field`}>
       <CardContent className="grid min-w-0 gap-3 py-4">
-        <div>
-          <h4 className="text-sm font-bold">Compared with the field</h4>
-          <p className="text-xs text-muted-foreground">
-            How {team.code} stacks up against the {report.teams.length} teams at {report.label}.
-          </p>
-        </div>
+        <h4 className="text-base font-semibold text-[var(--text-strong)]">Compared with the field</h4>
         <ol className="grid min-w-0 divide-y divide-border">
           {positions.map((position) => {
             const metric = REPORT_TEAM_METRICS[position.metric]

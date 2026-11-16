@@ -1,13 +1,21 @@
 import { useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
-import { fieldPlace, type FieldPosition } from '../domains/rankings/field-statistics'
+import { fieldPlace, type FieldPosition, type FieldStanding } from '../domains/rankings/field-statistics'
 import { cn } from '../shared/utils'
-import { Badge } from './ui/badge'
 import { ordinal, standingLabel } from './fieldFormat'
 
+/** The colour of a place, so the place itself says how good it is. */
+const STANDING_TONE: Record<FieldStanding, string> = {
+  top: 'text-[var(--rank-gold)]',
+  above: 'text-[var(--win)]',
+  close: 'text-muted-foreground',
+  below: 'text-[var(--loss)]',
+}
+
 /**
- * One measure of one subject against its field: what the measure means, where the
- * subject sits among the others, its place, and a plain verdict. Better is always
- * to the right, so a measure where lower is better runs backwards.
+ * One measure of one subject against its field. The place leads, coloured by how
+ * good it is; the name and value follow, and the strip shows where every entry
+ * sits. Better is always to the right, so a measure where lower is better runs
+ * backwards. A style measure (`better` is null) has no place.
  */
 export function FieldStrip({
   label,
@@ -27,13 +35,14 @@ export function FieldStrip({
   subject: string
   subjectId: string
   position: FieldPosition
-  format: (value: number) => string
+  /** `scale` is the largest size in the field, so one strip shares one number of decimals. */
+  format: (value: number, scale: number) => string
   nameFor: (id: string) => string
   /** Completes "Best …", such as "in LPL" or "at Worlds". */
   within: string
   minSamples: number
   sampleUnit?: string
-  /** A caveat that follows the place, such as games the average skips. */
+  /** A caveat next to the value, such as games the average skips. */
   note?: string
 }) {
   const { value, field, mean, place, better, standing } = position
@@ -41,57 +50,71 @@ export function FieldStrip({
   const low = Math.min(...values, value ?? Infinity)
   const high = Math.max(...values, value ?? -Infinity)
   const spread = Number.isFinite(low) && high > low
+  const scale = Number.isFinite(low) ? Math.max(Math.abs(low), Math.abs(high)) : Math.abs(value ?? 0)
+  const show = (point: number) => format(point, scale)
   const at = (point: number) => {
     const share = spread ? (point - low) / (high - low) : 0.5
     return (better === 'lower' ? 1 - share : share) * 100
   }
   const [left, right] = better === 'lower' ? [high, low] : [low, high]
   const tooFew = value !== null && place === null
+  const ranked = better !== null
   const entries: TrackEntry[] = [
     ...field.map((entry) => ({
       ...entry,
       name: entry.id === subjectId ? subject : nameFor(entry.id),
-      place: fieldPlace(field, entry.value, better),
+      place: ranked ? fieldPlace(field, entry.value, better) : null,
     })),
     ...(tooFew ? [{ id: subjectId, value, n: position.n, name: subject, place: null }] : []),
   ].sort((a, b) => at(a.value) - at(b.value))
+  const shown = ranked ? place : null
+  const verdict =
+    value === null ? `No data for ${subject}`
+    : tooFew ? `${position.n} ${sampleUnit}, needs ${minSamples} to count`
+    : !ranked ? 'A style, not better or worse'
+    : standing ? standingLabel(standing, better, within)
+    : ''
   const summary =
     value === null
       ? `${label}: no data for ${subject}.`
-      : `${label}: ${subject} ${format(value)}${place ? `, ${ordinal(place)} of ${field.length}` : ''}${
-          mean !== null ? `. Average ${format(mean)}` : ''
-        }${spread ? `. Range ${format(low)} to ${format(high)}` : ''}.`
+      : `${label}: ${subject} ${show(value)}${shown ? `, ${ordinal(shown)} of ${field.length}` : ''}${
+          mean !== null ? `. Average ${show(mean)}` : ''
+        }${spread ? `. Range ${show(low)} to ${show(high)}` : ''}. ${verdict}.`
   return (
-    <li className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 py-3 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)_9.5rem]">
-      <span className="grid min-w-0 gap-0.5">
-        <span className="text-sm font-semibold text-[var(--text-strong)]">{label}</span>
-        {hint ? <span className="text-xs leading-snug text-muted-foreground">{hint}</span> : null}
+    <li className="grid min-w-0 grid-cols-[4rem_minmax(0,1fr)] gap-x-3 py-3">
+      <span className="grid content-start justify-items-center pt-0.5 text-center leading-none" title={verdict}>
+        <span className={cn('text-xl font-extrabold tabular-nums', shown && standing ? STANDING_TONE[standing] : 'text-[var(--faint)]')}>
+          {shown ? ordinal(shown) : '–'}
+        </span>
+        <span className="mt-1 text-2xs text-muted-foreground">
+          {shown ? `of ${field.length}` : value === null ? 'no data' : tooFew ? `${position.n} of ${minSamples}` : 'style'}
+        </span>
       </span>
-      <FieldTrack
-        summary={summary}
-        entries={entries}
-        subjectId={subjectId}
-        mean={spread ? mean : null}
-        ends={spread ? [format(left), format(right)] : null}
-        at={at}
-        format={format}
-        sampleUnit={sampleUnit}
-      />
-      <span className="contents sm:grid sm:justify-items-end sm:gap-1 sm:text-right">
-        <span className="col-start-2 row-start-1 self-start text-right text-base leading-none font-bold text-[var(--text-strong)] tabular-nums sm:col-start-auto sm:row-start-auto sm:self-auto">
-          {value === null ? '—' : format(value)}
-        </span>
-        <span className="col-span-2 row-start-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 sm:col-span-1 sm:row-start-auto sm:grid sm:justify-items-end sm:gap-1">
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {place ? `${ordinal(place)} of ${field.length}` : tooFew ? `${position.n} ${sampleUnit}, needs ${minSamples}` : 'No data'}
-            {note ? ` · ${note}` : ''}
+      <span className="grid min-w-0 gap-1">
+        <span className="flex min-w-0 items-baseline justify-between gap-3">
+          <span
+            className={cn('min-w-0 text-sm font-semibold text-[var(--text-strong)]', hint && 'cursor-help underline decoration-[var(--line-strong)] decoration-dotted underline-offset-4')}
+            title={hint}
+          >
+            {label}
           </span>
-          {standing ? (
-            <Badge variant={standing === 'top' ? 'rank' : 'secondary'} className={cn(standing === 'close' && 'text-[var(--faint)]')}>
-              {standingLabel(standing, better, within)}
-            </Badge>
-          ) : null}
+          <span className="flex shrink-0 items-baseline gap-2">
+            {note ? <span className="text-2xs text-muted-foreground">{note}</span> : null}
+            <span className="text-base leading-none font-bold text-[var(--text-strong)] tabular-nums">
+              {value === null ? '—' : show(value)}
+            </span>
+          </span>
         </span>
+        <FieldTrack
+          summary={summary}
+          entries={entries}
+          subjectId={subjectId}
+          mean={spread ? mean : null}
+          ends={spread ? [show(left), show(right)] : null}
+          at={at}
+          format={show}
+          sampleUnit={sampleUnit}
+        />
       </span>
     </li>
   )
@@ -135,7 +158,7 @@ function FieldTrack({
         .sort((a, b) => (a.place ?? Infinity) - (b.place ?? Infinity))
     : []
   const describe = (entry: TrackEntry) =>
-    `${entry.place ? `${ordinal(entry.place)}, ` : 'Not ranked, '}${entry.name}, ${format(entry.value)}, ${entry.n} ${sampleUnit}`
+    `${entry.place ? `${ordinal(entry.place)}, ` : ''}${entry.name}, ${format(entry.value)}, ${entry.n} ${sampleUnit}`
   const nearest = (event: PointerEvent<HTMLSpanElement>) => {
     const box = event.currentTarget.getBoundingClientRect()
     const x = ((event.clientX - box.left) / box.width) * 100
@@ -160,7 +183,7 @@ function FieldTrack({
   }
   return (
     <span
-      className="relative col-span-2 row-start-2 mx-2 block h-12 min-w-0 cursor-crosshair touch-pan-y rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-[var(--focus)] sm:col-span-1 sm:col-start-2 sm:row-start-1"
+      className="relative mx-1.5 block h-8 min-w-0 cursor-crosshair touch-pan-y rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-[var(--focus)]"
       {...(entries.length
         ? {
             role: 'slider',
@@ -182,30 +205,22 @@ function FieldTrack({
       onKeyDown={step}
       onBlur={() => setActive(null)}
     >
-      <span className="absolute inset-x-0 top-6 border-t border-[var(--line-strong)]" />
+      <span className="absolute inset-x-0 top-3 border-t border-[var(--line-strong)]" />
       {mean !== null ? (
-        <>
-          <span
-            className="absolute top-0 -translate-x-1/2 text-2xs whitespace-nowrap text-muted-foreground tabular-nums"
-            style={{ left: `clamp(2.5rem, ${at(mean)}%, calc(100% - 2.5rem))` }}
-          >
-            avg {format(mean)}
-          </span>
-          <span
-            className="absolute top-4 h-4 w-0.5 -translate-x-1/2 rounded-full bg-muted-foreground"
-            style={{ left: `${at(mean)}%` }}
-          />
-        </>
+        <span
+          className="absolute top-1 h-4 w-0.5 -translate-x-1/2 rounded-full bg-muted-foreground"
+          style={{ left: `${at(mean)}%` }}
+        />
       ) : null}
       {current ? (
-        <span className="absolute inset-y-1 w-px -translate-x-1/2 bg-[var(--focus)] opacity-60" style={{ left: `${at(current.value)}%` }} />
+        <span className="absolute inset-y-0 w-px -translate-x-1/2 bg-[var(--focus)] opacity-60" style={{ left: `${at(current.value)}%` }} />
       ) : null}
       {entries.map((entry) =>
         entry.id === subjectId ? null : (
           <span
             key={entry.id}
             className={cn(
-              'absolute top-6 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground opacity-55',
+              'absolute top-3 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground opacity-55',
               stack.includes(entry) && 'size-2.5 bg-[var(--text-strong)] opacity-100',
             )}
             style={{ left: `${at(entry.value)}%` }}
@@ -217,12 +232,12 @@ function FieldTrack({
         .map((entry) => (
           <span
             key={entry.id}
-            className="absolute top-6 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card bg-[var(--accent)]"
+            className="absolute top-3 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card bg-[var(--accent)]"
             style={{ left: `${at(entry.value)}%` }}
           />
         ))}
       {ends ? (
-        <span className="absolute inset-x-0 top-8 flex justify-between text-2xs text-[var(--faint)] tabular-nums" aria-hidden="true">
+        <span className="absolute inset-x-0 top-5 flex justify-between text-2xs text-[var(--faint)] tabular-nums" aria-hidden="true">
           <span className="-translate-x-2">{ends[0]}</span>
           <span className="translate-x-2">{ends[1]}</span>
         </span>
@@ -265,7 +280,6 @@ export function FieldStripKey({ subject, others, children }: { subject: string; 
         Average
       </span>
       <span>Right is better</span>
-      <span>Point at or drag along a strip to see who each dot is.</span>
       {children}
     </div>
   )

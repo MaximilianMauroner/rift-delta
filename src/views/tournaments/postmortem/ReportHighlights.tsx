@@ -48,29 +48,26 @@ export function ReportHighlights({ report }: { report: TournamentReport }) {
   if (!highlights.length) return null
   return (
     <section className="grid min-w-0 gap-2" aria-label="Stand-out stats">
-      <div>
-        <h4 className="flex items-center gap-1.5 text-sm font-bold">
-          <Sparkles className="size-4 text-[var(--rank-gold)]" aria-hidden="true" />
-          Stand-out stats
-        </h4>
-        <p className="text-xs text-muted-foreground">
-          Picked automatically: the event records that sit furthest from the usual value.
-        </p>
-      </div>
-      <ul className="grid min-w-0 gap-px overflow-hidden rounded-md bg-border sm:grid-cols-2 lg:grid-cols-3">
+      <h4 className="flex items-center gap-1.5 text-sm font-bold" title="The records furthest from the event average, picked automatically.">
+        <Sparkles className="size-4 text-[var(--rank-gold)]" aria-hidden="true" />
+        Stand-out stats
+      </h4>
+      <ul className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {highlights.map((highlight) => {
           const format = FORMATS[highlight.unit]
           return (
-            <li key={highlight.measure} className="grid min-w-0 content-start gap-1 bg-[var(--surface-2)] p-3">
+            <li key={highlight.measure} className="grid min-w-0 content-start gap-0.5 rounded-md bg-[var(--surface-2)] px-3 py-2.5">
               <span className="text-xs text-muted-foreground">{highlight.title}</span>
-              <span className="text-xl leading-tight font-bold text-[var(--text-strong)] tabular-nums">
-                {format(highlight.value)}
+              <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                <span className="text-lg leading-tight font-bold text-[var(--text-strong)] tabular-nums sm:text-xl">
+                  {format(highlight.value)}
+                </span>
+                <span className="text-2xs text-muted-foreground tabular-nums">
+                  avg {format(highlight.mean)}
+                  {highlight.ties ? ' · shared' : ''}
+                </span>
               </span>
               <span className="text-sm break-words">{describe(highlight.subject, report)}</span>
-              <span className="text-2xs text-muted-foreground tabular-nums">
-                Event average {format(highlight.mean)}
-                {highlight.ties ? ' · shared with one more' : ''}
-              </span>
             </li>
           )
         })}

@@ -352,7 +352,6 @@ function RegionDetailDrawer({
             <details className="rounded-md border border-border bg-card p-3 max-[560px]:px-3">
               <summary className="cursor-pointer text-sm font-semibold">Compared with other regions</summary>
               <div className="mt-2 grid gap-2">
-                <p className="text-xs text-muted-foreground">How {region.region} stacks up against the {regions.length} regions in this season view.</p>
                 <ol className="grid min-w-0 divide-y divide-border" aria-label={`${region.region} compared with other regions`}>
                   {REGION_STATS.map((stat) => (
                     <FieldStrip
