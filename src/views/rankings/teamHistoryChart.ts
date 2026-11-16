@@ -14,13 +14,14 @@ const MARKED_EVENTS: Partial<Record<PublicTournamentMovementIndexEntry['family']
   worlds: 'Worlds',
 }
 
-/** First Stand, MSI and Worlds as chart spans, from their first day to their last scheduled or played day. */
+/** First Stand, MSI and Worlds as chart spans, from their first day to the later of their last scheduled and last played day. */
 export function internationalChartEvents(entries: readonly PublicTournamentMovementIndexEntry[]): ChartEvent[] {
   return entries.flatMap((entry) => {
     const label = MARKED_EVENTS[entry.family]
     if (!label) return []
     const start = Date.parse(`${entry.startDate}T00:00:00Z`)
-    const end = Date.parse(`${entry.scheduledEndDate ?? entry.boundaryDate}T23:59:59Z`)
+    const last = entry.scheduledEndDate && entry.scheduledEndDate > entry.boundaryDate ? entry.scheduledEndDate : entry.boundaryDate
+    const end = Date.parse(`${last}T23:59:59Z`)
     return Number.isFinite(start) && Number.isFinite(end) && end > start ? [{ label, start, end }] : []
   })
 }
