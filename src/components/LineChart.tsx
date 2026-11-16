@@ -3,6 +3,7 @@ import {
   CartesianGrid,
   Line,
   LineChart as RechartsLineChart,
+  ReferenceArea,
   Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
@@ -25,6 +26,13 @@ export type ChartSeries = {
   label: string
   color: string
   points: ChartPoint[]
+}
+
+/** A span of time to mark behind the lines, such as an international event. */
+export type ChartEvent = {
+  label: string
+  start: number
+  end: number
 }
 
 export type ChartActiveRow = {
@@ -57,6 +65,8 @@ export type LineChartProps = {
   interactiveLegend?: boolean
   /** Shown below the chart for the hovered row, or the latest row. */
   details?: (active: ChartActiveRow) => ReactNode
+  /** Shaded behind the lines where they overlap the chart's time range. */
+  events?: ChartEvent[]
 }
 
 /** Longer than a normal break between matches; shorter than an off-season. */
@@ -82,6 +92,7 @@ export function LineChart({
   curve = 'linear',
   interactiveLegend = false,
   details,
+  events = [],
 }: LineChartProps) {
   const [focusedSeriesId, setFocusedSeriesId] = useState<string>()
   const [hoveredT, setHoveredT] = useState<number>()
@@ -104,6 +115,9 @@ export function LineChart({
   const formatYTick = yTickFormat ?? yFormat
   const xMonthTicks = monthTicks(minT, maxT)
   const xTicks = xMonthTicks ?? timeTicks(minT, maxT, 5)
+  const shownEvents = events.flatMap((event) =>
+    event.end < minT || event.start > maxT ? [] : [{ ...event, start: Math.max(event.start, minT), end: Math.min(event.end, maxT) }],
+  )
   const lineType = curve === 'step' ? 'stepAfter' : 'linear'
   const detailT = hoveredT !== undefined && data.some((row) => row.t === hoveredT) ? hoveredT : data[data.length - 1].t
   const selectedRow = activeRow(series, detailT)
@@ -160,7 +174,7 @@ export function LineChart({
       >
         <RechartsLineChart
           data={data}
-          margin={{ top: 18, right: directLabels ? DIRECT_LABEL_WIDTH : 20, bottom: 16, left: 4 }}
+          margin={{ top: shownEvents.length ? 40 : 18, right: directLabels ? DIRECT_LABEL_WIDTH : 20, bottom: 16, left: 4 }}
           aria-label={`${yLabel} over time for ${series.map((entry) => entry.label).join(', ')}`}
           aria-describedby={summaryId}
         >
@@ -190,6 +204,18 @@ export function LineChart({
             tick={{ style: AXIS_TICK_STYLE }}
             tickFormatter={(value) => formatYTick(Number(value))}
           />
+          {shownEvents.map((event) => (
+            <ReferenceArea
+              key={`${event.label}-${event.start}`}
+              x1={event.start}
+              x2={event.end}
+              fill="var(--accent)"
+              fillOpacity={0.08}
+              strokeOpacity={0}
+              ifOverflow="hidden"
+              label={{ value: event.label, position: 'top', offset: 20, fill: 'var(--muted)', fontSize: 11, fontWeight: 600 }}
+            />
+          ))}
           <RechartsTooltip trigger="hover" cursor={{ stroke: 'var(--line-strong)' }} content={renderTooltip} />
           {details ? <ActiveRowListener onActive={setHoveredT} /> : null}
           {gaps.map(({ key, series: entry }) => (
@@ -229,7 +255,10 @@ export function LineChart({
           {details(selectedRow)}
         </div>
       ) : null}
-      <div id={summaryId} className="sr-only">{summaryText}</div>
+      <div id={summaryId} className="sr-only">
+        {summaryText}
+        {shownEvents.length ? ` Marked events: ${shownEvents.map((event) => `${event.label} from ${formatChartTimestamp(event.start)} to ${formatChartTimestamp(event.end)}`).join(', ')}.` : ''}
+      </div>
     </div>
   )
 }

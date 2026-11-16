@@ -1,10 +1,29 @@
 import type { PublicTeamHistoryAttributionKey } from '../../domains/rankings/types'
-import type { TeamHistorySeries } from '../../domains/rankings/types'
+import type { PublicTournamentMovementIndexEntry, TeamHistorySeries } from '../../domains/rankings/types'
+import type { ChartEvent } from '../../components/LineChart'
 import { isMatchChartPointDetail, type ChartAttributionEntry, type ChartModelDetail, type ChartPoint, type ChartPointDetail } from '../../shared/chartPoints'
 import { groupEntriesByDate } from '../../domains/rankings/read'
 import { POWER_COMPONENT_LABELS } from '../../domains/rankings/read'
 
 type TeamHistoryPoint = TeamHistorySeries['points'][number]
+
+/** The international events worth marking on a season chart. */
+const MARKED_EVENTS: Partial<Record<PublicTournamentMovementIndexEntry['family'], string>> = {
+  'first-stand': 'First Stand',
+  msi: 'MSI',
+  worlds: 'Worlds',
+}
+
+/** First Stand, MSI and Worlds as chart spans, from their first day to their last scheduled or played day. */
+export function internationalChartEvents(entries: readonly PublicTournamentMovementIndexEntry[]): ChartEvent[] {
+  return entries.flatMap((entry) => {
+    const label = MARKED_EVENTS[entry.family]
+    if (!label) return []
+    const start = Date.parse(`${entry.startDate}T00:00:00Z`)
+    const end = Date.parse(`${entry.scheduledEndDate ?? entry.boundaryDate}T23:59:59Z`)
+    return Number.isFinite(start) && Number.isFinite(end) && end > start ? [{ label, start, end }] : []
+  })
+}
 type TeamHistoryContext = NonNullable<TeamHistoryPoint[3]>
 type TeamHistoryModelContext = NonNullable<TeamHistoryContext['model']>
 

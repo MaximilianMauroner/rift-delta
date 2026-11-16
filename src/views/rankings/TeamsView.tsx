@@ -45,7 +45,7 @@ import { LazyTeamHistoryLineChart, loadTeamHistoryLineChart } from './historyCha
 import { playersForTeam } from './playerData'
 import { PowerLadder } from './PowerLadder'
 import { TeamDetailDrawer } from './TeamDetailDrawer'
-import { dailyChartPointsFromHistoryPoints, deriveDailyRankSeries, tournamentChartPoints } from './teamHistoryChart'
+import { dailyChartPointsFromHistoryPoints, deriveDailyRankSeries, internationalChartEvents, tournamentChartPoints } from './teamHistoryChart'
 import { type TrajectoryInsight } from './trajectory'
 import { type PlayerLoadState, type TeamDataSummary, type TrajectoryMetric } from './types'
 import { MovementChip, WhatChanged } from './WhatChanged'
@@ -179,6 +179,10 @@ export function TeamsView({
   const pickedKeys = useMemo(() => new Set(pickedTeams.map(teamKey)), [pickedTeams])
 
   const { standings, tournament: activeTournament, tournamentFilter: activeTournamentFilter, exactTournamentId, tierFor, movementByTeamId } = universe
+  const seasonEvents = useMemo(
+    () => (tournamentMovementIndexState.status === 'ready' ? internationalChartEvents(tournamentMovementIndexState.data.tournaments) : []),
+    [tournamentMovementIndexState],
+  )
   const activeHistory = useMemo<Record<string, TeamHistorySeries> | undefined>(() => {
     if (!exactTournamentId) return history
     if (!activeTournament) return undefined
@@ -716,6 +720,7 @@ export function TeamsView({
               interactiveLegend={metric === 'rank'}
               yReverse={metric === 'rank'}
               curve={metric === 'rank' ? 'step' : 'linear'}
+              events={exactTournamentId ? undefined : seasonEvents}
             />
           </Suspense>
         )}
@@ -786,6 +791,7 @@ export function TeamsView({
           playerScopeLabel={playerScopeLabel}
           onRequestPlayers={onRequestPlayers}
           seeded={Boolean(panelData?.seeded)}
+          events={seasonEvents}
           onClose={detail.close}
         />
       ) : null}

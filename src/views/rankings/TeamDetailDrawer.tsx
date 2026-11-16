@@ -3,7 +3,7 @@ import { Suspense, useMemo } from 'react'
 import type {
   TeamHistoryArtifactState
 } from '../../browser/rankings/usePublicArtifacts'
-import type { ChartSeries } from '../../components/LineChart'
+import type { ChartEvent, ChartSeries } from '../../components/LineChart'
 import { TeamMark } from '../../components/TeamMark'
 import { FormDots } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
@@ -109,6 +109,7 @@ export function TeamDetailDrawer({
   playerScopeLabel,
   onRequestPlayers,
   seeded,
+  events,
   onClose,
 }: {
   team: RankingSummaryStanding
@@ -126,6 +127,8 @@ export function TeamDetailDrawer({
   playerScopeLabel?: string
   onRequestPlayers?: () => void
   seeded: boolean
+  /** International events to mark on the season chart. */
+  events: ChartEvent[]
   onClose: () => void
 }) {
   const trendSeries = useMemo<ChartSeries[]>(() => {
@@ -229,7 +232,7 @@ export function TeamDetailDrawer({
             {trendSeries.length > 0 ? (
               <div className="px-2 pb-2 [&_.chart_svg]:min-h-[240px]">
                 <Suspense fallback={<TrendChartSkeleton />}>
-                  <LazyTeamHistoryLineChart series={trendSeries} height={280} yLabel="Power" />
+                  <LazyTeamHistoryLineChart series={trendSeries} height={280} yLabel="Power" events={tournament ? undefined : events} />
                 </Suspense>
               </div>
             ) : historyState.status === 'loading' ? (

@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import { useId, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { fieldPlace, type FieldPosition, type FieldStanding } from '../domains/rankings/field-statistics'
 import { cn } from '../shared/utils'
 import { ordinal, standingLabel } from './fieldFormat'
@@ -45,6 +45,8 @@ export function FieldStrip({
   /** A caveat next to the value, such as games the average skips. */
   note?: string
 }) {
+  const [explained, setExplained] = useState(false)
+  const hintId = useId()
   const { value, field, mean, place, better, standing } = position
   const values = field.map((entry) => entry.value)
   const low = Math.min(...values, value ?? Infinity)
@@ -92,12 +94,20 @@ export function FieldStrip({
       </span>
       <span className="grid min-w-0 gap-1">
         <span className="flex min-w-0 items-baseline justify-between gap-3">
-          <span
-            className={cn('min-w-0 text-sm font-semibold text-[var(--text-strong)]', hint && 'cursor-help underline decoration-[var(--line-strong)] decoration-dotted underline-offset-4')}
-            title={hint}
-          >
-            {label}
-          </span>
+          {hint ? (
+            <button
+              type="button"
+              className="min-w-0 cursor-help rounded-sm text-left text-sm font-semibold text-[var(--text-strong)] underline decoration-[var(--line-strong)] decoration-dotted underline-offset-4 outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--focus)]"
+              title={hint}
+              aria-expanded={explained}
+              aria-controls={hintId}
+              onClick={() => setExplained(!explained)}
+            >
+              {label}
+            </button>
+          ) : (
+            <span className="min-w-0 text-sm font-semibold text-[var(--text-strong)]">{label}</span>
+          )}
           <span className="flex shrink-0 items-baseline gap-2">
             {note ? <span className="text-2xs text-muted-foreground">{note}</span> : null}
             <span className="text-base leading-none font-bold text-[var(--text-strong)] tabular-nums">
@@ -105,8 +115,14 @@ export function FieldStrip({
             </span>
           </span>
         </span>
+        {hint ? (
+          <span id={hintId} className={explained ? 'text-xs text-muted-foreground' : 'sr-only'}>
+            {hint}
+          </span>
+        ) : null}
         <FieldTrack
           summary={summary}
+          describedBy={hint ? hintId : undefined}
           entries={entries}
           subjectId={subjectId}
           mean={spread ? mean : null}
@@ -131,6 +147,7 @@ const STACK_DISTANCE = 3
  */
 function FieldTrack({
   summary,
+  describedBy,
   entries,
   subjectId,
   mean,
@@ -140,6 +157,7 @@ function FieldTrack({
   sampleUnit,
 }: {
   summary: string
+  describedBy?: string
   entries: TrackEntry[]
   subjectId: string
   mean: number | null
@@ -195,6 +213,7 @@ function FieldTrack({
           }
         : { role: 'img' })}
       aria-label={summary}
+      aria-describedby={describedBy}
       onPointerDown={nearest}
       onPointerMove={(event) => {
         if (event.pointerType === 'mouse' || event.buttons) nearest(event)

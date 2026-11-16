@@ -133,6 +133,7 @@ function ReportBody({ report }: { report: TournamentReport }) {
     player: query.get('player') ?? undefined,
   })
   const { coverage } = report
+  const players = new Set(report.teams.flatMap((team) => team.participants.map((player) => player.playerId))).size
   return (
     <>
       <header className="grid gap-3 rounded-md border border-border bg-card p-4">
@@ -141,7 +142,7 @@ function ReportBody({ report }: { report: TournamentReport }) {
             <h2 className="text-xl font-bold">{report.label}</h2>
             <p className="text-sm text-muted-foreground">
               {coverage.observedGames} games · {coverage.observedTeams} teams ·{' '}
-              {coverage.participants} players · {coverage.since} to {coverage.through}
+              {players} players · {coverage.since} to {coverage.through}
             </p>
           </div>
         </div>
