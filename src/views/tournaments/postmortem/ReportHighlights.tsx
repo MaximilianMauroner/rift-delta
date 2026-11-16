@@ -27,7 +27,8 @@ function describe(subject: HighlightSubject, report: TournamentReport) {
       const [a, b] = subject.teamIds
       const loser = subject.winnerId === a ? b : a
       const teams = subject.winnerId ? `${code(subject.winnerId)} beat ${code(loser)}` : `${code(a)} vs ${code(b)}`
-      return [subject.holderId ? `${code(subject.holderId)}, in ${teams}` : teams, subject.date, subject.phase].filter(Boolean).join(' · ')
+      const holder = subject.holderId && subject.holderId !== subject.winnerId ? `${code(subject.holderId)}, in ${teams}` : teams
+      return [holder, subject.date, subject.phase].filter(Boolean).join(' · ')
     }
     case 'team':
       return report.teams.find((team) => team.id === subject.teamId)?.name ?? subject.teamId

@@ -144,8 +144,8 @@ function FieldTrack({
   const step = (event: KeyboardEvent<HTMLSpanElement>) => {
     const last = entries.length - 1
     const next =
-      event.key === 'ArrowRight' || event.key === 'ArrowUp' ? Math.min(last, active === null ? selected : active + 1)
-      : event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? Math.max(0, active === null ? selected : active - 1)
+      event.key === 'ArrowRight' || event.key === 'ArrowUp' ? Math.min(last, selected + 1)
+      : event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? Math.max(0, selected - 1)
       : event.key === 'Home' ? 0
       : event.key === 'End' ? last
       : undefined
