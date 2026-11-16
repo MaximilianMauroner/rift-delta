@@ -93,7 +93,7 @@ export function FieldStrip({
         </span>
       </span>
       <span className="grid min-w-0 gap-1">
-        <span className="flex min-w-0 items-baseline justify-between gap-3">
+        <span className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3">
           {hint ? (
             <button
               type="button"
@@ -108,11 +108,11 @@ export function FieldStrip({
           ) : (
             <span className="min-w-0 text-sm font-semibold text-[var(--text-strong)]">{label}</span>
           )}
-          <span className="flex shrink-0 items-baseline gap-2">
-            {note ? <span className="text-2xs text-muted-foreground">{note}</span> : null}
+          <span className="ml-auto grid justify-items-end gap-0.5 text-right">
             <span className="text-base leading-none font-bold text-[var(--text-strong)] tabular-nums">
               {value === null ? '—' : show(value)}
             </span>
+            {note ? <span className="text-2xs text-muted-foreground">{note}</span> : null}
           </span>
         </span>
         {hint ? (
