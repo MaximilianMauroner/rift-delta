@@ -11,7 +11,6 @@ import { Button } from '../../../components/ui/button'
 import { Select } from '../../../components/ui/select'
 import {
   resolveReportSelection,
-  reportAwards,
   type TournamentReport,
   type TournamentReportIndex,
 } from '../../../domains/rankings/tournament-reports'
@@ -131,12 +130,6 @@ function ReportBody({ report }: { report: TournamentReport }) {
     team: query.get('team') ?? undefined,
     player: query.get('player') ?? undefined,
   })
-  const awards = reportAwards(report.teams.flatMap((team) => team.participants))
-  const leaders = [
-    ...new Map(
-      awards.best.map((player) => [`${player.playerId}|${player.role}`, player]),
-    ).values(),
-  ]
   const { coverage } = report
   return (
     <>
@@ -154,44 +147,6 @@ function ReportBody({ report }: { report: TournamentReport }) {
               completion is unknown.
             </p>
           </div>
-          <div className="min-w-0 rounded-md bg-[var(--surface-2)] px-3 py-2 sm:min-w-56">
-            <p className="text-xs font-semibold text-muted-foreground">
-              {leaders.length > 1 ? 'StatsPower leader tie' : 'StatsPower leader'}
-            </p>
-            {leaders.length ? (
-              leaders.map((player) => (
-                <Button
-                  key={player.key}
-                  variant="ghost"
-                  aria-label={`View StatsPower leader ${player.name}, ${player.role}`}
-                  className="h-auto w-full min-w-0 justify-between gap-4 px-0 py-1 text-left whitespace-normal hover:text-[var(--accent)]"
-                  onClick={() =>
-                    selectTournamentReport({
-                      event: report.id,
-                      team: player.teamId,
-                      player: player.key,
-                    })
-                  }
-                >
-                  <span className="grid">
-                    <span className="font-bold text-[var(--accent)]">{player.name}</span>
-                    <span className="text-xs font-normal text-muted-foreground">
-                      {player.role} · {player.statsPower!.sampleGames} scored
-                      games
-                    </span>
-                  </span>
-                  <span className="text-lg font-bold tabular-nums">
-                    {player.statsPower!.score.toFixed(2)}
-                  </span>
-                </Button>
-              ))
-            ) : (
-              <p className="mt-1 text-sm">No score has observed evidence.</p>
-            )}
-            <p className="text-2xs text-muted-foreground">
-              League-weighted model score. Cross-role comparisons are unvalidated.
-            </p>
-          </div>
         </div>
         {report.provenance.dataMode === 'seeded-sample' ||
         report.provenance.providers.includes('seed') ? (
@@ -200,22 +155,6 @@ function ReportBody({ report }: { report: TournamentReport }) {
             synthetic.
           </Alert>
         ) : null}
-        <details className="text-xs text-muted-foreground">
-          <summary className="cursor-pointer">
-            Coverage and score details
-          </summary>
-          <div className="mt-2 grid gap-1">
-            <p>
-              The ranking universe includes {coverage.ratedGames} of these games
-              and {coverage.ratedTeams} teams.
-            </p>
-            <p>
-              {awards.eligible} participant rows have observed score evidence.
-              Prior-only scores are excluded from leader callouts. Ties use
-              unrounded scores.
-            </p>
-          </div>
-        </details>
       </header>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <label htmlFor="report-team" className="text-sm font-semibold">
@@ -282,31 +221,14 @@ function ReportBody({ report }: { report: TournamentReport }) {
         </summary>
         <div className="mt-3 grid gap-2">
           <p>
-            StatsPower uses {report.method.scoreVersion}. It combines a home-league
-            prior with role-specific stats; the prior can determine the order.
-            Cross-role comparisons have not been validated. The model uses event
-            weights, a{' '}
-            {report.method.halfLifeDays}-day half-life and{' '}
-            {report.method.priorGames}-game shrinkage. League evidence ends on{' '}
-            {report.method.leagueEvidenceThrough}.
+            Event averages and role ranks use each player's available games in
+            the same role, including games across teams. The lineup, gold trend,
+            and game list use the selected team's games. Missing values are
+            excluded from each average. Ties use unrounded values.
           </p>
           <p>
-            Top, Mid, and Bot scores use gold, XP, and CS differences at 15
-            minutes. Jungle also uses kill participation. Support uses kill
-            participation and ward activity. These stats do not capture all
-            contributions. The lane stats overlap, and their weights have not
-            been independently validated.
-          </p>
-          <p>
-            Scores pool each player's games in the same role across this event.
-            Event averages and role ranks include a player's games across teams.
-            The gold trend and game list cover the selected team. StatsPower
-            shrinks small samples toward the league anchor. Team assistance,
-            matchups and champions affect the stats.
-          </p>
-          <p>
-            Model {report.modelVersion} · Config {report.modelConfigHash} ·
-            Method {report.method.version}
+            Team assistance, opponents, champions, and game context affect these
+            statistics.
           </p>
           <p>
             Data mode {report.provenance.dataMode} · Input digest{' '}

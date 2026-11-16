@@ -252,12 +252,8 @@ test(
           'Synthetic test fixture. These player stats and results are synthetic.',
         )
         .waitFor()
-      await page
-        .getByText(
-          'League-weighted model score. Cross-role comparisons are unvalidated.',
-          { exact: true },
-        )
-        .waitFor()
+      await page.getByText('Highest avg GD15', { exact: true }).waitFor()
+      assert.equal(await page.getByText(/StatsPower|league anchor/i).count(), 0)
       assert.equal(
         await page
           .getByRole('link', { name: 'Tournaments', exact: true })
@@ -271,9 +267,16 @@ test(
       const report = control.generation.reports['worlds:2025']!
       const beta = team(report, 'Beta')
       await teamPicker(page).selectOption(beta.id)
+      await teamPicker(page).selectOption(team(report, 'Alpha').id)
+      await page.getByText('Highest avg kill participation', { exact: false }).waitFor()
+      await page.getByRole('button', {
+        name: 'View a-0, Top, Highest avg kill participation',
+        exact: true,
+      }).click()
+      await page.getByRole('region', { name: 'Evidence for a-0, Top' }).waitFor()
       await page
         .getByRole('button', {
-          name: 'View StatsPower leader Focal, Mid',
+          name: 'View Focal, Mid, Highest avg GD15',
           exact: true,
         })
         .click()
@@ -354,10 +357,8 @@ test(
         await page
           .getByText('Method and source provenance', { exact: true })
           .click()
-        await page.getByText(/the prior can determine the order/).waitFor()
-        await page
-          .getByText(/lane stats overlap, and their weights have not been independently validated/)
-          .waitFor()
+        await page.getByText(/Missing values are excluded from each average/).waitFor()
+        assert.equal(await page.getByText(/StatsPower|league anchor/i).count(), 0)
         assert.ok(
           await page.evaluate(
             () => document.documentElement.scrollWidth <= window.innerWidth,

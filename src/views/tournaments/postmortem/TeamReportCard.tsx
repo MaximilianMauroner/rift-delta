@@ -2,7 +2,7 @@ import { TeamMark } from '../../../components/TeamMark'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader } from '../../../components/ui/card'
 import {
-  reportAwards,
+  reportTeamMetricLeaders,
   type TournamentReportPlayer,
   type TournamentReportTeam,
 } from '../../../domains/rankings/tournament-reports'
@@ -16,7 +16,11 @@ export function TeamReportCard({
   selected?: string
   onSelect: (player: TournamentReportPlayer) => void
 }) {
-  const awards = reportAwards(team.participants)
+  const goldLeaders = reportTeamMetricLeaders(team.participants, 'goldDiffAt15')
+  const participationLeaders = reportTeamMetricLeaders(
+    team.participants,
+    'killParticipation',
+  )
   const allGold = team.participants.flatMap((player) =>
     player.games.flatMap((game) =>
       game.metrics.goldDiffAt15 === null ? [] : game.metrics.goldDiffAt15,
@@ -32,19 +36,21 @@ export function TeamReportCard({
             <h4 className="break-words text-lg font-bold">{team.name}</h4>
             <p className="text-xs text-muted-foreground">
               {team.league} · {team.wins}W {team.losses}L · {team.observedGames}{' '}
-              observed games
+              games
             </p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Award
-            label="Best StatsPower"
-            players={awards.best}
+          <StatHighlight
+            label="Highest avg GD15"
+            values={goldLeaders}
+            format={(value) => `${value > 0 ? '+' : ''}${value.toFixed(1)}`}
             onSelect={onSelect}
           />
-          <Award
-            label="Lowest StatsPower"
-            players={awards.lowest}
+          <StatHighlight
+            label="Highest avg kill participation"
+            values={participationLeaders}
+            format={(value) => `${(value * 100).toFixed(1)}%`}
             onSelect={onSelect}
           />
         </div>
@@ -54,7 +60,7 @@ export function TeamReportCard({
         <div aria-hidden="true" className="grid grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] gap-2 px-4 text-2xs text-muted-foreground sm:hidden">
           <span>Role</span>
           <span>Player</span>
-          <span className="text-right">StatsPower</span>
+          <span className="text-right">Avg GD15</span>
         </div>
         <div
           aria-hidden="true"
@@ -70,7 +76,7 @@ export function TeamReportCard({
               <span>+{extent}</span>
             </span>
           </span>
-          <span className="text-right">StatsPower</span>
+          <span className="text-right">Avg GD15</span>
         </div>
         <div
           className="grid min-w-0 divide-y divide-border border-y border-border"
@@ -85,9 +91,9 @@ export function TeamReportCard({
             )
             const minimum = gold.length ? Math.min(...gold) : 0
             const maximum = gold.length ? Math.max(...gold) : 0
-            const mean = player.performance.metrics.goldDiffAt15.value
-            const observedScore =
-              player.statsPower && !player.statsPower.priorOnly
+            const mean = gold.length
+              ? gold.reduce((sum, value) => sum + value, 0) / gold.length
+              : null
             return (
               <Button
                 key={player.key}
@@ -139,13 +145,10 @@ export function TeamReportCard({
                 </span>
                 <span className="grid justify-items-end gap-0.5">
                   <span className="text-sm font-bold tabular-nums">
-                    {observedScore ? player.statsPower!.score.toFixed(2) : '—'}
+                    {mean === null
+                      ? '—'
+                      : `${mean > 0 ? '+' : ''}${mean.toFixed(1)}`}
                   </span>
-                  {!observedScore ? (
-                    <span className="text-2xs font-normal text-muted-foreground">
-                      No observed score
-                    </span>
-                  ) : null}
                 </span>
               </Button>
             )
@@ -154,10 +157,8 @@ export function TeamReportCard({
         <details className="px-4 text-xs text-muted-foreground">
           <summary className="cursor-pointer">About the lineup</summary>
           <p className="mt-2">
-            All observed roles and substitutes. GD15 compares gold with the
-            opposing role at 15 minutes. {awards.eligible} of{' '}
-            {team.participants.length} participants have observed score evidence.
-            Tied scores share the callout.
+            GD15 compares gold with the opposing role at 15 minutes. The range
+            and average use this team's games.
           </p>
         </details>
       </CardContent>
@@ -165,39 +166,38 @@ export function TeamReportCard({
   )
 }
 
-function Award({
+function StatHighlight({
   label,
-  players,
+  values,
+  format,
   onSelect,
 }: {
   label: string
-  players: TournamentReportPlayer[]
+  values: Array<{ player: TournamentReportPlayer; value: number }>
+  format: (value: number) => string
   onSelect: (player: TournamentReportPlayer) => void
 }) {
   return (
     <div className="min-w-0 rounded-md bg-card px-3 py-2">
       <h5 className="text-xs text-muted-foreground">
         {label}
-        {players.length > 1 ? ' · Tie' : ''}
+        {values.length > 1 ? ' · Tie' : ''}
       </h5>
-      {players.length ? (
-        players.map((player) => (
+      {values.length ? (
+        values.map(({ player, value }) => (
           <Button
             key={player.key}
             variant="ghost"
+            aria-label={`View ${player.name}, ${player.role}, ${label}`}
             className="grid h-auto w-full min-w-0 justify-start justify-items-start gap-0 px-0 py-1 whitespace-normal hover:text-[var(--accent)] min-[440px]:flex min-[440px]:justify-between min-[440px]:gap-2"
             onClick={() => onSelect(player)}
           >
-            <span className="min-w-0 break-words text-left">
-              {player.name}
-            </span>
-            <span className="font-semibold tabular-nums">
-              {player.statsPower!.score.toFixed(2)}
-            </span>
+            <span className="min-w-0 break-words text-left">{player.name}</span>
+            <span className="font-semibold tabular-nums">{format(value)}</span>
           </Button>
         ))
       ) : (
-        <p className="mt-2 text-sm">No observed score evidence.</p>
+        <p className="mt-2 text-sm">Unavailable</p>
       )}
     </div>
   )

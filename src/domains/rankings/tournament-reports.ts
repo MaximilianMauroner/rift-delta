@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { compareCodeUnits } from '../../shared/codeUnitOrder.mjs'
 
 export const REPORT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'] as const
 export const REPORT_METRICS = {
@@ -334,25 +333,25 @@ export function parseTournamentReport(
   return report
 }
 
-export function reportAwards(players: readonly TournamentReportPlayer[]) {
-  const eligible = players.filter(
-    (player) =>
-      player.statsPower &&
-      !player.statsPower.priorOnly &&
-      player.statsPower.sampleGames > 0,
-  )
-  const sorted = [...eligible].sort(
-    (a, b) =>
-      b.statsPower!.score - a.statsPower!.score ||
-      compareCodeUnits(a.key, b.key),
-  )
-  const tied = (score: number | undefined) =>
-    sorted.filter((player) => player.statsPower!.score === score)
-  return {
-    best: tied(sorted[0]?.statsPower?.score),
-    lowest: tied(sorted.at(-1)?.statsPower?.score),
-    eligible: eligible.length,
-  }
+export function reportTeamMetricLeaders(
+  players: readonly TournamentReportPlayer[],
+  metric: ReportMetric,
+) {
+  const averages = players.flatMap((player) => {
+    const values = player.games.flatMap((game) => {
+      const value = game.metrics[metric]
+      return value === null ? [] : [value]
+    })
+    return values.length
+      ? [{
+          player,
+          value: values.reduce((sum, value) => sum + value, 0) / values.length,
+        }]
+      : []
+  })
+  if (!averages.length) return []
+  const highest = Math.max(...averages.map((average) => average.value))
+  return averages.filter((average) => average.value === highest)
 }
 
 export function resolveReportSelection(
@@ -385,10 +384,6 @@ export function resolveReportSelection(
   return {
     kind: 'ready',
     team,
-    player:
-      player ??
-      (team
-        ? (reportAwards(team.participants).best[0] ?? team.participants[0])
-        : undefined),
+    player: player ?? team?.participants[0],
   } as const
 }

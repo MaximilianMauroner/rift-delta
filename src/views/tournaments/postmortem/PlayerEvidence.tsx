@@ -44,7 +44,6 @@ export function PlayerEvidence({
   player: TournamentReportPlayer
   teams: TournamentReportTeam[]
 }) {
-  const score = player.statsPower
   const ranks = reportRoleMetricRanks(
     teams.flatMap((team) => team.participants),
     player,
@@ -66,32 +65,13 @@ export function PlayerEvidence({
           <div className="min-w-0">
             <h4 className="break-words text-lg font-bold">{player.name}</h4>
             <p className="text-xs text-muted-foreground">
-              {player.role} · {player.games.length} observed team games
+              {player.role} · {player.games.length} games
             </p>
           </div>
-          <div className="grid justify-items-end gap-0.5">
-            <span className="text-xs text-muted-foreground">
-              StatsPower
-            </span>
-            <strong className="text-xl font-bold tabular-nums text-[var(--accent)]">
-              {score ? score.score.toFixed(2) : 'unavailable'}
-            </strong>
-          </div>
         </div>
-        {score?.priorOnly ? (
-          <Alert role="status">
-            This score has only a league prior. It is excluded from report
-            awards.
-          </Alert>
-        ) : null}
-        {score && score.sampleGames < 20 && !score.priorOnly ? (
-          <p className="text-xs text-muted-foreground">
-            Small sample. The score shrinks toward the league anchor.
-          </p>
-        ) : null}
         {player.scoreTeamIds.length > 1 ? (
           <Alert role="status">
-            This event-role score pools games with{' '}
+            Event averages and role ranks include games with{' '}
             {player.scoreTeamIds
               .map((id) => teams.find((team) => team.id === id)?.name ?? id)
               .join(', ')}
@@ -168,7 +148,7 @@ export function PlayerEvidence({
           <div
             className="mt-3 h-48 min-w-0"
             role="img"
-            aria-label={`${player.name} GD15 trend in gold over ${player.games.length} games. The observed values are listed below.`}
+            aria-label={`${player.name} GD15 trend in gold over ${player.games.length} games. The values are listed below.`}
           >
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <LineChart
@@ -181,7 +161,7 @@ export function PlayerEvidence({
                   tickLine={false}
                   tick={{ fill: 'var(--muted)' }}
                   label={{
-                    value: 'Observed game',
+                    value: 'Game',
                     position: 'insideBottom',
                     offset: -5,
                     fontSize: 10,
@@ -212,31 +192,7 @@ export function PlayerEvidence({
             </ResponsiveContainer>
           </div>
         </section>
-        {score ? (
-          <details className="text-xs">
-            <summary className="cursor-pointer font-semibold">
-              About StatsPower and metric evidence
-            </summary>
-            <p className="mt-2 text-muted-foreground">
-              League anchor {score.leagueAnchor.toFixed(2)}. StatsPower combines
-              a home-league prior with role-specific stats. The prior can outweigh
-              event evidence. Cross-role comparisons have not been validated.{' '}
-              {score.sampleGames} games with usable score evidence ·{' '}
-              {score.eligibleGames} eligible games · Evidence through{' '}
-              {score.evidenceThrough}.
-            </p>
-            <ul className="mt-2 grid gap-2">
-              {Object.entries(score.metrics).map(([key, evidence]) => (
-                <li key={key}>
-                  {REPORT_METRICS[key as keyof typeof REPORT_METRICS].label} ·{' '}
-                  {evidence.observed} observed · {evidence.missing} missing ·{' '}
-                  {evidence.effectiveGames} effective games
-                </li>
-              ))}
-            </ul>
-          </details>
-        ) : null}
-        <section className="grid gap-3" aria-label="Observed games">
+        <section className="grid gap-3" aria-label="Games">
           <h5 className="text-sm font-bold">Games</h5>
           <ol className="grid min-w-0 gap-2">
             {player.games.map((game, index) => (
