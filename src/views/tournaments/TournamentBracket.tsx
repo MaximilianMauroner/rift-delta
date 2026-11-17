@@ -13,8 +13,8 @@ import {
 
 /** Bracket geometry in rem, so cards and connectors scale with the root font size together. */
 const CARD_W = 13.25
-/** Meta row (1.25) + two team rows (1.5 each) + bottom padding (0.25). */
-const CARD_H = 4.5
+/** Meta row (1.25) + two team rows (2.25 each) + bottom padding (0.25). */
+const CARD_H = 6
 const COL_GAP = 2.75
 const ROW_GAP = 0.75
 const HEADER_H = 2
@@ -159,7 +159,7 @@ function ChampionCard({ team, trace, x, y }: { team: TournamentSeries['teams'][n
     {team.name ? <TeamMark team={team.name} className="size-7" /> : null}
     <div className="grid min-w-0">
       <span className="text-xs font-semibold text-text">Event winner</span>
-      <span className="truncate text-sm font-semibold text-text">{displayName(team.name)}</span>
+      <span className="line-clamp-2 break-words text-sm leading-4 font-semibold text-text">{displayName(team.name)}</span>
     </div>
   </div>
 }
@@ -181,7 +181,7 @@ function BracketScroller({ focusX, children }: { focusX: number; children: React
     if (!element) return
     if (element.scrollWidth > element.clientWidth) {
       const px = parseFloat(getComputedStyle(document.documentElement).fontSize)
-      element.scrollLeft = Math.max(0, Math.min(focusX * px, (focusX + 2 * COLUMN_W) * px - element.clientWidth))
+      element.scrollLeft = Math.max(0, Math.min(focusX * px, (focusX + 2 * COLUMN_W) * px - element.clientWidth) - 2.5 * px)
     }
     const measure = () => setMore({ start: element.scrollLeft > 1, end: element.scrollLeft + element.clientWidth < element.scrollWidth - 1 })
     measure()
@@ -228,13 +228,13 @@ function TeamLine({ team, won, trace }: { team: TournamentSeries['teams'][number
   const body = <>
     {team?.name ? <TeamMark team={team.name} className="size-5 rounded-[3px] text-xs" imageClassName="p-0.5" fallback="initial" />
       : <span className="size-5 shrink-0 rounded-[3px] border border-dashed border-line" aria-hidden="true" />}
-    <span className={cn('min-w-0 flex-1 truncate text-left', !team?.name && 'text-muted', won === true && 'font-semibold text-text', won === false && 'text-muted')}>
+    <span className={cn('min-w-0 flex-1 line-clamp-2 break-words text-left leading-4', !team?.name && 'text-muted', won === true && 'font-semibold text-text', won === false && 'text-muted')}>
       {displayName(team?.name ?? null)}
     </span>
     <span className={cn('w-4 shrink-0 text-right text-xs tabular-nums', won === true ? 'font-bold text-up' : 'text-muted')}>{score ?? ''}</span>
   </>
   const stripe = { borderLeftColor: leagueColor(teamIdentityFor(team?.name ?? '')?.league ?? '') }
-  const row = 'league-row flex h-6 min-w-0 items-center gap-2 px-2.5 text-sm'
+  const row = 'league-row flex h-9 min-w-0 items-center gap-2 px-2.5 text-sm'
   if (!key) return <div className={row} style={stripe}>{body}</div>
   return <button type="button" data-slot="bracket-team" className={cn(row, 'w-full rounded-md outline-none hover:bg-raised focus-visible:bg-raised focus-visible:ring-1 focus-visible:ring-focus',
     trace.pinned === key && 'bg-[var(--focus-wash)]')}
@@ -299,13 +299,13 @@ function StandingRow({ standing, trace, name }: { standing: Standing; trace: Tra
   const dimmed = trace.active !== null && trace.active !== standing.team
   return <button type="button" data-slot="bracket-team" aria-pressed={trace.pinned === standing.team}
     style={{ borderLeftColor: leagueColor(teamIdentityFor(label)?.league ?? '') }}
-    className={cn('league-row flex h-6 w-full min-w-0 items-center gap-2 px-2.5 text-sm outline-none hover:bg-raised focus-visible:bg-raised focus-visible:ring-1 focus-visible:ring-focus motion-safe:transition-opacity',
+    className={cn('league-row flex h-9 w-full min-w-0 items-center gap-2 px-2.5 text-sm outline-none hover:bg-raised focus-visible:bg-raised focus-visible:ring-1 focus-visible:ring-focus motion-safe:transition-opacity',
       trace.pinned === standing.team && 'bg-[var(--focus-wash)]', dimmed && 'opacity-40')}
     onMouseEnter={() => trace.hover(standing.team)} onMouseLeave={() => trace.hover(null)}
     onFocus={() => trace.hover(standing.team)} onBlur={() => trace.hover(null)}
     onClick={() => trace.toggle(standing.team)}>
     <TeamMark team={label} className="size-5 rounded-[3px] text-xs" imageClassName="p-0.5" fallback="initial" />
-    <span className="min-w-0 flex-1 truncate text-left">{displayName(label)}</span>
+    <span className="min-w-0 flex-1 line-clamp-2 break-words text-left leading-4">{displayName(label)}</span>
     <span className="shrink-0 text-xs text-muted tabular-nums">{standing.wins}–{standing.losses}</span>
   </button>
 }

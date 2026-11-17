@@ -25,7 +25,10 @@ test('current rounds clear the start mask and long names fit at 390px', async ()
         : { version: 1, source: 'leaguepedia-cargo', unsupportedApi: false, dataMode: 'synthetic-fixture', fetchedAt: '2026-09-27T12:00:00.000Z', sourceUpdatedAt: null,
           coverage: { start: '2026-09-01T00:00:00.000Z', end: '2026-11-01T00:00:00.000Z', complete: true, warnings: [] },
           events: [{ id: 'fixture', sourceTournamentId: 'fixture', competition: 'lcs', season: '2026', label: 'Synthetic bracket',
-            series: swiss ? [series('r1', 'Swiss Round 1', true), series('r2', 'Swiss Round 2', false), series('r3', 'Swiss Round 3', false)]
+            series: swiss ? [1, 2, 3].flatMap((round) => Array.from({ length: 4 }, (_, pair) => ({
+              ...series(`r${round}-${pair}`, `Swiss Round ${round}`, round === 1),
+              teams: [team(pair === 0 ? longName : `Fixture ${pair * 2}`, round === 1 ? 2 : null), team(`Fixture ${pair * 2 + 1}`, round === 1 ? 0 : null)],
+            })))
               : [series('qf', 'Quarterfinals', true), series('sf', 'Semifinals', false), series('f', 'Finals', false)] }] }))
     })
   } }
@@ -39,9 +42,10 @@ test('current rounds clear the start mask and long names fit at 390px', async ()
     const page = await browser.newPage({ viewport: { width: 390, height: 740 }, reducedMotion: 'reduce' })
     for (const kind of ['elimination', 'swiss']) {
       swiss = kind === 'swiss'
-      await page.goto(`http://127.0.0.1:${address.port}/#tournaments?event=fixture`)
+      await page.goto(`http://127.0.0.1:${address.port}/?fixture=${kind}#tournaments?event=fixture`)
       const frame = page.getByRole('region', { name: 'Bracket, scrolls sideways' })
       await frame.locator('[aria-current="step"]').waitFor()
+      if (swiss) assert.equal(await page.getByRole('region', { name: 'Swiss stage', exact: true }).count(), 1)
       const measure = await frame.evaluate((element) => {
         const current = element.querySelector('[aria-current="step"]')!
         const mask = parseFloat(getComputedStyle(document.documentElement).fontSize) * 2.5
@@ -52,8 +56,11 @@ test('current rounds clear the start mask and long names fit at 390px', async ()
       assert.ok(measure.scrollLeft > 0)
       assert.ok(measure.left >= measure.mask, `${kind} current round clears the ${measure.mask}px start mask, left=${measure.left}`)
       const name = frame.locator('[data-slot="bracket-team"] span').filter({ hasText: longName }).first()
-      assert.ok(await name.evaluate((element) => element.scrollHeight <= element.clientHeight && getComputedStyle(element).whiteSpace !== 'nowrap'), 'Long names wrap within the row')
+      assert.ok(await name.evaluate((element) => element.clientHeight === 32 && getComputedStyle(element).whiteSpace !== 'nowrap'), 'Long names have two visible lines')
+      await name.click()
+      assert.match(await page.locator('[aria-live="polite"]').innerText(), new RegExp(longName))
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+      await page.evaluate(() => localStorage.removeItem('tournament-feed'))
     }
   } finally {
     await browser.close()
