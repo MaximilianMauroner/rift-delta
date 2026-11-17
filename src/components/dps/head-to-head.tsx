@@ -106,7 +106,7 @@ function diffRows(
       label: "Time to kill",
       a: a?.ttk ?? null,
       b: b?.ttk ?? null,
-      format: (value) => `${value}s`,
+      format: (value) => `${value.toFixed(2)}s`,
       lowerWins: true,
     },
     {

@@ -52,7 +52,7 @@ export function CompareDock({
       aria-label={`Compare ${subject}: ${entities.length} selected`}
     >
       <b className="shrink-0 text-sm font-semibold text-[var(--text-strong)] max-sm:sr-only">Compare</b>
-      <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex min-w-0 items-center gap-1.5 max-sm:flex-wrap">
         {entities.map((entity) => (
           <span
             key={entity.id}
@@ -86,7 +86,7 @@ export function CompareDock({
       </div>
 
       {odds ? (
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3 max-sm:basis-full">
           <p className="shrink-0 text-sm whitespace-nowrap text-muted-foreground">
             <b className="font-semibold text-[var(--text-strong)]">{odds.homeCode} {odds.game}%</b> per game
             <span className="max-md:hidden"> · <b className="font-semibold text-foreground">{odds.bo5}%</b> in a Bo5</span>

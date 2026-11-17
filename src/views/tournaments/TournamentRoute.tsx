@@ -24,7 +24,7 @@ export function TournamentRoute() {
     <AppNavigation mode="tournaments" scope={scope} onGoHome={goHome} />
     <main id="main-content" tabIndex={-1} ref={mainRef} className="min-w-0 flex-1 pb-6 max-sm:pb-[calc(var(--tabbar-h)+24px+env(safe-area-inset-bottom))]">
       <ModeHeader mode="tournaments" />
-      <nav aria-label="Tournament views" className="flex flex-wrap gap-2 px-[var(--page-x)] pt-3">
+      <nav aria-label="Tournament views" className="flex flex-wrap gap-2 px-[var(--page-x)] pt-3 max-sm:grid max-sm:grid-cols-2 max-sm:[&>a]:h-auto max-sm:[&>a]:min-h-[var(--control-h)] max-sm:[&>a]:whitespace-normal max-sm:[&>a]:text-center">
         <a className={buttonVariants({ variant: 'tab', size: 'tab' })} href={tournamentSubviewAddress('bracket', query)} aria-current={!postmortem ? 'page' : undefined}>Schedule and bracket</a>
         <a className={buttonVariants({ variant: 'tab', size: 'tab' })} href={tournamentSubviewAddress('postmortem', query)} aria-current={postmortem ? 'page' : undefined}>Team reports</a>
       </nav>

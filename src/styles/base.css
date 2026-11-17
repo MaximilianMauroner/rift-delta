@@ -412,7 +412,7 @@ body {
 }
 
 @media (max-width: 639px) {
- .ranking-period { display:grid; grid-template-columns:minmax(104px,0.8fr) minmax(0,1.2fr); }
+ .ranking-period { display:grid; grid-template-columns:auto minmax(0,1fr); }
  .ranking-period > span { grid-column:1; grid-row:1; }
  .ranking-period > [role="group"] { grid-column:1 / -1; grid-row:2; }
  .ranking-period > p { grid-column:2; grid-row:1; margin:0; }

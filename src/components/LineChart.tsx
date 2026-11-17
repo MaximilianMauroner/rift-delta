@@ -8,6 +8,8 @@ import {
   XAxis,
   YAxis,
   useActiveTooltipLabel,
+  usePlotArea,
+  useXAxisScale,
   type TooltipContentProps,
 } from 'recharts'
 import { Button } from './ui/button'
@@ -213,9 +215,9 @@ export function LineChart({
               fillOpacity={0.08}
               strokeOpacity={0}
               ifOverflow="hidden"
-              label={{ value: event.label, position: 'top', offset: 20, fill: 'var(--muted)', fontSize: 11, fontWeight: 600 }}
             />
           ))}
+          {shownEvents.length ? <EventLabels events={shownEvents} /> : null}
           <RechartsTooltip trigger="hover" cursor={{ stroke: 'var(--line-strong)' }} content={renderTooltip} />
           {details ? <ActiveRowListener onActive={setHoveredT} /> : null}
           {gaps.map(({ key, series: entry }) => (
@@ -261,6 +263,43 @@ export function LineChart({
       </div>
     </div>
   )
+}
+
+const EVENT_LABEL_CHAR_PX = 6.6
+const EVENT_LABEL_GAP_PX = 6
+
+/**
+ * Names each event band above the plot. On a narrow chart neighbouring events
+ * sit closer than their names are wide, so a name that would overlap the one
+ * before it is left out. The band stays, and the summary still lists it.
+ */
+function EventLabels({ events }: { events: ChartEvent[] }) {
+  const scale = useXAxisScale()
+  const plot = usePlotArea()
+  if (!scale || !plot) return null
+  return (
+    <g aria-hidden="true">
+      {placeEventLabels(events, scale, plot).map(({ key, x, label }) => (
+        <text key={key} x={x} y={plot.y - 20} textAnchor="middle" fill="var(--muted)" fontSize={11} fontWeight={600}>{label}</text>
+      ))}
+    </g>
+  )
+}
+
+function placeEventLabels(events: ChartEvent[], scale: (value: number) => number | undefined, plot: { x: number; width: number }) {
+  const placed: { key: string; x: number; label: string }[] = []
+  let previousRight = -Infinity
+  for (const event of [...events].sort((a, b) => a.start - b.start)) {
+    const start = scale(event.start)
+    const end = scale(event.end)
+    if (start === undefined || end === undefined) continue
+    const half = (event.label.length * EVENT_LABEL_CHAR_PX) / 2
+    const x = Math.min(Math.max((start + end) / 2, plot.x + half), plot.x + plot.width - half)
+    if (x - half < previousRight + EVENT_LABEL_GAP_PX) continue
+    previousRight = x + half
+    placed.push({ key: `${event.label}-${event.start}`, x, label: event.label })
+  }
+  return placed
 }
 
 /** Keeps the last row that hover, touch, or the arrow keys made active. */
