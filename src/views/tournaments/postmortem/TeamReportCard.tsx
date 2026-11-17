@@ -66,7 +66,7 @@ export function TeamReportCard({
         </div>
         <div
           aria-hidden="true"
-          className="hidden grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_4.5rem] items-end gap-2 px-4 text-xs text-muted sm:grid"
+          className="hidden grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)] items-end gap-2 px-4 text-xs text-muted sm:grid"
         >
           <span>Role</span>
           <span>Player</span>
