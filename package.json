@@ -70,7 +70,8 @@
     "dps:ingest:euw": "tsx scripts/dps/ingest.ts --region EUW1 --routing EUROPE --tiers CHALLENGER,GRANDMASTER,MASTER",
     "dps:benchmark:optimizer": "tsx tools/dps/benchmark-optimizer.ts",
     "test:integration": "tsx tools/dps/smoke.ts",
-    "test:integration:dev": "tsx tools/dps/dev-smoke.ts"
+    "test:integration:dev": "tsx tools/dps/dev-smoke.ts",
+    "ui:capture": "tsx tools/dev/capture-ui.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1092.0",
