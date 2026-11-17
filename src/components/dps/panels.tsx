@@ -1,3 +1,5 @@
+import { Button } from "../ui/button.tsx";
+import { Select } from "../ui/select.tsx";
 import { itemLabel, traceCycles } from "../../domains/dps/compare-view.ts";
 import type { ProgressionApiResponse } from "../../domains/dps/datasets.ts";
 import type { ProgressionRarity } from "../../domains/dps/progression.ts";
@@ -96,7 +98,7 @@ export function TraceFold({
         <label className="fl" htmlFor="target-sel">
           Selected target
         </label>
-        <select
+        <Select
           id="target-sel"
           value={selectedTargetId}
           onChange={(event) => onSelectTarget(event.target.value)}
@@ -107,7 +109,7 @@ export function TraceFold({
               {Math.round(target.armor)} armor
             </option>
           ))}
-        </select>
+        </Select>
         {resultA ? (
           <>
             <p className="trace-title">{labels.a}</p>
@@ -116,9 +118,9 @@ export function TraceFold({
         ) : (
           <p className="note">Waiting for a run…</p>
         )}
-        <button type="button" className="ghost" onClick={onToggleCompared} aria-expanded={compared}>
+        <Button variant="outline" type="button" className="ghost" onClick={onToggleCompared} aria-expanded={compared}>
           {compared ? `Hide ${labels.shortB} trace` : `Show ${labels.shortB} trace`}
-        </button>
+        </Button>
         {compared && resultB && (
           <>
             <p className="trace-title">{labels.b}</p>

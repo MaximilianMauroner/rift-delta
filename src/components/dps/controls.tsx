@@ -1,12 +1,14 @@
+import { Button } from "../ui/button.tsx";
+import { Input } from "../ui/input.tsx";
+import { Select } from "../ui/select.tsx";
+import { Panel } from "../ui/panel.tsx";
 import { COMBO_PRESETS, actionAvailable } from "../../browser/dps/presets.ts";
 import { skillBounds } from "../../domains/dps/skills.ts";
 import type { AbilityRanks, ActionKind } from "../../domains/dps/types.ts";
 
 
-
 const RANK_KEYS = ["q", "w", "e", "r"] as const;
 const ACTION_KEYS: ActionKind[] = ["AA", "Q", "W", "R", "E"];
-
 
 
 export function AttackerCard({
@@ -28,43 +30,47 @@ export function AttackerCard({
 }) {
   const bounds = skillBounds(level);
   return (
-    <section className="card">
+    <Panel className="dps-panel">
       <div className="rail-head">
-        <h2>Attacker · Yunara</h2>
+        <h2>Attacker</h2>
+        <strong>Yunara</strong>
         <span className="pill">Lv {level}</span>
       </div>
       <label className="fl" htmlFor="level">
         Level
       </label>
-      <select id="level" value={level} onChange={(event) => onLevel(Number(event.target.value))}>
+      <Select id="level" value={level} onChange={(event) => onLevel(Number(event.target.value))}>
         {Array.from({ length: 18 }, (_, index) => (
           <option key={index + 1}>{index + 1}</option>
         ))}
-      </select>
+      </Select>
       <span className="fl">Ability ranks</span>
       <div className="ranks" role="group" aria-label="Ability ranks">
         {RANK_KEYS.map((key) => (
           <div className="rank" key={key}>
             <span>{key.toUpperCase()}</span>
             <div className="stepper">
-              <button
+              <Button
+                variant="outline"
                 aria-label={`Decrease ${key.toUpperCase()}`}
                 disabled={ranks[key] <= bounds[key].min}
                 onClick={() => onAdjustRank(key, -1)}
               >
                 −
-              </button>
-              <strong title={`Legal range ${bounds[key].min}–${bounds[key].max}`}>
+              </Button>
+              <strong>
                 {ranks[key]}
               </strong>
-              <button
+              <Button
+                variant="outline"
                 aria-label={`Increase ${key.toUpperCase()}`}
                 disabled={ranks[key] >= bounds[key].max}
                 onClick={() => onAdjustRank(key, 1)}
               >
                 +
-              </button>
+              </Button>
             </div>
+            <small className="note">{bounds[key].min}–{bounds[key].max}</small>
           </div>
         ))}
       </div>
@@ -76,7 +82,7 @@ export function AttackerCard({
       <label className="fl" htmlFor="yun-tal-stacks">
         Yun Tal starting stacks
       </label>
-      <input
+      <Input
         id="yun-tal-stacks"
         type="number"
         min={0}
@@ -91,7 +97,7 @@ export function AttackerCard({
         Ranged stacks out of 125. Stored frames do not expose crit chance, so this value is an
         explicit assumption. E is mobility-only.
       </p>
-    </section>
+    </Panel>
   );
 }
 
@@ -120,81 +126,86 @@ export function OpenerCard({
 }) {
   const illegal = !actions.every((action) => actionAvailable(action, level));
   return (
-    <section className="card">
-      <div className="rail-head">
-        <h2>Opener</h2>
-      </div>
-      <span className="fl">Preset</span>
-      <div className="toggle" aria-label="Combo presets">
-        {COMBO_PRESETS.map((preset) => (
-          <button key={preset.id} onClick={() => onPreset(preset)}>
-            {preset.label}
-          </button>
-        ))}
-      </div>
-      <span className="fl">Sequence</span>
-      <div className="opener">
-        {actions.map((action, index) => (
-          <span className="op-wrap" key={`${action}-${index}`}>
-            <button className="op" onClick={() => onRemoveAction(index)} title="Remove action">
-              {action} <small aria-hidden>×</small>
-            </button>
-            <button
-              className="op-move"
-              aria-label={`Move ${action} ${index === 0 ? "later" : "earlier"}`}
-              onClick={() => onMoveAction(index, index === 0 ? 1 : -1)}
-            >
-              {index === 0 ? "↓" : "↑"}
-            </button>
-          </span>
-        ))}
-      </div>
-      <div className="addrow">
-        {ACTION_KEYS.map((action) => (
-          <button
-            key={action}
-            onClick={() => onAddAction(action)}
-            disabled={!actionAvailable(action, level)}
-          >
-            + {action}
-          </button>
-        ))}
-      </div>
+    <>
       {illegal && (
         <p className="warn">
-          This opener contains an ability unavailable at level {level}; choose a preset or remove
-          it.
+          This opener contains an ability unavailable at level {level}; choose a preset or remove it.
         </p>
       )}
-      <span className="fl">After the opener</span>
-      <div className="toggle" role="group" aria-label="Continue autos">
-        <button
-          className={continueAutos ? "on" : ""}
-          onClick={() => onContinueAutos(true)}
-          aria-pressed={continueAutos}
-        >
-          Keep autoing
-        </button>
-        <button
-          className={!continueAutos ? "on" : ""}
-          onClick={() => onContinueAutos(false)}
-          aria-pressed={!continueAutos}
-        >
-          Stop
-        </button>
-      </div>
-      <label className="fl" htmlFor="duration">
-        Custom fight length (seconds)
-      </label>
-      <input
-        id="duration"
-        type="number"
-        min={1}
-        max={60}
-        value={duration}
-        onChange={(event) => onDuration(Number(event.target.value))}
-      />
-    </section>
+      <details className="fold opener-fold">
+        <summary>Opener and fight length</summary>
+        <div className="fold-body">
+          <span className="fl">Preset</span>
+          <div className="toggle" aria-label="Combo presets">
+            {COMBO_PRESETS.map((preset) => (
+              <Button variant="outline" key={preset.id} onClick={() => onPreset(preset)}>
+                {preset.label}
+              </Button>
+            ))}
+          </div>
+          <span className="fl">Sequence</span>
+          <div className="opener">
+            {actions.map((action, index) => (
+              <span className="op-wrap" key={`${action}-${index}`}>
+                <Button variant="outline" className="op" onClick={() => onRemoveAction(index)} aria-label={`Remove ${action} action ${index + 1}`}>
+                  {action} <small aria-hidden>×</small>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="op-move"
+                  aria-label={`Move ${action} ${index === 0 ? "later" : "earlier"}`}
+                  onClick={() => onMoveAction(index, index === 0 ? 1 : -1)}
+                >
+                  {index === 0 ? "↓" : "↑"}
+                </Button>
+              </span>
+            ))}
+          </div>
+          <div className="addrow">
+            {ACTION_KEYS.map((action) => (
+              <Button
+                variant="outline"
+                key={action}
+                onClick={() => onAddAction(action)}
+                disabled={!actionAvailable(action, level)}
+              >
+                + {action}
+              </Button>
+            ))}
+          </div>
+          <span className="fl">After the opener</span>
+          <div className="toggle" role="group" aria-label="Continue autos">
+            <Button
+              variant="outline"
+              className={continueAutos ? "on" : ""}
+              onClick={() => onContinueAutos(true)}
+              aria-pressed={continueAutos}
+            >
+              Keep autoing
+            </Button>
+            <Button
+              variant="outline"
+              className={!continueAutos ? "on" : ""}
+              onClick={() => onContinueAutos(false)}
+              aria-pressed={!continueAutos}
+            >
+              Stop
+            </Button>
+          </div>
+          <label className="fl" htmlFor="duration">
+            Custom fight length (seconds)
+          </label>
+          <Input
+            id="duration"
+            type="number"
+            min={1}
+            max={60}
+            value={duration}
+            onChange={(event) => onDuration(Number(event.target.value))}
+          />
+        </div>
+      </details>
+    </>
   );
 }
 
@@ -246,26 +257,28 @@ export function TargetCard({
   onMetric: (metric: "damage" | "ttk") => void;
 }) {
   return (
-    <section className="card">
+    <Panel className="dps-panel">
       <div className="rail-head">
         <h2>Target</h2>
         {snapshotCount !== null && <span className="pill">{snapshotCount}</span>}
       </div>
       <div className="toggle" role="group" aria-label="Target mode">
-        <button
+        <Button
+          variant="outline"
           className={targetMode === "realistic" ? "on" : ""}
           onClick={() => onTargetMode("realistic")}
           aria-pressed={targetMode === "realistic"}
         >
           Realistic
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="outline"
           className={targetMode === "manual" ? "on" : ""}
           onClick={() => onTargetMode("manual")}
           aria-pressed={targetMode === "manual"}
         >
           Manual
-        </button>
+        </Button>
       </div>
       {targetMode === "realistic" ? (
         <>
@@ -274,49 +287,49 @@ export function TargetCard({
               <label className="fl" htmlFor="region">
                 Region
               </label>
-              <select id="region" value={region} onChange={(event) => onRegion(event.target.value)}>
+              <Select id="region" value={region} onChange={(event) => onRegion(event.target.value)}>
                 <option value="EUW1">EUW1</option>
                 <option value="NA1">NA1</option>
                 <option value="KR">KR</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label className="fl" htmlFor="rank">
                 Rank
               </label>
-              <select id="rank" value={rank} onChange={(event) => onRank(event.target.value)}>
+              <Select id="rank" value={rank} onChange={(event) => onRank(event.target.value)}>
                 <option value="ALL">All ranks</option>
                 <option value="CHALLENGER">Challenger</option>
                 <option value="GRANDMASTER">Grandmaster</option>
                 <option value="MASTER">Master</option>
-              </select>
+              </Select>
             </div>
           </div>
           <label className="fl" htmlFor="role">
             Role
           </label>
-          <select id="role" value={role} onChange={(event) => onRole(event.target.value)}>
+          <Select id="role" value={role} onChange={(event) => onRole(event.target.value)}>
             <option value="ALL">All roles</option>
-            <option>TOP</option>
-            <option>JUNGLE</option>
-            <option>MIDDLE</option>
-            <option>BOTTOM</option>
-            <option>UTILITY</option>
-          </select>
+            <option value="TOP">Top</option>
+            <option value="JUNGLE">Jungle</option>
+            <option value="MIDDLE">Middle</option>
+            <option value="BOTTOM">Bottom</option>
+            <option value="UTILITY">Utility</option>
+          </Select>
           <label className="fl" htmlFor="phase">
             Timing
           </label>
-          <select id="phase" value={phase} onChange={(event) => onPhase(event.target.value)}>
+          <Select id="phase" value={phase} onChange={(event) => onPhase(event.target.value)}>
             <option value="yunara-level">Same-frame Yunara level</option>
             <option value="yunara-third-item">Yunara third item</option>
             <option value="bot-carry-third-item">Bot carry fallback</option>
             <option value="minute-window">Around minute 25</option>
-          </select>
+          </Select>
           <label className="fl" htmlFor="champ">
             Champion
           </label>
           <div className="apply-row">
-            <input
+            <Input
               id="champ"
               type="text"
               placeholder="Any champion"
@@ -329,7 +342,7 @@ export function TargetCard({
                 }
               }}
             />
-            <button onClick={onCommitChampion}>Apply</button>
+            <Button variant="outline" onClick={onCommitChampion}>Apply</Button>
           </div>
           <p className="note">
             Filter in use: {appliedChampion || "any champion"}. Typing does not fetch until Apply or
@@ -340,9 +353,9 @@ export function TargetCard({
         <div className="two" style={{ marginTop: 4 }}>
           {(
             [
-              ["health", "HP"],
+              ["health", "Health"],
               ["armor", "Armor"],
-              ["magicResist", "MR"],
+              ["magicResist", "Magic resist"],
               ["bonusHealth", "Bonus HP"],
             ] as const
           ).map(([key, label]) => (
@@ -350,7 +363,7 @@ export function TargetCard({
               <label className="fl" htmlFor={`m-${key}`}>
                 {label}
               </label>
-              <input
+              <Input
                 id={`m-${key}`}
                 type="number"
                 value={manual[key]}
@@ -362,26 +375,28 @@ export function TargetCard({
       )}
       <span className="fl">Metric</span>
       <div className="toggle" role="group" aria-label="Comparison metric">
-        <button
+        <Button
+          variant="outline"
           className={metric === "damage" ? "on" : ""}
           onClick={() => onMetric("damage")}
           aria-pressed={metric === "damage"}
         >
           Damage
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="outline"
           className={metric === "ttk" ? "on" : ""}
           onClick={() => onMetric("ttk")}
           aria-pressed={metric === "ttk"}
         >
           TTK
-        </button>
+        </Button>
       </div>
       <p className="note">
         {metric === "ttk"
           ? "Lower first-crossing time wins; uncensored kills only."
           : "Mortal targets stop at death; two kills are an applied-damage tie."}
       </p>
-    </section>
+    </Panel>
   );
 }

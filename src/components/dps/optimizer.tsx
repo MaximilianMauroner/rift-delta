@@ -1,3 +1,6 @@
+import { Button } from "../ui/button.tsx";
+import { Select } from "../ui/select.tsx";
+import { Panel } from "../ui/panel.tsx";
 import { itemLabel } from "../../domains/dps/compare-view.ts";
 import { OPTIMIZER_COVERAGE } from "../../domains/dps/optimizer.ts";
 import type {
@@ -41,14 +44,12 @@ export function OptimizerPanel({
   running,
   progress,
   result,
-  cohortCount,
   error,
   onObjective,
   onSlotCount,
   onTopN,
   onRun,
   onCancel,
-  onUseBuild,
 }: {
   objective: OptimizerObjective;
   slotCount: number;
@@ -56,59 +57,26 @@ export function OptimizerPanel({
   running: boolean;
   progress: OptimizerWorkerProgress | null;
   result: OptimizerSearchResult | null;
-  cohortCount: number | null;
   error: string;
   onObjective: (objective: OptimizerObjective) => void;
   onSlotCount: (slotCount: number) => void;
   onTopN: (topN: number) => void;
   onRun: () => void;
   onCancel: () => void;
-  onUseBuild: (build: OptimizerRankedBuild["candidate"], side: "a" | "b") => void;
 }) {
   const selectedObjective = OBJECTIVES.find((item) => item.value === objective)!;
   const shownProgress = progress?.progress ?? (result ? 1 : 0);
   return (
-    <section className="card optimizer-panel" aria-labelledby="optimizer-title">
+    <Panel className="dps-panel optimizer-panel" role="region" aria-labelledby="optimizer-title">
       <div className="rail-head">
-        <h2 id="optimizer-title">Find the best modeled build</h2>
-        <span className="pill">exhaustive · modeled coverage</span>
-      </div>
-      <p className="sub">
-        Search every legal one-boot combination in the {TRUSTED_ITEMS.length}-item modeled
-        single-target catalog. Results are best for the selected objective, cohort, and constraints
-        within this modeled coverage—not globally optimal. Pairwise comparison below remains
-        available for inspecting any result.
-      </p>
-      <p className="note optimizer-coverage">
-        <strong>Eligible modeled items ({TRUSTED_ITEMS.length}):</strong>{" "}
-        {TRUSTED_ITEMS.map((item) => `${item.name} (${item.id})`).join(" · ")}
-      </p>
-      {NO_DAMAGE_ITEMS.length > 0 && (
-        <p className="note">
-          <strong>Modeled with no direct damage effect in this scope:</strong>{" "}
-          {NO_DAMAGE_ITEMS.map((item) => `${item.name} (${item.id})`).join(" · ")}.
-        </p>
-      )}
-      <div className="optimizer-exclusions">
-        <strong>Excluded unsupported items ({EXCLUDED_ITEMS.length}):</strong>
-        {EXCLUDED_ITEMS.length === 0 ? (
-          <span> none; every catalog item is eligible for this declared scope.</span>
-        ) : (
-          <ul>
-            {EXCLUDED_ITEMS.map((item) => (
-              <li key={item.id}>
-                {item.name} ({item.id}) — {item.reason}
-              </li>
-            ))}
-          </ul>
-        )}
+        <h2 id="optimizer-title">Find a build</h2>
       </div>
       <div className="optimizer-controls">
         <div>
           <label className="fl" htmlFor="optimizer-objective">
             Objective
           </label>
-          <select
+          <Select
             id="optimizer-objective"
             value={objective}
             onChange={(event) => onObjective(event.target.value as OptimizerObjective)}
@@ -119,13 +87,13 @@ export function OptimizerPanel({
                 {item.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="fl" htmlFor="optimizer-slots">
             Completed slots
           </label>
-          <select
+          <Select
             id="optimizer-slots"
             value={slotCount}
             onChange={(event) => onSlotCount(Number(event.target.value))}
@@ -136,13 +104,13 @@ export function OptimizerPanel({
                 {count} items · 1 boot
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="fl" htmlFor="optimizer-top-n">
             Results
           </label>
-          <select
+          <Select
             id="optimizer-top-n"
             value={topN}
             onChange={(event) => onTopN(Number(event.target.value))}
@@ -153,20 +121,55 @@ export function OptimizerPanel({
                 Top {count}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
       <p className="note">{selectedObjective.detail}</p>
       <div className="actions optimizer-actions">
-        <button className="primary" onClick={onRun} disabled={running}>
+        <Button className="primary" onClick={onRun} disabled={running}>
           {running ? "Searching…" : "Search all builds"}
-        </button>
+        </Button>
         {running && (
-          <button className="ghost" onClick={onCancel}>
+          <Button variant="outline" className="ghost" onClick={onCancel}>
             Cancel search
-          </button>
+          </Button>
         )}
       </div>
+      <details className="fold search-coverage">
+        <summary>Search coverage and limits</summary>
+        <div className="fold-body">
+          <p className="sub">
+            Search every legal one-boot combination in the {TRUSTED_ITEMS.length}-item modeled
+            single-target catalog. Results are best for the selected objective, cohort, and constraints
+            within this modeled coverage. Pairwise comparison remains
+            available for inspecting any result.
+          </p>
+          <p className="note optimizer-coverage">
+            <strong>Eligible modeled items ({TRUSTED_ITEMS.length}):</strong>{" "}
+            {TRUSTED_ITEMS.map((item) => `${item.name} (${item.id})`).join(" · ")}
+          </p>
+          {NO_DAMAGE_ITEMS.length > 0 && (
+            <p className="note">
+              <strong>Modeled with no direct damage effect in this scope:</strong>{" "}
+              {NO_DAMAGE_ITEMS.map((item) => `${item.name} (${item.id})`).join(" · ")}.
+            </p>
+          )}
+          <div className="optimizer-exclusions">
+            <strong>Excluded unsupported items ({EXCLUDED_ITEMS.length}):</strong>
+            {EXCLUDED_ITEMS.length === 0 ? (
+              <span> none; every catalog item is eligible for this declared scope.</span>
+            ) : (
+              <ul>
+                {EXCLUDED_ITEMS.map((item) => (
+                  <li key={item.id}>
+                    {item.name} ({item.id}) — {item.reason}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </details>
       {running && progress && (
         <div className="optimizer-progress" aria-live="polite">
           <div className="optimizer-progress-head">
@@ -184,28 +187,42 @@ export function OptimizerPanel({
           {error}
         </p>
       )}
-      {result && !running && (
-        <div className="optimizer-results" aria-live="polite">
-          <div className="optimizer-result-head">
-            <strong>{result.candidateCount.toLocaleString()} legal modeled builds searched</strong>
-            <span>
-              {result.evaluatedCount.toLocaleString()} evaluated
-              {cohortCount === null ? "" : ` · ${cohortCount.toLocaleString()} targets`}
-            </span>
-          </div>
-          <div className="optimizer-list">
-            {result.rankings.map((row) => (
-              <OptimizerRow key={row.candidate.identity} row={row} onUseBuild={onUseBuild} />
-            ))}
-          </div>
-          <p className="note">
-            This ranking is scoped to the selected objective, cohort, one-boot slot constraint, and
-            modeled item coverage. TTK excludes censored targets from its mean and reports kill
-            coverage separately.
-          </p>
+    </Panel>
+  );
+}
+
+export function OptimizerResults({
+  result,
+  cohortCount,
+  onUseBuild,
+}: {
+  result: OptimizerSearchResult | null;
+  cohortCount: number | null;
+  onUseBuild: (build: OptimizerRankedBuild["candidate"], side: "a" | "b") => void;
+}) {
+  if (!result) return null;
+  return (
+    <Panel className="dps-panel" role="region" aria-label="Build search results">
+      <div className="optimizer-results" aria-live="polite">
+        <div className="optimizer-result-head">
+          <strong>{result.candidateCount.toLocaleString()} legal modeled builds searched</strong>
+          <span>
+            {result.evaluatedCount.toLocaleString()} evaluated
+            {cohortCount === null ? "" : ` · ${cohortCount.toLocaleString()} targets`}
+          </span>
         </div>
-      )}
-    </section>
+        <div className="optimizer-list">
+          {result.rankings.map((row) => (
+            <OptimizerRow key={row.candidate.identity} row={row} onUseBuild={onUseBuild} />
+          ))}
+        </div>
+        <p className="note">
+          This ranking is scoped to the selected objective, cohort, one-boot slot constraint, and
+          modeled item coverage. TTK excludes censored targets from its mean and reports kill
+          coverage separately.
+        </p>
+      </div>
+    </Panel>
   );
 }
 
@@ -238,12 +255,12 @@ function OptimizerRow({
         </div>
       </div>
       <div className="optimizer-row-actions">
-        <button className="ghost" onClick={() => onUseBuild(row.candidate, "a")}>
+        <Button variant="outline" className="ghost" onClick={() => onUseBuild(row.candidate, "a")}>
           Use as A
-        </button>
-        <button className="ghost" onClick={() => onUseBuild(row.candidate, "b")}>
+        </Button>
+        <Button variant="outline" className="ghost" onClick={() => onUseBuild(row.candidate, "b")}>
           Use as B
-        </button>
+        </Button>
       </div>
     </article>
   );
