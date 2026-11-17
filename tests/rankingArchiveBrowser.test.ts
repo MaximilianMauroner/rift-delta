@@ -140,11 +140,10 @@ test('ranking browser bootstraps without archive history, selects a year, pages,
     await page.getByRole('heading', { name: 'Power over time', exact: true }).hover()
     await page.locator('.recharts-line-curve').first().waitFor()
     await page.getByTitle('Open Alpha', { exact: true }).click()
-    const detail = page.locator('.team-detail-sheet')
+    const detail = page.getByRole('region', { name: 'Team details', exact: true })
     await detail.waitFor()
-    assert.equal(await detail.getAttribute('aria-label'), 'Alpha details')
-    assert.equal(await detail.getAttribute('aria-modal'), 'true')
-    assert.equal(await page.evaluate(() => document.querySelector('.team-detail-sheet')?.contains(document.activeElement)), true)
+    assert.equal(await detail.getByRole('heading', { level: 2 }).textContent(), 'Alpha')
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Alpha', 'Opening a team moves focus to its dossier heading')
     await detail.locator('.recharts-line-curve').first().waitFor()
     await detail.locator('svg.recharts-surface').first().focus()
     const pointDetails = detail.getByText('Match and model details', { exact: true })
@@ -152,12 +151,9 @@ test('ranking browser bootstraps without archive history, selects a year, pages,
     await page.keyboard.press('Tab')
     await page.waitForFunction(() => document.activeElement?.textContent === 'Match and model details', undefined, { timeout: 2_000 })
     assert.equal(await pointDetails.evaluate((summary) => summary === document.activeElement), true)
-    for (let index = 0; index < 20; index++) {
-      await page.keyboard.press(index < 10 ? 'Tab' : 'Shift+Tab')
-      await page.waitForFunction(() => document.querySelector('.team-detail-sheet')?.contains(document.activeElement), undefined, { timeout: 2_000 })
-    }
     await page.keyboard.press('Escape')
     await detail.waitFor({ state: 'hidden' })
+    await page.waitForFunction(() => document.activeElement?.getAttribute('title') === 'Open Alpha', undefined, { timeout: 2_000 })
   } finally { await browser?.close(); await server.close() }
 })
 

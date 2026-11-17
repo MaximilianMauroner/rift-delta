@@ -235,7 +235,7 @@ test('the Rankings board follows its address after load: typed and linked hashes
 
     // The closed Players panel must not compete with the selected team's chart.
     await rows.first().getByRole('button').first().click()
-    const detail = page.getByRole('dialog')
+    const detail = page.getByRole('region', { name: 'Team details', exact: true })
     await detail.locator('.recharts-surface').first().waitFor()
     assert.equal(dataRequests.includes('/data/entities/players.json'), false)
     const playerResponse = page.waitForResponse((response) => new URL(response.url()).pathname === '/data/entities/players.json')

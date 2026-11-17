@@ -29,10 +29,10 @@ export function TeamLeagueProfile({
   const subject = team.code ?? team.team
   return (
     <section
-      className="grid gap-2 rounded-md border border-line bg-[var(--detail-surface-2,var(--surface))] px-5 py-4 max-[900px]:px-4"
+      className="grid gap-2 border-t border-line px-4 py-4"
       aria-label={`${subject} compared with ${team.league}`}
     >
-      <h3 className="text-base font-semibold text-text">Compared with {team.league}</h3>
+      <h3 className="text-sm font-semibold text-text">Compared with {team.league}</h3>
       <ol className="grid min-w-0 divide-y divide-line">
         {profile.positions.map((position) => {
           const metric = TEAM_FIELD_METRICS[position.metric]

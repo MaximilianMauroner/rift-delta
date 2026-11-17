@@ -773,3 +773,84 @@ table.ranking-table.board-grid tbody td {
     justify-self: center;
   }
 }
+
+.board-layout {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+  min-width: 0;
+}
+.ranking-table tbody tr.is-selected {
+  background: var(--focus-wash);
+  box-shadow: inset 0 0 0 1px var(--focus);
+}
+.team-dossier {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+.team-dossier__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+.team-dossier__card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--league-color, var(--league-other));
+  border-radius: var(--panel-radius);
+  background: var(--surface);
+}
+.team-dossier__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+}
+.team-dossier__facts > div {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  margin: 0 -1px -1px 0;
+  padding: 10px 16px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.team-dossier__facts dt,
+.team-dossier__facts small {
+  color: var(--muted);
+  font-size: var(--type-xs);
+  line-height: 1.4;
+}
+.team-dossier__facts dd { display: grid; gap: 2px; margin: 0; }
+.team-dossier__facts b {
+  color: var(--text);
+  font-size: var(--type-base);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 1280px) {
+  .board-layout:has(> .team-dossier) {
+    grid-template-columns: minmax(0, 1fr) 380px;
+  }
+  .team-dossier {
+    position: sticky;
+    top: 16px;
+    max-height: calc(100dvh - 32px - var(--tray-h, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .team-dossier__back { display: none; }
+}
+@media (max-width: 1279px) {
+  main:has(.team-dossier) .board-chrome,
+  main:has(.team-dossier) .compare-tray,
+  .rankings-view:has(.team-dossier) > :not(.board-layout),
+  .board-layout:has(> .team-dossier) > .board-main {
+    display: none;
+  }
+  .team-dossier__close { display: none; }
+}

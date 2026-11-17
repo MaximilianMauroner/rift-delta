@@ -420,9 +420,10 @@ export function RankingRoute() {
         tabIndex={-1}
         ref={mainRef}
       >
-        {comparePage ? null : <ModeHeader mode={mode} />}
+        {/* The board chrome steps aside when a team takes the whole screen. */}
+        {comparePage ? null : <div className="board-chrome contents"><ModeHeader mode={mode} /></div>}
 
-        {comparePage ? null : <ScopeBar
+        {comparePage ? null : <div className="board-chrome contents"><ScopeBar
           seasons={seasonTabs}
           activeSeason={activeSeason}
           checkpoints={mode === 'players' ? [] : checkpointTabs}
@@ -439,7 +440,7 @@ export function RankingRoute() {
             if (!activeSeason) return
             preloadOnIntent(checkpointId ? checkpointScope(activeSeason, checkpointId) : `season:${activeSeason}`)
           }}
-        />}
+        /></div>}
 
         {/* Fixed to the bottom edge and, on wider screens, present before the
             first pick. Inline, it scrolled out of view while the reader picked
@@ -448,7 +449,7 @@ export function RankingRoute() {
             first pick: there the labelled row checkbox announces the feature
             and the screen height is better spent on teams. */}
         {hasCompareTray ? (
-          <div ref={reserveTrayHeight} className={cn('fixed inset-x-0 bottom-0 z-40 border-t border-line bg-[color-mix(in_srgb,var(--surface)_94%,var(--ground))] px-[var(--page-x)] py-2 max-sm:bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] max-sm:px-3', compareEntities.length === 0 && 'max-sm:hidden')}>
+          <div ref={reserveTrayHeight} className={cn('compare-tray fixed inset-x-0 bottom-0 z-40 border-t border-line bg-[color-mix(in_srgb,var(--surface)_94%,var(--ground))] px-[var(--page-x)] py-2 max-sm:bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] max-sm:px-3', compareEntities.length === 0 && 'max-sm:hidden')}>
             <CompareDock
               subject={mode === 'regions' ? 'regions' : 'teams'}
               limit={COMPARE_LIMIT}

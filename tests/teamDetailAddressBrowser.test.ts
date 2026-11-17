@@ -9,7 +9,9 @@ import { createTeamDetailFixture, teamIds } from './fixtures/teamDetailAddress.t
 const board = (season = '2026', extra = '') => `#rankings?scope=season:${season}&eligibility=all${extra ? `&${extra}` : ''}`
 const invalid = board('2026', `teamDetail=${teamIds.retired}&team=Synthetic&sort=rating&keep=untouched`)
 const notice = (page: Page) => page.getByRole('status').filter({ hasText: 'This team is not available' })
-const drawer = (page: Page) => page.getByRole('dialog')
+const drawer = (page: Page) => page.getByRole('region', { name: 'Team details', exact: true })
+/** Wide screens close the dossier beside the board; narrow ones go back from the team screen. */
+const closeTeam = (page: Page) => drawer(page).getByRole('button', { name: /^(Close|Back to rankings)$/ }).click()
 const query = (page: Page) => page.evaluate(() => Object.fromEntries(new URLSearchParams(location.hash.split('?')[1])))
 
 async function withFixture(run: (page: Page, base: string, fixture: ReturnType<typeof createTeamDetailFixture>) => Promise<void>, width = 1280) {
@@ -144,7 +146,7 @@ test('valid omitted-scope native links retain the selected season, filters and u
       assert.equal(await notice(page).count(), 0)
       assert.deepEqual(await query(page), { eligibility: 'all', teamDetail: id, team: 'Hidden', region: 'LEC', sort: 'wins', size: '15', keep: 'omitted' })
       const entries = await page.evaluate(() => history.length)
-      await drawer(page).getByRole('button', { name: 'Close', exact: true }).click()
+      await closeTeam(page)
       await drawer(page).waitFor({ state: 'hidden' })
       assert.equal(await page.evaluate(() => history.length), entries)
       assert.equal((await query(page)).keep, 'omitted')
@@ -187,14 +189,14 @@ test('valid cold and native links retain filters and use replace-close or push/B
     await expectTeam(page, 'Alpha')
     await drawer(page).locator('.recharts-line-curve').first().waitFor()
     const initial = await page.evaluate(() => history.length)
-    await drawer(page).getByRole('button', { name: 'Close', exact: true }).click()
+    await closeTeam(page)
     await drawer(page).waitFor({ state: 'hidden' })
     assert.equal(await page.evaluate(() => history.length), initial)
     assert.deepEqual(await query(page), { scope: 'season:2026', eligibility: 'all', keep: 'safe' })
     await page.getByTitle('Open Synthetic Beta', { exact: true }).click()
     await expectTeam(page, 'Beta')
     assert.equal(await page.evaluate(() => history.length), initial + 1)
-    await drawer(page).getByRole('button', { name: 'Close', exact: true }).click()
+    await closeTeam(page)
     await drawer(page).waitFor({ state: 'hidden' })
     await page.getByTitle('Open Synthetic Beta', { exact: true }).click()
     await expectTeam(page, 'Beta')
@@ -203,7 +205,7 @@ test('valid cold and native links retain filters and use replace-close or push/B
     await page.goForward()
     await expectTeam(page, 'Beta')
     const forwarded = await page.evaluate(() => history.length)
-    await drawer(page).getByRole('button', { name: 'Close', exact: true }).click()
+    await closeTeam(page)
     await drawer(page).waitFor({ state: 'hidden' })
     assert.equal(await page.evaluate(() => history.length), forwarded)
     for (const [name, id] of [['Alpha', teamIds.alpha], ['Beta', teamIds.beta]]) {
@@ -300,4 +302,27 @@ test('a valid team key survives delayed exact tournament projection without a sc
     await drawer(page).locator('.recharts-line-curve').first().waitFor()
     assert.equal((await query(page)).tournament, 'tournament:msi:2025')
   })
+})
+
+test('the phone team screen steps through the board with Previous and Next in one history entry', { timeout: 60_000 }, async () => {
+  await withFixture(async (page, base) => {
+    await page.goto(`${base}${board('2026')}`)
+    const before = await page.evaluate(() => history.length)
+    await page.getByTitle('Open Synthetic Alpha', { exact: true }).click()
+    await expectTeam(page, 'Alpha')
+    assert.equal(await page.getByRole('heading', { name: 'Team Power Index', exact: true }).isVisible(), false, 'The team takes the whole screen')
+    const pages = drawer(page).getByRole('navigation', { name: 'Team pages', exact: true })
+    const order = await page.locator('[data-team-key]').evaluateAll((rows) => rows.map((row) => row.getAttribute('data-team-key')))
+    const [forward, back] = order[0] === teamIds.alpha ? ['Next', 'Previous'] : ['Previous', 'Next']
+    await pages.getByRole('button', { name: `${forward} team, Synthetic Beta`, exact: true }).click()
+    await expectTeam(page, 'Beta')
+    assert.equal((await query(page)).teamDetail, teamIds.beta)
+    await pages.getByRole('button', { name: `${back} team, Synthetic Alpha`, exact: true }).click()
+    await expectTeam(page, 'Alpha')
+    assert.equal(await page.evaluate(() => history.length), before + 1, 'Previous and Next replace the team entry')
+    await closeTeam(page)
+    await drawer(page).waitFor({ state: 'hidden' })
+    assert.equal((await query(page)).teamDetail, undefined)
+    await page.waitForFunction(() => document.activeElement?.getAttribute('title') === 'Open Synthetic Alpha', undefined, { timeout: 2_000 })
+  }, 390)
 })

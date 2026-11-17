@@ -44,7 +44,7 @@ import { DataSourcesDisclosure } from './DataSourcesDisclosure'
 import { LazyTeamHistoryLineChart, loadTeamHistoryLineChart } from './historyChart'
 import { playersForTeam } from './playerData'
 import { PowerLadder } from './PowerLadder'
-import { TeamDetailDrawer } from './TeamDetailDrawer'
+import { TeamDossier } from './TeamDossier'
 import { dailyChartPointsFromHistoryPoints, deriveDailyRankSeries, internationalChartEvents, tournamentChartPoints } from './teamHistoryChart'
 import { type TrajectoryInsight } from './trajectory'
 import { type PlayerLoadState, type TeamDataSummary, type TrajectoryMetric } from './types'
@@ -58,6 +58,10 @@ const DEFAULT_TEAM_PAGE_SIZE = 25
 const LADDER_TEAM_LIMIT = 16
 
 const DEFAULT_FOCUS_TEAMS = 5
+
+/** Below this width the dossier is its own screen rather than a column beside the board. */
+const TEAM_PAGE_QUERY = '(max-width: 1279px)'
+const isTeamPageWidth = () => window.matchMedia(TEAM_PAGE_QUERY).matches
 
 const SERIES_COLORS = ['var(--league-lck)', 'var(--league-lpl)', 'var(--league-lec)', 'var(--league-lcs)', 'var(--league-lcp)', 'var(--league-cblol)']
 
@@ -262,7 +266,7 @@ export function TeamsView({
   const detailLineup = detailTeam ? currentLineups?.[detailTeam.teamId] : undefined
 
   useEffect(() => {
-    if (!onRequestTeamHistory || exactTournamentId || detailTeam) return undefined
+    if (!onRequestTeamHistory || exactTournamentId) return undefined
     const panel = trajectoryPanelRef.current
     if (!panel) return undefined
 
@@ -280,7 +284,7 @@ export function TeamsView({
 
     observer.observe(panel)
     return () => observer.disconnect()
-  }, [detailTeam, exactTournamentId, onRequestTeamHistory])
+  }, [exactTournamentId, onRequestTeamHistory])
 
   const pickedFocusTeams = useMemo(
     () => exactTournamentId ? pickedTeams.filter((team) => activeHistory?.[teamKey(team)]) : pickedTeams,
@@ -292,7 +296,12 @@ export function TeamsView({
   )
   // Colours follow teams, not positions. Derived during render and stored only
   // when the assignment changes, so an unchanged assignment keeps its identity.
-  const requestedHistoryTeams = (detailTeam ? [teamKey(detailTeam)] : focusTeams.map(teamKey)).sort().join('\u0000')
+  // The dossier and the trajectory panel are on screen together, so the
+  // request covers both sets of teams.
+  const requestedHistoryTeams = [...new Set([
+    ...(detailTeam ? [teamKey(detailTeam)] : []),
+    ...(trajectoryRequested ? focusTeams.map(teamKey) : []),
+  ])].sort().join('\u0000')
   useEffect(() => {
     if ((detailTeam || trajectoryRequested) && !exactTournamentId) onRequestTeamHistory?.(requestedHistoryTeams.split('\u0000').filter(Boolean))
   }, [detailTeam, trajectoryRequested, exactTournamentId, onRequestTeamHistory, requestedHistoryTeams])
@@ -361,7 +370,39 @@ export function TeamsView({
     setPageState({ scopeKey: pageScopeKey, page: 1 })
   }
 
+  const detailKey = detailTeam ? teamKey(detailTeam) : undefined
+  const neighbours = useMemo(() => {
+    if (!detailKey) return undefined
+    const index = rows.findIndex((team) => teamKey(team) === detailKey)
+    if (index < 0) return undefined
+    return { position: index + 1, count: rows.length, previous: rows[index - 1], next: rows[index + 1] }
+  }, [detailKey, rows])
+
+  // On its own screen the dossier starts at the top, and closing it returns
+  // to the board where the reader left it, with focus on the team's row.
+  const boardScroll = useRef(0)
+  const shownKey = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    const previous = shownKey.current
+    shownKey.current = detailKey
+    if (detailKey && !previous && isTeamPageWidth()) window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    if (!detailKey && previous) {
+      const row = document.querySelector<HTMLElement>(`[data-team-key="${CSS.escape(previous)}"] .team-cell__button`)
+      if (isTeamPageWidth()) window.scrollTo({ top: boardScroll.current, left: 0, behavior: 'auto' })
+      row?.focus({ preventScroll: true })
+    }
+  }, [detailKey])
+
+  // A search from the team screen must show the board it filters.
+  const searchedFor = useRef(search)
+  useEffect(() => {
+    if (searchedFor.current === search) return
+    searchedFor.current = search
+    if (detailKey && isTeamPageWidth()) detail.dismiss()
+  }, [detail, detailKey, search])
+
   function openTeam(team: RankingSummaryStanding) {
+    if (!detailKey) boardScroll.current = window.scrollY
     detail.open(teamKey(team))
   }
 
@@ -400,8 +441,8 @@ export function TeamsView({
         </Alert>
       ) : null}
       {headline ? <p className="board-headline max-w-[72ch] text-lg leading-[1.3] font-semibold text-text">{headline}</p> : null}
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_320px] items-start gap-6 max-[1488px]:grid-cols-1">
-        <div className="min-w-0">
+      <div className="board-layout">
+        <div className="board-main min-w-0">
           <Panel className="ranking-board">
             <PanelHeader
               title={activeTournament ? `${activeTournament.label} standings` : 'Power ranking'}
@@ -571,10 +612,13 @@ export function TeamsView({
                       return (
                         <TableRow
                           data-first-answer="rankings"
+                          data-team-key={key}
                           key={key}
+                          aria-current={key === detailKey ? 'true' : undefined}
                           className={cn(
                             'board-row group/board cursor-pointer outline-offset-[-2px] hover:bg-raised focus-visible:outline-2 focus-visible:outline-focus',
                             pickedKeys.has(key) && 'is-picked',
+                            key === detailKey && 'is-selected',
                             excludedFromRankedBoard && 'is-excluded bg-[color-mix(in_srgb,var(--raised)_58%,transparent)] text-[color-mix(in_srgb,var(--text)_76%,var(--muted))] hover:bg-[color-mix(in_srgb,var(--line)_70%,transparent)]',
                           )}
                           title={excludedFromRankedBoard ? eligibilityReasonsTitle(team) : undefined}
@@ -655,10 +699,34 @@ export function TeamsView({
             ) : null}
           </Panel>
         </div>
+        {detailTeam ? (
+          <TeamDossier
+            team={detailTeam}
+            standings={standings}
+            rankedStandings={universe.rankedStandings}
+            model={model}
+            tier={tierFor(detailTeam)}
+            series={activeHistory?.[teamKey(detailTeam)]}
+            historyState={historyState}
+            tournament={activeTournament}
+            tournamentMovement={movementByTeamId.get(detailTeam.teamId)}
+            players={detailPlayers}
+            currentLineup={detailLineup}
+            playerLoadState={playerLoadState}
+            playerScopeLabel={playerScopeLabel}
+            onRequestPlayers={onRequestPlayers}
+            seeded={Boolean(panelData?.seeded)}
+            events={seasonEvents}
+            neighbours={neighbours}
+            matchesHref={`#matches?${new URLSearchParams({ scope: effectiveScope, team: detailTeam.team })}`}
+            onClose={detail.close}
+            onShow={(team) => detail.replace(teamKey(team))}
+          />
+        ) : null}
+      </div>
 
-        {/* Beside the board on wide screens, below it on narrow ones, so a
-            phone reaches the teams first. */}
-        <aside className="board-sidebar grid min-w-0 content-start gap-4 max-[1280px]:grid-cols-2 max-[900px]:grid-cols-1" aria-label="Ranking overview">
+      <div className="board-extras grid min-w-0 gap-4">
+        <aside className="board-sidebar grid min-w-0 content-start gap-4 min-[900px]:grid-cols-2" aria-label="Ranking overview">
           {ladderGroups.flat().length >= 2 ? (
             <Panel aria-label="Power ladder">
               <PanelHeader title="Power ladder" actions={<span className="text-xs text-muted">{ladderGroups.flat().length < rows.length ? `top ${ladderGroups.flat().length}` : 'all ranked'}</span>} />
@@ -670,7 +738,6 @@ export function TeamsView({
           <WhatChanged period={activeTournament ? activeTournament.label : '30 days'} riser={changes.riser} faller={changes.faller} upset={changes.upset} />
           <RegionalStrengthTeaser regions={regions} href={regionsHref} />
         </aside>
-      </div>
 
       <Panel
         ref={trajectoryPanelRef}
@@ -696,7 +763,7 @@ export function TeamsView({
             />
           }
         />
-        {detailTeam ? <div className="min-h-[300px]" aria-hidden="true" /> : exactTournamentId && tournamentMovementState.status === 'loading' ? (
+        {exactTournamentId && tournamentMovementState.status === 'loading' ? (
           <LoadingState presentation="chart" className="m-5" label="Loading tournament movement" />
         ) : exactTournamentId && tournamentMovementState.status === 'idle' ? (
           <p className="text-muted p-5">Tournament movement has not been requested.</p>
@@ -774,28 +841,7 @@ export function TeamsView({
       </Panel>
 
       <DataSourcesDisclosure model={model} data={panelData} />
-
-      {detailTeam ? (
-        <TeamDetailDrawer
-          team={detailTeam}
-          standings={standings}
-          rankedStandings={universe.rankedStandings}
-          model={model}
-          tier={tierFor(detailTeam)}
-          series={activeHistory?.[teamKey(detailTeam)]}
-          historyState={historyState}
-          tournament={activeTournament}
-          tournamentMovement={movementByTeamId.get(detailTeam.teamId)}
-          players={detailPlayers}
-          currentLineup={detailLineup}
-          playerLoadState={playerLoadState}
-          playerScopeLabel={playerScopeLabel}
-          onRequestPlayers={onRequestPlayers}
-          seeded={Boolean(panelData?.seeded)}
-          events={seasonEvents}
-          onClose={detail.close}
-        />
-      ) : null}
+      </div>
     </PageShell>
   )
 }
