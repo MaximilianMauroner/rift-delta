@@ -74,6 +74,12 @@ test('prefetching an older match page retains the loaded page on screen', { time
     assert.equal(await page.evaluate(() => document.visibilityState), 'visible')
     assert.deepEqual(await page.evaluate(() => Object.getOwnPropertyDescriptor(navigator, 'connection')?.value), connection)
     await rows.nth(24).waitFor()
+    const rowBackground = () => rows.first().evaluate((node) => getComputedStyle(node).backgroundColor)
+    const restingBackground = await rowBackground()
+    await rows.first().hover()
+    await page.waitForFunction((resting) => getComputedStyle(document.querySelector('table tbody tr')!).backgroundColor !== resting, restingBackground)
+    assert.notEqual(await rowBackground(), restingBackground, 'A hovered series row is tinted')
+    await page.mouse.move(0, 0)
     for (let currentPage = 2; currentPage <= 16; currentPage++) {
       await next.click()
       await page.getByText(`Page ${currentPage} of 18`, { exact: true }).waitFor()

@@ -198,7 +198,7 @@ export function MatchesView({ hashQuery, state, onRequestPages, searchRef, archi
         </StatRibbon>
       }
     >
-      <h2 id={headingId} className="matches-heading sr-only">Series ledger</h2>
+      <h2 id={headingId} className="matches-heading">Series ledger</h2>
       <div className="matches-filters">
         {archiveYears.length > 1 && onYearChange ? <label className="grid min-w-0 gap-1"><span className="text-xs text-muted">Archive year</span><Select aria-label="Match history year" className="w-full max-w-none" value={archiveYear ?? 'All'} onChange={(event) => onYearChange(event.target.value)}><option value="All">All years</option>{archiveYears.map((year) => <option key={year} value={year}>{year}</option>)}</Select></label> : null}
         <label className="matches-search grid min-w-0 gap-1">

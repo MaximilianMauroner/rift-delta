@@ -8,16 +8,6 @@
   font-weight: 600;
 }
 
-.matches-heading:focus {
-  position: static;
-  width: auto;
-  height: auto;
-  margin: 0;
-  overflow: visible;
-  clip: auto;
-  white-space: normal;
-}
-
 .matches-summary {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
@@ -78,10 +68,6 @@
 .matches-table .matches-expand-column,
 .matches-table td:last-child {
   padding-inline: 4px;
-}
-
-.matches-series-row {
-  background: var(--surface);
 }
 
 .matches-date {
