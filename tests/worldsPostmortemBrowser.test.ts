@@ -390,7 +390,7 @@ test(
       const focal = team(report, 'Alpha').participants.find((player) => player.role === 'Mid')!
       const goldValues = focal.games.flatMap((game) => game.metrics.goldDiffAt15 === null ? [] : [game.metrics.goldDiffAt15])
       const formatGold = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(Math.round(value)).toLocaleString('en-US')}`
-      const lineupRange = `${formatGold(Math.min(...goldValues))} to ${formatGold(Math.max(...goldValues))} · ${goldValues.length} games`
+      const lineupRange = `${formatGold(Math.min(...goldValues))} to ${formatGold(Math.max(...goldValues))} · ${goldValues.length} ${goldValues.length === 1 ? 'game' : 'games'}`
       for (const width of [320, 360, 390, 1280]) {
         await page.setViewportSize({ width, height: 844 })
         assert.ok(await page.getByRole('button', { name: 'View Focal, Mid', exact: true }).getByText(lineupRange, { exact: true }).isVisible(), `Lineup range and game count are visible at ${width}px`)
