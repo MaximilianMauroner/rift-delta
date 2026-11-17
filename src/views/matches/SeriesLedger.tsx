@@ -65,7 +65,7 @@ function SeriesTableRows({ series, expanded, onToggle, publication }: { series: 
   const expandable = series.games.length > 1
   return (
     <Fragment>
-      <TableRow className={cn('border-line hover:bg-raised', expandable && 'cursor-pointer')} onClick={expandable ? onToggle : undefined}>
+      <TableRow data-first-answer="matches" className={cn('border-line hover:bg-raised', expandable && 'cursor-pointer')} onClick={expandable ? onToggle : undefined}>
         <TableCell className="pl-4 whitespace-normal">
           <span className="block text-xs text-muted">{formatDate(match.datetimeUtc ?? match.date)}</span>
           <EventLine match={match} className="mt-1" />
@@ -160,7 +160,7 @@ function SeriesCard({ series, expanded, onToggle, publication }: { series: Match
     { side: 'B', team: match.teamB, wins: match.seriesWinsB, delta: change.kind === 'applied' ? change.teamB : undefined },
   ] as const
   return (
-    <div className="min-w-0 bg-surface">
+    <div data-first-answer="matches" className="min-w-0 bg-surface">
       <div className="px-3.5 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

@@ -151,6 +151,7 @@ export function RegionsView({
                 <Button
                   type="button"
                   variant="ghost"
+                  data-first-answer="regions"
                   data-row-open=""
                   className="grid h-auto min-h-0 w-full min-w-0 grid-cols-[52px_minmax(150px,1.25fr)_minmax(150px,1fr)_minmax(150px,0.95fr)_minmax(160px,1.4fr)] items-center justify-stretch justify-items-stretch gap-4 rounded-none border-0 bg-transparent py-4 pr-0 pl-4 text-left font-[inherit] whitespace-normal text-[inherit] after:absolute after:inset-0 hover:bg-transparent focus-visible:border-transparent focus-visible:ring-0 focus-visible:outline-none! focus-visible:after:shadow-[inset_0_0_0_2px_var(--focus)] max-[1180px]:grid-cols-[44px_minmax(120px,1.3fr)_minmax(120px,1fr)_minmax(150px,1.4fr)] max-[900px]:grid-cols-[40px_minmax(120px,1fr)_minmax(98px,auto)] max-[900px]:gap-3 max-sm:grid-cols-[28px_minmax(0,1fr)] max-sm:gap-2 max-sm:py-3.5 max-sm:pr-0 max-sm:pl-3"
                   title={`Open ${region.region} region detail`}
@@ -219,7 +220,7 @@ export function RegionsView({
   )
 }
 
-const REGION_LINE_COLORS = ['var(--identity-1)', 'var(--identity-2)', 'var(--identity-3)', 'var(--identity-4)', 'var(--identity-5)', 'var(--identity-6)']
+const REGION_LINE_COLORS = ['var(--league-lck)', 'var(--league-lpl)', 'var(--league-lec)', 'var(--league-lcs)', 'var(--league-lcp)', 'var(--league-cblol)']
 
 type RegionStanding = Pick<PublicTeamStanding, 'team' | 'code' | 'region' | 'league' | 'rating' | 'rank' | 'eligibility'>
 
@@ -234,7 +235,7 @@ function RegionPowerTrend({ series, region }: { series?: PublicRegionHistorySeri
   const chartSeries = useMemo<ChartSeries[]>(() => series && series.points.length >= 2 ? [{
     id: region,
     label: region,
-    color: 'var(--identity-1)',
+    color: 'var(--league-lck)',
     points: series.points.map((point) => ({ t: Date.parse(point[0]), y: point[1] })),
   }] : [], [region, series])
   const first = series?.points[0]
@@ -664,7 +665,7 @@ function RegionDepthLegend() {
   return (
     <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted" aria-label="Chart legend">
       <li className="inline-flex items-center gap-1.5">
-        <span className="size-2.5 rounded-full bg-[var(--identity-1)]" aria-hidden="true" />
+        <span className="size-2.5 rounded-full bg-[var(--league-lck)]" aria-hidden="true" />
         Top three
       </li>
       <li className="inline-flex items-center gap-1.5">

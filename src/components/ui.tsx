@@ -1,43 +1,17 @@
-import type { ReactNode } from 'react'
+import { AlertTriangle } from 'lucide-react'
+import type { CSSProperties, ReactNode } from 'react'
+import { leagueColor } from '../shared/teamColor'
 import { Button } from './ui/button'
 import { cn } from '../shared/utils'
+import { Alert } from './ui/alert'
 import { Badge } from './ui/badge'
 import { tableHeadClassName } from './ui/table'
 
-const REGION_BADGE_KEYS = new Set(['LCK', 'LPL', 'LEC', 'LCS', 'LCP', 'CBLOL', 'PCS', 'VCS'])
-const REGION_BADGE_LOGOS: Partial<Record<string, string>> = {
-  LCK: '/league-icons/lck.png',
-  LPL: '/league-icons/lpl.png',
-  LEC: '/league-icons/lec.png',
-  LCS: '/league-icons/lcs.png',
-  LCP: '/league-icons/lcp.png',
-  CBLOL: '/league-icons/cblol.png',
-}
-
-/**
- * Every region renders in the same frame: same box, border, fill and inner
- * padding, tinted by the region hue. Only the contents differ, a league logo
- * where one exists and the region code where one does not. The badge used to
- * mix photographic logos with hand-drawn line-art motifs, which read as two
- * different products inside one column.
- */
 export function RegionBadge({ region, size = 'md' }: { region: string; size?: 'sm' | 'md' }) {
-  const code = region.toUpperCase()
-  const key = REGION_BADGE_KEYS.has(code) ? code : 'DEFAULT'
-  const displayCode = key === 'DEFAULT' ? code.slice(0, 3) : code
-  const logoSrc = REGION_BADGE_LOGOS[key]
-
   return (
-    <span
-      className={`region-badge region-badge--${key.toLowerCase()} region-badge--${size}`}
-      role="img"
-      aria-label={`${code} region badge`}
-    >
-      {logoSrc ? (
-        <img className="region-badge__logo" src={logoSrc} alt="" aria-hidden="true" width={44} height={36} loading="lazy" />
-      ) : (
-        <span className="region-badge__code">{displayCode}</span>
-      )}
+    <span className={cn('league-label', size === 'sm' && 'text-xs')} style={{ '--league-color': leagueColor(region) } as CSSProperties}>
+      <span className="league-dot" aria-hidden="true" />
+      {region.toUpperCase()}
     </span>
   )
 }
@@ -46,7 +20,7 @@ export function FormDots({ form }: { form?: string[] }) {
   const recent = (form ?? []).slice(-5)
   if (recent.length === 0) return <span className="text-muted">—</span>
   return (
-    <span className="inline-flex gap-1" aria-label={`Recent form, oldest to latest: ${recent.join(', ')}. Latest: ${recent.at(-1)}.`} title="Oldest to latest. Underlined result is the latest.">
+    <span className="inline-flex gap-1" aria-label={`Recent form, oldest to latest: ${recent.join(', ')}. Latest: ${recent.at(-1)}.`}>
       {recent.map((result, index) => {
         const normalized = result.toLowerCase()
         const tone = normalized === 'w' ? 'w' : normalized === 't' ? 't' : 'l'
@@ -56,8 +30,8 @@ export function FormDots({ form }: { form?: string[] }) {
             key={`${result}-${index}`}
             className={cn(
               'grid size-[17px] place-items-center text-xs font-bold not-italic',
-              tone === 'w' && 'bg-[var(--up-wash)] text-up',
-              tone === 'l' && 'bg-[var(--down-wash)] text-down',
+              tone === 'w' && 'rounded-[3px] bg-[var(--up-wash)] text-up',
+              tone === 'l' && 'rounded-[3px] bg-[var(--down-wash)] text-down',
               tone === 't' && 'bg-line text-muted',
               index === recent.length - 1 && 'underline decoration-2 underline-offset-2',
             )}
@@ -101,7 +75,7 @@ export function Segmented<T extends string>({
       role="group"
       aria-label={ariaLabel}
       className={cn(
-        'inline-flex h-[var(--control-h)] max-w-full items-stretch overflow-hidden rounded-md border border-line bg-raised max-sm:w-full',
+        'inline-flex h-[var(--control-h)] max-w-full items-stretch overflow-hidden rounded-md border border-line bg-surface max-sm:w-full',
         className,
       )}
     >
@@ -211,4 +185,12 @@ export function SortHeader({
       </Button>
     </th>
   )
+}
+
+export function TierChip({ tier }: { tier: 'S' | 'A' | 'B' | 'C' }) {
+  return <span className="tier-chip inline-grid h-[22px] min-w-6 place-items-center rounded-md px-1 text-xs font-bold" aria-label={`${tier} tier`} style={{ '--tier-color': `var(--tier-${tier.toLowerCase()})` } as CSSProperties}>{tier}</span>
+}
+
+export function WarningNote({ children }: { children: ReactNode }) {
+  return <Alert variant="warning"><AlertTriangle size={16} aria-hidden="true" /><span>{children}</span></Alert>
 }

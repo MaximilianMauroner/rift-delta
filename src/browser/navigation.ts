@@ -84,7 +84,7 @@ export function readTournamentFilterFromHash(query = currentHashQuery()) {
 }
 
 export function replaceHashForModeAndScope(mode: AppMode, scope: string) {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined' || readModeFromHash() !== mode) return
   const nextHash = hashForModeAndScope(mode, scope, window.location.hash.slice(1))
   if (window.location.hash === nextHash) return
   writeNavigationHash(nextHash, 'replace')
@@ -111,6 +111,7 @@ export function writeNavigationHash(hash: string, method: 'navigate' | 'push' | 
   if (method === 'navigate') window.location.hash = hash
   else if (method === 'push') window.history.pushState(null, '', hash)
   else window.history.replaceState(null, '', hash)
+  if (method !== 'navigate') window.dispatchEvent(new Event('navigationchange'))
 }
 
 export function hashWithParam(key: string, value: string | null) {

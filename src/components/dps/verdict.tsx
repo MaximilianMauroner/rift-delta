@@ -107,7 +107,7 @@ export function VerdictBand({
           {metric === "ttk" ? "time to kill" : "damage"} · {datasetLabel}
           {recomputing && <span className="recomputing">recomputing…</span>}
         </p>
-        <h1 className="question">
+        <h1 data-first-answer="lab" className="question">
           <span className="side-a">{labels.a}</span> <span className="vs">vs</span>{" "}
           <span className="side-b">{labels.b}</span>
         </h1>
@@ -182,7 +182,7 @@ export function IdenticalBuildsBand({
   return (
     <section className="card band band-flat" aria-live="polite">
       <div>
-        <h1 className="question">Both builds are identical</h1>
+        <h1 data-first-answer="lab" className="question">Both builds are identical</h1>
         <p className="lede">
           Every target ties by construction, so no winner, no delta and no draft slices are shown.
           Change one item under test to ask a comparative question.

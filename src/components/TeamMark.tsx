@@ -28,11 +28,12 @@ export function TeamMark({
 
   return (
     <span
+      data-slot="team-mark"
+      data-team={team}
       className={cn(
         'relative inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-raised text-xs leading-none font-bold whitespace-nowrap text-text [container-type:inline-size]',
         className,
       )}
-      title={`${team} (${label})`}
       aria-hidden="true"
     >
       <span className={showLogo && loadedLogo === logo ? 'invisible' : undefined} style={{ fontSize: `min(1em, ${Math.floor(80 / (0.6 * text.length))}cqi)` }}>{text}</span>

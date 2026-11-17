@@ -22,7 +22,7 @@ const compareChartClassName = 'max-w-full min-w-0 min-h-[360px] overflow-hidden 
 const compareChartHeadClassName = 'flex flex-wrap items-baseline justify-between gap-x-3.5 gap-y-2 px-4 pt-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-text'
 const compareChartMetaClassName = 'text-xs text-muted tabular-nums'
 const compareChartEmptyClassName = 'px-4 py-5 text-muted'
-const COMPARE_SERIES_COLORS = ['var(--identity-1)', 'var(--identity-2)', 'var(--identity-3)', 'var(--identity-4)']
+const COMPARE_SERIES_COLORS = ['var(--league-lck)', 'var(--league-lpl)', 'var(--league-lec)', 'var(--league-lcs)']
 type TeamHistoryLike = TeamHistoryDirectory | PublicTeamHistoryShard
 
 type RegionTrendEvent = {

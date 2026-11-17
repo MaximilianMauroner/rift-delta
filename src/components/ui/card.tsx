@@ -12,9 +12,7 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        // The default already is the product's pane: square corners, a --line
-        // border and the --surface fill. Call sites must not restate this.
-        "group/card flex min-w-0 flex-col gap-(--card-spacing) overflow-hidden border border-line bg-surface py-(--card-spacing) text-sm/relaxed text-text [--card-spacing:--spacing(4)] has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)]",
+        "group/card flex min-w-0 flex-col gap-(--card-spacing) overflow-hidden rounded-[var(--panel-radius)] border border-line bg-surface py-(--card-spacing) text-sm/relaxed text-text [--card-spacing:--spacing(4)] has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)]",
         className
       )}
       {...props}

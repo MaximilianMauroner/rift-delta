@@ -23,6 +23,7 @@ function readFilters(query: URLSearchParams) {
   return {
     search: hashParam('player', query) ?? '',
     role: hashEnum('role', ROLE_FILTERS, 'All', query),
+    region: hashParam('region', query) ?? 'All',
     profile: hashParam('profile', query) ?? '',
   }
 }
@@ -41,7 +42,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
     setAppliedQuery(hashQuery)
     setFilters(readFilters(hashQuery))
   }
-  useHashSync('players', { player: filters.search, role: filters.role === 'All' ? '' : filters.role, profile: filters.profile })
+  useHashSync('players', { region: filters.region === 'All' ? '' : filters.region, player: filters.search, role: filters.role === 'All' ? '' : filters.role, profile: filters.profile })
   const directory = state.status === 'ready' ? state.data : undefined
   const scopeBoard = useMemo(() => playerLeaderboardForScope(directory, filter), [directory, filter])
   const { scoreFamily, rows: players } = scopeBoard
@@ -67,7 +68,8 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
     .find((provider) => provider.label === "Oracle's Elixir")
   const search = filters.search.trim().toLowerCase()
   const visible = selectedPlayers.filter((player) =>
-    !search || [player.name, player.team, player.teamCode ?? ''].some((value) => value.toLowerCase().includes(search)),
+    (filters.region === 'All' || player.region === filters.region) &&
+    (!search || [player.name, player.team, player.teamCode ?? ''].some((value) => value.toLowerCase().includes(search))),
   )
 
   const profileId = players.some((player) => player.id === filters.profile) ? filters.profile : visible[0]?.id
@@ -112,6 +114,13 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
           Role
           <Select aria-label="Role" value={filters.role} onChange={(event) => setFilters({ ...filters, role: event.target.value as typeof filters.role })}>
             {ROLE_FILTERS.map((role) => <option key={role} value={role}>{role === 'All' ? 'All roles' : role}</option>)}
+          </Select>
+        </label>
+        <label data-league-filter className="flex flex-col gap-1.5 text-xs text-muted">
+          League
+          <Select aria-label="League" value={filters.region} onChange={(event) => setFilters({ ...filters, region: event.target.value })}>
+            <option value="All">All leagues</option>
+            {[...new Set([...players.flatMap((player) => player.region ? [player.region] : []), ...(filters.region === 'All' ? [] : [filters.region])])].sort().map((league) => <option key={league}>{league}</option>)}
           </Select>
         </label>
       </div>
@@ -206,7 +215,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                     const scorePosition = scoreValue === undefined || !scoreRange ? undefined
                       : scoreRange.max === scoreRange.min ? 50 : 100 * (scoreValue - scoreRange.min) / (scoreRange.max - scoreRange.min)
                     return (
-                      <TableRow role="row" key={player.id}>
+                      <TableRow data-first-answer="players" role="row" key={player.id}>
                         <TableCell role="cell" className="player-col-rank pl-4 text-muted tabular-nums">
                           {player.leaderboardRank ?? <><span aria-hidden="true">—</span><span className="sr-only">Unranked</span></>}
                         </TableCell>

@@ -9,7 +9,7 @@ const alertVariants = cva(
     variants: {
       variant: {
         default: "border-line bg-surface text-muted",
-        warning: "border-line bg-raised text-text",
+        warning: "border-[var(--warn)] bg-surface text-[var(--warn)]",
         destructive:
           "border-line bg-surface text-text",
       },

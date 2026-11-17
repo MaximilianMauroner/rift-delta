@@ -1,38 +1,37 @@
+@font-face {
+  font-family: Inter;
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2-variations');
+}
+
 :root {
   color-scheme: dark;
 
-  /* ---- Colour roles. One meaning each. Do not reuse across roles. ----
-     ground       the page
-     surface      lists and panes
-     raised       controls and hover
-     line         separators and axes
-     text, muted  primary and secondary text
-     focus        selection and keyboard focus only
-     up, down     movement and win/loss only, always with a sign or letter
-     tier-*       tier chips only
-     identity-*   chart series, the n-th entity in order of first appearance.
-                  teamColor() in src/shared/teamColor.ts makes the same hues.
-     -------------------------------------------------------------------- */
-  --ground: #121519;
-  --surface: #191d23;
-  --raised: #222831;
-  --line: #2e3540;
-  --text: #e8ecf0;
-  --muted: #9aa6b2;
-  --focus: #7fb2ff;
-  --up: #4cc38a;
-  --down: #f07167;
-  --tier-s: #e9c46a;
-  --tier-a: #a8c5e0;
-  --tier-b: #9fb8a0;
-  --tier-c: #8e99a6;
-
-  --identity-1: oklch(74% 0.14 332);
-  --identity-2: oklch(74% 0.14 109.5);
-  --identity-3: oklch(74% 0.14 247);
-  --identity-4: oklch(74% 0.14 24.5);
-  --identity-5: oklch(74% 0.14 162);
-  --identity-6: oklch(74% 0.14 299.5);
+  --ground: #17171A;
+  --surface: #1F1F23;
+  --raised: #2A2A2F;
+  --line: #35353B;
+  --text: #F5F5F6;
+  --muted: #B4B4BB;
+  --focus: #7AB8FF;
+  --up: #5BD69A;
+  --down: #FF7B7B;
+  --live: #FF4D5E;
+  --warn: #F2B84B;
+  --forecast: #C7CBD3;
+  --league-lck: #5AA9FF;
+  --league-lpl: #FF9F43;
+  --league-lec: #B794FF;
+  --league-lcs: #2FD4CF;
+  --league-lcp: #FF7EB6;
+  --league-cblol: #F5D547;
+  --league-other: #9AA0AA;
+  --tier-s: #F2CC6B;
+  --tier-a: #D5DAE2;
+  --tier-b: #A6AEBB;
+  --tier-c: #8D95A3;
 
   /* Tints of the roles above. They keep the meaning of their role. */
   --focus-wash: color-mix(in srgb, var(--focus) 14%, transparent);
@@ -45,7 +44,7 @@
   --scrim: rgb(8 10 12 / 0.72);
 
   /* Type: one sans, fixed rem scale at ratio 1.2, weights 400, 600, 700. */
-  --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sans: "Inter", system-ui, "Segoe UI", sans-serif;
   --type-xs: 0.75rem;
   --type-sm: 0.875rem;
   --type-base: 1rem;
@@ -54,15 +53,17 @@
   --type-2xl: 1.73rem;
   --type-3xl: 2.07rem;
 
-  /* Shape: controls are the only rounded things. */
-  --radius: 6px;
+  /* Controls and panels use separate radii. */
+  --radius: 7px;
+  --panel-radius: 10px;
 
-  --app-nav-h: 56px;
+  --app-nav-h: 0px;
+  --sidebar-w: 208px;
   /* Bottom tab bar on phones and the fixed compare tray. Main content pads
      by these so the last rows are never hidden behind them. */
   --tabbar-h: 56px;
   --tray-h: 60px;
-  --page-x: clamp(16px, 3.3vw, 48px);
+  --page-x: 24px;
   /* One height for every control in a filter or scope row, so tabs,
      selects, inputs and buttons share a baseline. */
   --control-h: 36px;
@@ -91,17 +92,28 @@ html {
 
 body {
   margin: 0;
-  overflow-x: hidden;
+  font-size: 14px;
   background: var(--ground);
 }
 
-/* dps.css reads --border and --bg from outside the lab. Its own token block
-   sits inside @scope (.dps-surface) as `.dps-surface { ... }`, which matches
-   only a nested element and never the scope root, so the lab gets these two
-   from here. Without them every lab card, input and button loses its border. */
 .dps-surface {
-  --border: var(--line);
   --bg: var(--ground);
+  --header: var(--surface);
+  --widget: var(--surface);
+  --inset: var(--raised);
+  --border: var(--line);
+  --t1: var(--text);
+  --t2: var(--text);
+  --t3: var(--muted);
+  --acc: var(--text);
+  --acc-ink: var(--ground);
+  --acc-ring: var(--focus);
+  --acc-wash: var(--raised);
+  --ice: var(--muted);
+  --gold: var(--muted);
+  --dn: var(--down);
+  --danger: var(--down);
+  --font: var(--sans);
 }
 
 /* Element defaults live in the base layer. Unlayered element rules beat every
@@ -150,8 +162,8 @@ body {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    animation: none !important;
+    transition: none !important;
   }
 }
 
@@ -209,14 +221,12 @@ body {
   }
 }
 
-/* Static two-tone fill. Placeholders never animate: an endless shimmer or
-   fade repaints for as long as data loads, which keeps a high-refresh display
-   busy for nothing. */
+/* Loading placeholders stay still. */
 .loading-skeleton,
 .detail-skeleton,
 .loading-dot {
   background-color: var(--raised);
-  background-image: linear-gradient(100deg, transparent 30%, var(--line) 50%, transparent 70%);
+
 }
 
 /* Placeholders hold their space at once and show after 180ms, so a fast
@@ -267,4 +277,353 @@ body {
   .regions-summary > div > small { font-size: var(--type-sm); line-height: 1.4; }
   .regions-summary > div:nth-child(2) { grid-column: 1 / -1; grid-row: 4; grid-template-columns: auto auto 1fr; grid-template-rows: none; align-items: center; gap: 12px; }
   .regions-summary > div:nth-child(2) > small { text-align: right; }
+}
+
+.league-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.league-dot {
+  display: inline-block;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--league-color, var(--league-other));
+}
+.league-row {
+  border-left: 3px solid var(--league-color, var(--league-other));
+}
+.tier-chip, .tier-badge {
+  color: var(--tier-color);
+  border: 1px solid var(--tier-color);
+  background: transparent;
+}
+.power-lane {
+  position: relative;
+  display: block;
+  height: 18px;
+  min-width: 40px;
+  border-radius: 4px;
+  background: var(--raised);
+}
+.power-lane__band {
+  position: absolute;
+  top: 8px;
+  height: 2px;
+  background: var(--league-color);
+}
+.power-lane__dot {
+  position: absolute;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: var(--league-color);
+  outline: 2px solid var(--surface);
+}
+.forecast {
+  border: 1px dashed var(--forecast);
+  color: var(--forecast);
+  background: transparent;
+}
+
+.app-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: var(--sidebar-w);
+  padding: 16px 12px;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  overflow-y: auto;
+}
+.app-sidebar ~ main, .app-sidebar ~ .dps-surface, .app-sidebar ~ [aria-busy="true"] {
+  margin-left: var(--sidebar-w);
+}
+.app-sidebar ~ main > .fixed {
+  left: var(--sidebar-w);
+}
+.app-wordmark {
+  padding: 0 6px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.app-sidebar > nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.app-view-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 7px 8px;
+  border-left: 3px solid transparent;
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.app-view-link:hover {
+  background: var(--raised);
+  color: var(--text);
+}
+.app-view-link[aria-current="page"] {
+  border-left-color: var(--focus);
+  background: var(--raised);
+  color: var(--text);
+}
+.app-leagues {
+  min-height: 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.app-leagues-heading {
+  padding: 0 8px 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.app-leagues a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 13px;
+  text-decoration: none;
+}
+.app-leagues a:hover {
+  background: var(--raised);
+}
+.app-leagues a[aria-current] {
+  border-color: var(--focus);
+  background: var(--raised);
+}
+.app-leagues summary {
+  cursor: pointer;
+  border-radius: 7px;
+  padding: 7px 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.app-leagues :focus-visible {
+  outline-offset: -2px;
+}
+.app-leagues summary:hover {
+  color: var(--text);
+  background: var(--raised);
+}
+.app-lab-link {
+  margin-top: auto;
+}
+.app-search {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+.app-search > svg {
+  position: absolute;
+  left: 9px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.app-search input {
+  width: 100%;
+  min-width: 0;
+  padding-left: 30px;
+  font-size: 12px;
+}
+.app-search-button {
+  width: 100%;
+  justify-content: start;
+}
+.app-phone-header, .app-tabbar, .app-rail-search {
+  display: none;
+}
+.app-mode-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px var(--page-x) 10px;
+}
+.app-mode-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.15;
+}
+.app-mode-header p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.app-search-overlay {
+  position: fixed;
+  z-index: 60;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--overlay-shadow);
+}
+.app-search-overlay .app-search {
+  flex: 1;
+}
+.app-search-overlay input {
+  font-size: 16px;
+}
+
+@media (min-width: 1024px) {
+  .app-sidebar ~ main [role="group"][aria-label="Region"],
+  .app-sidebar ~ main [data-league-filter] {
+    display: none;
+  }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  :root {
+    --sidebar-w: 64px;
+  }
+  .app-sidebar {
+    padding: 16px 6px;
+    align-items: center;
+    overflow: visible;
+  }
+  .app-sidebar .app-wordmark {
+    width: 40px;
+    padding: 0;
+    text-align: center;
+    font-size: 0;
+  }
+  .app-sidebar .app-wordmark span {
+    font-size: 20px;
+  }
+  .app-sidebar > nav:not(.app-leagues) {
+    width: 100%;
+  }
+  .app-sidebar-search, .app-sidebar .app-leagues {
+    display: none;
+  }
+  .app-rail-search {
+    display: inline-flex;
+  }
+  .app-sidebar .app-view-link {
+    justify-content: center;
+    min-height: 44px;
+    padding: 8px 0;
+  }
+  .app-sidebar .app-view-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .app-sidebar .app-view-link:is(:hover, :focus-visible) .app-view-label {
+    left: calc(100% + 8px);
+    z-index: 70;
+    width: max-content;
+    height: auto;
+    padding: 6px 10px;
+    overflow: visible;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--raised);
+    color: var(--text);
+    clip-path: none;
+  }
+}
+@media (max-width: 639px) {
+  :root {
+    --sidebar-w: 0px;
+    --page-x: 14px;
+  }
+  .app-sidebar {
+    display: none;
+  }
+  .app-phone-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--app-nav-h);
+    padding: 0 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .app-phone-header .app-wordmark {
+    padding: 0;
+  }
+  .app-phone-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .app-phone-actions a {
+    text-decoration: none;
+  }
+  .app-tabbar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(78px, 1.25fr);
+    min-height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .app-tabbar .app-view-link {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 0;
+    border: 0;
+    border-top: 2px solid transparent;
+    border-radius: 0;
+    font-size: 10px;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+  .app-tabbar .app-view-link[aria-current="page"] {
+    border-top-color: var(--focus);
+    background: transparent;
+    font-weight: 600;
+  }
+  .app-mode-header {
+    padding-top: 14px;
+  }
+  .app-mode-header h1 {
+    font-size: 24px;
+  }
+  .app-sidebar ~ main, .app-sidebar ~ .dps-surface, .app-sidebar ~ [aria-busy="true"] {
+    padding-bottom: calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom));
+  }
 }

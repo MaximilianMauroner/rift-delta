@@ -1,8 +1,8 @@
 .style-profiles {
-  --style-a: var(--identity-4);
-  --style-b: var(--identity-1);
-  --style-text-a: color-mix(in srgb, var(--identity-4) 68%, white);
-  --style-text-b: color-mix(in srgb, var(--identity-1) 68%, white);
+  --style-a: var(--league-lcs);
+  --style-b: var(--league-lck);
+  --style-text-a: color-mix(in srgb, var(--league-lcs) 68%, white);
+  --style-text-b: color-mix(in srgb, var(--league-lck) 68%, white);
   --style-fill-a: color-mix(in srgb, var(--style-a) 22%, transparent);
   --style-fill-b: color-mix(in srgb, var(--style-b) 14%, transparent);
   display: grid;

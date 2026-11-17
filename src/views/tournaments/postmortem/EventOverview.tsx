@@ -20,7 +20,7 @@ import {
 import type { Rate } from '../../../domains/rankings/field-statistics'
 import { percent, signedGold } from '../../../components/fieldFormat'
 import { ReportHighlights } from './ReportHighlights'
-import { teamColor } from '../../../shared/teamColor'
+import { leagueColor } from '../../../shared/teamColor'
 
 const LIST_LENGTH = 5
 const CHAMPION_ROWS = 10
@@ -37,7 +37,6 @@ export function EventOverview({
   const summary = reportEventSummary(report)
   const teams = new Map(report.teams.map((team) => [team.id, team]))
   const code = (id: string) => teams.get(id)?.code ?? id
-  const rankOrder = summary.teams.map(({ team }) => team.code)
   const points = summary.teams.flatMap(({ team, games, winRate, goldDiffAt15 }) =>
     winRate === null || goldDiffAt15 === null
       ? []
@@ -137,7 +136,7 @@ export function EventOverview({
                     cursor="pointer"
                     onClick={(point) => onSelectTeam((point as unknown as { id: string }).id)}
                   >
-                    {points.map((point) => <Cell key={point.id} fill={teamColor(point.code, rankOrder)} />)}
+                    {points.map((point) => <Cell key={point.id} fill={leagueColor(teams.get(point.id)?.league ?? '')} />)}
                     <LabelList dataKey="code" position="top" fontSize={12} fill="var(--text)" />
                   </Scatter>
                 </ScatterChart>

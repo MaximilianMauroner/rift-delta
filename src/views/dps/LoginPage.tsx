@@ -27,7 +27,7 @@ export default function LoginPage() {
 
   return (
     <main className="login-shell">
-      <form className="login-card" onSubmit={submit}>
+      <form data-first-answer="lab-login" className="login-card" onSubmit={submit}>
         <h1>rift-delta DPS lab</h1>
         <p>
           Private test prototype. Enter the access password to inspect the patch-pinned simulator.

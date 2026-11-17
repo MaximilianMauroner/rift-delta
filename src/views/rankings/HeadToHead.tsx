@@ -23,7 +23,7 @@ export function HeadToHead({ home, away, model }: { home: RankingSummaryStanding
   const homeName = home.code ?? home.team
 
   return (
-    <section className="grid gap-3 border-b border-line px-5 py-5 max-sm:px-3.5" aria-label={`${home.team} against ${away.team}`}>
+    <section data-first-answer="comparison" className="grid gap-3 border-b border-line px-5 py-5 max-sm:px-3.5" aria-label={`${home.team} against ${away.team}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-text">Who would win</h3>
         <Segmented
@@ -46,8 +46,8 @@ export function HeadToHead({ home, away, model }: { home: RankingSummaryStanding
       </div>
       <div className="grid gap-1">
         <span className="flex h-3 gap-0.5 overflow-hidden rounded-full" aria-hidden="true">
-          <span className="rounded-l-full bg-[var(--identity-1)]" style={{ width: `${homeChance}%` }} />
-          <span className="rounded-r-full bg-[var(--identity-2)]" style={{ width: `${100 - homeChance}%` }} />
+          <span className="rounded-l-full bg-[var(--league-lck)]" style={{ width: `${homeChance}%` }} />
+          <span className="rounded-r-full bg-[var(--league-lpl)]" style={{ width: `${100 - homeChance}%` }} />
         </span>
         {low !== undefined && high !== undefined ? (
           <span className="relative h-2" aria-hidden="true">

@@ -93,7 +93,7 @@ export function RegionDepthChart({ regions }: { regions: RegionDepthInput[] }) {
                         cx={dot.x}
                         cy={row.dotY + dot.dy}
                         r={dotRadius(dot.counts)}
-                        fill={dot.counts ? 'var(--identity-1)' : 'var(--muted)'}
+                        fill={dot.counts ? 'var(--league-lck)' : 'var(--muted)'}
                         stroke="var(--surface)"
                         strokeWidth={1.5}
                       />
@@ -117,7 +117,7 @@ export function RegionDepthChart({ regions }: { regions: RegionDepthInput[] }) {
                       <div><dt className="text-muted">{row.region} region score</dt><dd className="mt-1 font-semibold tabular-nums">{formatRating(row.score)}</dd></div>
                     </dl>
                     <div className="mt-3 border-t border-line pt-3 text-xs">
-                      <p className={dot.counts ? 'font-semibold text-[var(--identity-1)]' : 'font-semibold text-text'}>{contribution}</p>
+                      <p className={dot.counts ? 'font-semibold text-[var(--league-lck)]' : 'font-semibold text-text'}>{contribution}</p>
                     </div>
                   </HoverCardContent>
                 </HoverCard>

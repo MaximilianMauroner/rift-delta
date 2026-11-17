@@ -136,7 +136,7 @@ export function TeamDetailDrawer({
     return [{
       id: teamKey(team),
       label: team.code ?? team.team,
-      color: 'var(--identity-1)',
+      color: 'var(--league-lck)',
       points: tournament ? tournamentChartPoints(series.points, 'rating') : dailyChartPointsFromHistoryPoints(series.points),
     }]
   }, [series, team, tournament])
@@ -174,7 +174,7 @@ export function TeamDetailDrawer({
           <TeamMark team={team.team} code={team.code} className="size-11" />
           <div className="mr-auto grid min-w-0 gap-1">
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              <SheetTitle className="text-lg font-semibold text-text">{team.team}</SheetTitle>
+              <SheetTitle data-first-answer="team-detail" className="text-lg font-semibold text-text">{team.team}</SheetTitle>
               {seeded ? <Badge variant="warning">Sample data</Badge> : null}
             </div>
             <span className="flex flex-wrap items-center gap-2 text-sm text-muted">
@@ -263,7 +263,7 @@ export function TeamDetailDrawer({
                   <li className="grid grid-cols-[56px_minmax(0,1fr)_44px] items-center gap-3 text-sm" key={teamKey(opponent)} title={`${team.team} vs ${opponent.team}: ${chance}% to win a best of three`}>
                     <b className="truncate font-bold text-text">{opponent.code ?? opponent.team}</b>
                     <span className="relative h-2.5 overflow-hidden rounded-full bg-line" aria-hidden="true">
-                      <span className="absolute inset-y-0 left-0 rounded-full bg-[var(--identity-1)]" style={{ width: `${chance}%` }} />
+                      <span className="absolute inset-y-0 left-0 rounded-full bg-[var(--league-lck)]" style={{ width: `${chance}%` }} />
                       <span className="absolute inset-y-[-2px] left-1/2 w-px bg-muted" />
                     </span>
                     <b className="text-right font-semibold text-text tabular-nums">{chance}%</b>

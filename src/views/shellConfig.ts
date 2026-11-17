@@ -27,15 +27,15 @@ export const MODE_TITLES: Record<Mode, { title: string; intro: string }> = {
   },
   rankings: {
     title: 'Team Power Index',
-    intro: 'Match results weighted by opponent and event. Higher is stronger.',
+    intro: 'Opponent- and event-weighted results.',
   },
   players: {
     title: 'Player rankings',
-    intro: 'Scores compare available player data. Open Method for details.',
+    intro: 'Player scores from observed games.',
   },
   regions: {
     title: 'Region power',
-    intro: 'Average Power of each region\u2019s top three teams.',
+    intro: 'Mean Power of the top three per league.',
   },
   matches: {
     title: 'Match history',
@@ -43,6 +43,6 @@ export const MODE_TITLES: Record<Mode, { title: string; intro: string }> = {
   },
   tournaments: {
     title: 'Tournaments',
-    intro: 'Tournament schedules, forecasts and source-backed Worlds team reports.',
+    intro: 'Schedules, forecasts and team reports.',
   },
 }
