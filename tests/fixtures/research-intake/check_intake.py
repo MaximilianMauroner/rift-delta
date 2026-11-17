@@ -49,6 +49,20 @@ class IntakeTest(unittest.TestCase):
     def import_bundle(self):
         return self.run_cli('import', '--inventory', str(self.root / 'inventory.json'))
 
+    def test_symlinked_input_paths_rejected(self):
+        alias = self.home / 'alias'
+        alias.symlink_to(self.home, target_is_directory=True)
+        result = self.run_cli('freeze', '--spec', str(alias / 'spec.json'), sha=digest(self.spec), success=False)
+        self.assertEqual(result['error'], f'Symlink path {alias}')
+        self.spec_value['sourceRoots']['archive/study'] = str(alias / 'source')
+        self.spec_value['files']['archive/study/result.json']['original'] = str(alias / 'source/result.json')
+        write(self.spec, self.spec_value)
+        result = self.run_cli('freeze', '--spec', str(self.spec), sha=digest(self.spec), success=False)
+        self.assertEqual(result['error'], f'Symlink path {alias}')
+        self.root = alias / 'bundle'
+        result = self.run_cli('verify', success=False)
+        self.assertEqual(result['error'], f'Symlink path {alias}')
+
     def test_actual_import_source_denied_verify_and_zero_copy_resume(self):
         self.assertEqual(self.import_bundle()['copiedFiles'], 1)
         target = self.root / 'archive/study/result.json'
