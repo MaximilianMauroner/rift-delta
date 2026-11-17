@@ -22,3 +22,8 @@ test('a second team from one league keeps its repeat slot when the first team le
   const second = assignLeagueColorSlots(first, [{ key: 'BLG', league: 'LPL' }, { key: 'GEN', league: 'LCK' }], 4)
   assert.deepEqual(Object.fromEntries(second), { GEN: 1, BLG: 0 })
 })
+
+test('second teams from two leagues take different repeat slots', () => {
+  const slots = assignLeagueColorSlots(new Map(), [{ key: 'HLE', league: 'LCK' }, { key: 'GEN', league: 'LCK' }, { key: 'BLG', league: 'LPL' }, { key: 'TES', league: 'LPL' }], 4)
+  assert.deepEqual(Object.fromEntries(slots), { HLE: 0, BLG: 0, GEN: 1, TES: 2 })
+})

@@ -20,13 +20,21 @@ export function assignColorSlots(previous: ReadonlyMap<string, number>, keys: re
   return next
 }
 
-/** The same rule inside each league, so slot 0 can stay the league's own colour. */
+/**
+ * Slot 0 is the league's own colour, held by one team per league. Every other
+ * team shares slots 1 and up across all leagues, so two repeats never match.
+ * Both kinds of slot follow the team, as above.
+ */
 export function assignLeagueColorSlots(previous: ReadonlyMap<string, number>, teams: readonly { key: string; league: string }[], slotCount: number) {
   const next = new Map<string, number>()
   for (const league of new Set(teams.map((team) => team.league))) {
     const keys = teams.filter((team) => team.league === league).map((team) => team.key)
-    for (const [key, slot] of assignColorSlots(previous, keys, slotCount)) next.set(key, slot)
+    const holder = keys.find((key) => previous.get(key) === 0) ?? keys.find((key) => !previous.has(key))
+    if (holder !== undefined) next.set(holder, 0)
   }
+  const repeats = teams.map((team) => team.key).filter((key) => !next.has(key))
+  const previousRepeats = new Map([...previous].filter(([, slot]) => slot > 0).map(([key, slot]) => [key, slot - 1]))
+  for (const [key, slot] of assignColorSlots(previousRepeats, repeats, slotCount - 1)) next.set(key, slot + 1)
   return next
 }
 
