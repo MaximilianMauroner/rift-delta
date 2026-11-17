@@ -17,7 +17,7 @@ import { FormDots, LeagueDot } from '../../components/ui'
 import { MovementChip } from './WhatChanged'
 import { leagueColor } from '../../shared/teamColor'
 
-const REPEAT_COLORS = ['var(--text)', 'var(--muted)', 'var(--forecast)']
+export const REPEAT_COLORS = ['var(--text)', 'var(--muted)', 'var(--forecast)']
 
 /**
  * Each compared entity takes its league colour. A second pick from a league

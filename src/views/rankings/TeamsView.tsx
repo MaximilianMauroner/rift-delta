@@ -1,5 +1,5 @@
 import { SlidersHorizontal, Users, X } from 'lucide-react'
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { currentHashQuery, hashEnum, hashInt, hashParam, useHashSync } from '../../browser/navigation'
 import type {
   TeamHistoryArtifactState,
@@ -47,7 +47,8 @@ import { type TrajectoryInsight } from './trajectory'
 import { type PlayerLoadState, type TeamDataSummary, type TrajectoryMetric } from './types'
 import { WhatChanged } from './WhatChanged'
 import { leagueColor } from '../../shared/teamColor'
-import { compareSeriesColors } from './compareAnalysisData'
+import { REPEAT_COLORS } from './compareAnalysisData'
+import { assignLeagueColorSlots, sameColorSlots } from '../../shared/colorSlots'
 
 const TEAM_PAGE_SIZES = [15, 25, 50, 80] as const
 
@@ -170,6 +171,7 @@ export function TeamsView({
   const scopeTeams = useMemo(() => new Map(universe.scopeStandings.map((team) => [teamKey(team), team])), [universe.scopeStandings])
   const detail = useTeamDetailAddress(hashQuery, scopeTeams, requestedScope, effectiveScope)
   const [metric, setMetric] = useState<TrajectoryMetric>('rating')
+  const [colorSlots, setColorSlots] = useState<ReadonlyMap<string, number>>(() => new Map())
   // Phones fold the filters behind one button so the first screen shows teams.
   const [filtersOpen, setFiltersOpen] = useState(false)
   const trajectoryPanelRef = useRef<HTMLDivElement | null>(null)
@@ -289,11 +291,14 @@ export function TeamsView({
     if ((detailTeam || trajectoryRequested) && !exactTournamentId) onRequestTeamHistory?.(requestedHistoryTeams.split('\u0000').filter(Boolean))
   }, [detailTeam, trajectoryRequested, exactTournamentId, onRequestTeamHistory, requestedHistoryTeams])
 
-  const colorFor = useMemo(() => {
-    const colors = compareSeriesColors(focusTeams.map((team) => team.league))
-    const byTeam = new Map(focusTeams.map((team, index) => [teamKey(team), colors[index]]))
-    return (team: RankingSummaryStanding) => byTeam.get(teamKey(team)) ?? leagueColor(team.league)
-  }, [focusTeams])
+  // Slot 0 is the league colour; a second team from the same league takes a neutral repeat colour. Slots follow the team, so removing one team never repaints another.
+  const assignedSlots = assignLeagueColorSlots(colorSlots, focusTeams.map((team) => ({ key: teamKey(team), league: team.league })), 1 + REPEAT_COLORS.length)
+  const slots = sameColorSlots(assignedSlots, colorSlots) ? colorSlots : assignedSlots
+  if (slots !== colorSlots) setColorSlots(slots)
+  const colorFor = useCallback((team: RankingSummaryStanding) => {
+    const slot = slots.get(teamKey(team)) ?? 0
+    return slot === 0 ? leagueColor(team.league) : REPEAT_COLORS[slot - 1]
+  }, [slots])
   const dailyRankSeries = useMemo(
     () => metric === 'rank' && activeHistory && !exactTournamentId ? deriveDailyRankSeries(activeHistory) : new Map<string, ChartPoint[]>(),
     [activeHistory, exactTournamentId, metric],
