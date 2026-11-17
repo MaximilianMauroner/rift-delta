@@ -2,11 +2,13 @@ import { Fragment, type MouseEvent } from 'react'
 import { ChevronDown, Info } from 'lucide-react'
 import type { PublicMatchHistoryEntry, PublicMatchHistoryTeam } from '../../domains/rankings/types'
 import { formatDate, formatDecimal, formatRatio } from '../../shared/display'
+import { leagueColor } from '../../shared/teamColor'
 import { matchEventLabel } from '../../domains/rankings/read'
 import { impactReportUrl } from '../../browser/rankings/impactReport'
 import { cn } from '../../shared/utils'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
+import { RegionBadge } from '../../components/ui'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip'
 import { TeamMark } from '../../components/TeamMark'
@@ -31,16 +33,16 @@ type TeamResult = 'won' | 'lost' | 'level'
 const DELTA_BAR_WIDTH = 36
 const MISSING_NOTE = 'Power changes for this series do not reconcile.'
 
-/** Series ledger for tablet and desktop widths. */
 export function SeriesTable({ series, expanded, onToggle, publication }: SeriesListProps) {
   return (
-    <Table className="table-fixed" containerClassName="hidden border-t border-line md:block">
+    <Table className="matches-table table-fixed">
       <TableHeader>
-        <TableRow className="bg-raised hover:bg-raised">
-          <TableHead className="w-40 pl-4 lg:w-60 xl:w-80">Date</TableHead>
+        <TableRow className="hover:bg-transparent">
+          <TableHead className="matches-date-column">Date</TableHead>
+          <TableHead className="matches-event-column">Event</TableHead>
           <TableHead className="text-center">Result</TableHead>
-          <TableHead className="w-48 lg:w-56 xl:w-64">Rating change</TableHead>
-          <TableHead className="w-14"><span className="sr-only">Games</span></TableHead>
+          <TableHead className="matches-impact-column">Power change</TableHead>
+          <TableHead className="matches-expand-column"><span className="sr-only">Games</span></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -65,29 +67,29 @@ function SeriesTableRows({ series, expanded, onToggle, publication }: { series: 
   const expandable = series.games.length > 1
   return (
     <Fragment>
-      <TableRow data-first-answer="matches" className={cn('border-line hover:bg-raised', expandable && 'cursor-pointer')} onClick={expandable ? onToggle : undefined}>
-        <TableCell className="pl-4 whitespace-normal">
-          <span className="block text-xs text-muted">{formatDate(match.datetimeUtc ?? match.date)}</span>
-          <EventLine match={match} className="mt-1" />
+      <TableRow league={match.league} data-first-answer="matches" className={cn('matches-series-row', expandable && 'cursor-pointer')} onClick={expandable ? onToggle : undefined}>
+        <TableCell className="whitespace-normal">
+          <SeriesDate match={match} />
+        </TableCell>
+        <TableCell className="whitespace-normal">
+          <EventLine match={match} />
+          <span className="mt-1 block text-xs text-muted">{seriesContext(series)}</span>
         </TableCell>
         <TableCell>
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+          <div className="matches-result grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
             <TeamName team={match.teamA} result={teamResult(winner, 'A')} align="end" mark />
             <Score a={match.seriesWinsA} b={match.seriesWinsB} />
             <TeamName team={match.teamB} result={teamResult(winner, 'B')} align="start" mark />
           </div>
-          <div className="mt-1 flex items-center justify-center gap-2 text-xs text-muted">
-            <span>{seriesContext(series)}</span>
-            {change.kind === 'applied' && change.upset ? <UpsetTag change={change} match={match} /> : null}
-          </div>
+          {change.kind === 'applied' && change.upset ? <div className="mt-1 text-center"><UpsetTag change={change} match={match} /></div> : null}
         </TableCell>
         <TableCell className="whitespace-normal">
           {change.kind === 'applied' ? (
             <div className="grid gap-1">
               <div className="grid grid-cols-[3rem_auto] items-center justify-start gap-x-2 gap-y-0.5">
-                <span className="truncate text-xs text-muted" title={match.teamA.name}>{match.teamA.code}</span>
+                <span className="truncate text-xs text-muted" aria-label={match.teamA.name}>{match.teamA.code}</span>
                 <RatingDelta delta={change.teamA} />
-                <span className="truncate text-xs text-muted" title={match.teamB.name}>{match.teamB.code}</span>
+                <span className="truncate text-xs text-muted" aria-label={match.teamB.name}>{match.teamB.code}</span>
                 <RatingDelta delta={change.teamB} />
               </div>
               <ChanceLine change={change} match={match} />
@@ -107,22 +109,23 @@ function GameTableRow({ game }: { game: PublicMatchHistoryEntry }) {
   const gameWinner: SeriesSide = game.winnerId === game.teamA.id ? 'A' : 'B'
   return (
     <TableRow className="border-dotted border-line bg-[color-mix(in_srgb,var(--raised)_62%,transparent)] hover:bg-raised">
-      <TableCell className="pl-8 text-xs text-muted">
+      <TableCell className="text-xs text-muted">
         Game {game.gameNumber}
         <span className="block text-xs">{game.patch ? `Patch ${game.patch}` : 'Patch unknown'}</span>
       </TableCell>
+      <TableCell />
       <TableCell>
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 text-sm">
-          <TeamName team={game.teamA} result={teamResult(gameWinner, 'A')} align="end" className="pr-9" />
-          <span className="text-sm text-muted tabular-nums" title={`Series score after game ${game.gameNumber}`}>
+          <TeamName team={game.teamA} result={teamResult(gameWinner, 'A')} align="end" />
+          <span className="text-sm text-muted tabular-nums" aria-label={`Series score after game ${game.gameNumber}`}>
             {game.seriesWinsA}–{game.seriesWinsB}
           </span>
-          <TeamName team={game.teamB} result={teamResult(gameWinner, 'B')} align="start" className="pl-9" />
+          <TeamName team={game.teamB} result={teamResult(gameWinner, 'B')} align="start" />
           {game.picks ? (
             <>
-              <ChampionPicks teamName={game.teamA.name} picks={game.picks.teamA} patch={game.patch} align="end" className="lg:pr-9" />
+              <ChampionPicks teamName={game.teamA.name} picks={game.picks.teamA} patch={game.patch} align="end" />
               <span />
-              <ChampionPicks teamName={game.teamB.name} picks={game.picks.teamB} patch={game.patch} align="start" className="lg:pl-9" />
+              <ChampionPicks teamName={game.teamB.name} picks={game.picks.teamB} patch={game.patch} align="start" />
             </>
           ) : null}
         </div>
@@ -133,10 +136,9 @@ function GameTableRow({ game }: { game: PublicMatchHistoryEntry }) {
   )
 }
 
-/** Stacked series cards for phones. One line per team keeps both names at full size. */
 export function SeriesCards({ series, expanded, onToggle, publication }: SeriesListProps) {
   return (
-    <div className="grid gap-px border-t border-line bg-line md:hidden">
+    <div className="matches-cards">
       {series.map((entry) => (
         <SeriesCard
           series={entry}
@@ -160,12 +162,12 @@ function SeriesCard({ series, expanded, onToggle, publication }: { series: Match
     { side: 'B', team: match.teamB, wins: match.seriesWinsB, delta: change.kind === 'applied' ? change.teamB : undefined },
   ] as const
   return (
-    <div data-first-answer="matches" className="min-w-0 bg-surface">
+    <div data-first-answer="matches" className="matches-series-card" style={{ borderLeftColor: leagueColor(match.league) }}>
       <div className="px-3.5 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <span className="block text-xs text-muted">{formatDate(match.datetimeUtc ?? match.date)}</span>
-            <EventLine match={match} className="mt-0.5" />
+            <SeriesDate match={match} />
+            <EventLine match={match} className="mt-1" />
           </div>
           {expandable ? <ExpandButton expanded={expanded} onToggle={onToggle} match={match} /> : null}
         </div>
@@ -196,8 +198,9 @@ function SeriesCard({ series, expanded, onToggle, publication }: { series: Match
               <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1 border-t border-dotted border-line py-2 text-sm first:border-0" key={game.id}>
                 <span className="text-xs text-muted">G{game.gameNumber}</span>
                 <TeamName team={game.teamA} result={teamResult(gameWinner, 'A')} align="end" useCode />
-                <span className="text-xs text-muted tabular-nums" title={`Series score after game ${game.gameNumber}`}>{game.seriesWinsA}–{game.seriesWinsB}</span>
+                <span className="text-xs text-muted tabular-nums" aria-label={`Series score after game ${game.gameNumber}`}>{game.seriesWinsA}–{game.seriesWinsB}</span>
                 <TeamName team={game.teamB} result={teamResult(gameWinner, 'B')} align="start" useCode />
+                <span className="col-span-4 text-xs text-muted">{game.patch ? `Patch ${game.patch}` : 'Patch unknown'}</span>
                 {game.picks ? (
                   <>
                     <span />
@@ -217,32 +220,36 @@ function SeriesCard({ series, expanded, onToggle, publication }: { series: Match
 
 function EventLine({ match, className }: { match: PublicMatchHistoryEntry; className?: string }) {
   return (
-    <span className={cn('grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1.5 text-xs leading-[1.45] text-text', className)}>
-      <Badge variant="event">{match.league}</Badge>
-      <span>{matchEventLabel(match.event)}</span>
+    <span className={cn('block text-xs leading-[1.45] font-semibold text-text', className)}>{matchEventLabel(match.event)}</span>
+  )
+}
+
+function SeriesDate({ match }: { match: PublicMatchHistoryEntry }) {
+  return (
+    <span className="matches-date">
+      <time dateTime={match.datetimeUtc ?? match.date}>{formatDate(match.datetimeUtc ?? match.date)}</time>
+      <RegionBadge region={match.league} size="sm" />
     </span>
   )
 }
 
-function TeamName({ team, result, align, mark = false, useCode = false, className }: {
+function TeamName({ team, result, align, mark = false, useCode = false }: {
   team: PublicMatchHistoryTeam
   result: TeamResult
   align: 'start' | 'end'
   mark?: boolean
   useCode?: boolean
-  className?: string
 }) {
   return (
-    <span className={cn('flex min-w-0 items-center gap-2', align === 'end' && 'flex-row-reverse text-right', className)}>
+    <span className={cn('flex min-w-0 items-center gap-2', align === 'end' && 'flex-row-reverse text-right')}>
       {mark ? <TeamMark team={team.name} code={team.code} className="size-7" imageClassName="p-0.5" /> : null}
       <span
         className={cn(
-          'truncate',
+          'matches-team-name',
           result === 'won' && 'font-semibold text-text',
           result === 'lost' && 'font-normal text-muted',
           result === 'level' && 'font-normal text-text',
         )}
-        title={team.name}
       >
         {useCode ? team.code : team.name}
       </span>
@@ -251,16 +258,15 @@ function TeamName({ team, result, align, mark = false, useCode = false, classNam
 }
 
 function Score({ a, b }: { a: number; b: number }) {
-  return <span className="text-base font-bold text-text tabular-nums">{a}–{b}</span>
+  return <span className="matches-score">{a}–{b}</span>
 }
 
-/** Signed rating change with a bar scaled to DELTA_BAR_CAP points. */
 function RatingDelta({ delta }: { delta: number }) {
   const rounded = Math.round(delta)
   const tone = rounded > 0 ? 'var(--up)' : rounded < 0 ? 'var(--down)' : 'var(--muted)'
   const label = rounded > 0 ? `+${rounded}` : rounded < 0 ? `−${Math.abs(rounded)}` : '0'
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex items-center gap-1.5" aria-label={`${label} Power`}>
       <b className="w-8 text-right text-sm font-bold tabular-nums" style={{ color: tone }}>{label}</b>
       <span className="h-1.5 rounded-full" style={{ width: DELTA_BAR_WIDTH }} aria-hidden="true">
         <span className="block h-full rounded-full" style={{ width: deltaBarWidth(delta, DELTA_BAR_WIDTH), background: tone }} />
@@ -279,7 +285,7 @@ function ChanceLine({ change, match }: { change: Extract<SeriesRatingChange, { k
   return (
     <span
       className="text-xs text-muted"
-      title={change.chance !== undefined ? `Model's pre-match chance for ${team.name}` : undefined}
+      aria-label={change.chance !== undefined ? `Model's pre-match chance for ${team.name}: ${parts.join(', ')}` : undefined}
     >
       {parts.join(' · ')}
     </span>
@@ -290,7 +296,7 @@ function UpsetTag({ change, match }: { change: Extract<SeriesRatingChange, { kin
   const team = change.chanceSide === 'A' ? match.teamA : match.teamB
   const chance = formatRatio(change.chance)
   return (
-    <Badge variant="warning" className="shrink-0" title={`${team.name} won with a ${chance} pre-match chance`}>
+    <Badge variant="secondary" className="shrink-0" aria-label={`${team.name} won with a ${chance} pre-match chance`}>
       Upset · {chance}
     </Badge>
   )
