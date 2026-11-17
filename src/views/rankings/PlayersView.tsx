@@ -1,5 +1,5 @@
 import { AlertTriangle, ClipboardList, Search, Users } from 'lucide-react'
-import { useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { currentHashQuery, hashEnum, hashParam, hashWithParam, useHashSync, writeNavigationHash } from '../../browser/navigation'
 import type { PlayerDirectoryState } from '../../browser/rankings/usePublicArtifacts'
 import { scoutingHref } from '../../browser/scouting/navigation'
@@ -41,6 +41,8 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
 }) {
   const [filters, setFilters] = useState(() => readFilters(currentHashQuery()))
   const list = useRef<HTMLDivElement>(null)
+  const pushedProfile = useRef(false)
+  const returnFocus = useRef<string | null>(null)
   const [appliedQuery, setAppliedQuery] = useState(hashQuery)
   if (hashQuery !== appliedQuery) {
     setAppliedQuery(hashQuery)
@@ -79,21 +81,30 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
   const profilePlayer = selectedPlayers.find((player) => player.id === filters.profile) ?? visible[0]
   const profileOpen = Boolean(filters.profile && selectedPlayers.some((player) => player.id === filters.profile))
 
+  useEffect(() => {
+    if (profileOpen || returnFocus.current === null) return
+    const row = list.current?.querySelector<HTMLButtonElement>(`[data-player-profile="${CSS.escape(returnFocus.current)}"]`)
+    const target = row ?? searchRef?.current ?? list.current
+    returnFocus.current = null
+    target?.focus({ preventScroll: true })
+    target?.scrollIntoView({ block: 'nearest' })
+  }, [profileOpen, searchRef])
+
   function selectProfile(profile: string) {
+    if (!profileOpen) pushedProfile.current = true
     writeNavigationHash(hashWithParam('profile', profile), profileOpen ? 'replace' : 'push')
     setFilters({ ...filters, profile })
   }
 
   function closeProfile() {
-    const selectedId = profilePlayer?.id
-    writeNavigationHash(hashWithParam('profile', null), 'replace')
-    setFilters({ ...filters, profile: '' })
-    requestAnimationFrame(() => {
-      const row = list.current?.querySelector<HTMLButtonElement>(`[data-player-profile="${CSS.escape(selectedId ?? '')}"]`)
-      const target = row ?? searchRef?.current ?? list.current
-      target?.focus({ preventScroll: true })
-      target?.scrollIntoView({ block: 'nearest' })
-    })
+    returnFocus.current = profilePlayer?.id ?? ''
+    if (pushedProfile.current) {
+      pushedProfile.current = false
+      window.history.back()
+    } else {
+      writeNavigationHash(hashWithParam('profile', null), 'replace')
+      setFilters({ ...filters, profile: '' })
+    }
   }
 
   const methodDisclosure = (
@@ -187,7 +198,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                 </Card>
               ) : (
                 <Card className="r8-player-board min-w-0 overflow-hidden p-0">
-                  <Table role="table" data-stat-games={statsFamily} aria-label="Player rankings" tabIndex={0} className="r8-player-table focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus">
+                  <Table role="table" aria-label="Player rankings" className="r8-player-table">
                     <caption className="sr-only">Player rankings for {scopeLabel}, {filters.role === 'All' ? 'all roles' : `${filters.role} players`}, ordered by {scoreLabel}, highest first. {unrankedNote ? `${unrankedNote} ` : ''}Ranks use full precision. Equal full-precision scores share a rank. Displayed scores are rounded. {teamAttribution}{statsFamily ? ' Stat games count games with usable role stats in this scope, including previous teams.' : ''} Games count games credited to the displayed team where available, otherwise all rated games.</caption>
                     <TableHeader role="rowgroup">
                       <TableRow role="row">
@@ -217,7 +228,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                                     type="button"
                                     data-player-profile={player.id}
                                     aria-label={`Open profile for ${player.name}`}
-                                    aria-pressed={profilePlayer?.id === player.id}
+                                    aria-current={profilePlayer?.id === player.id ? 'true' : undefined}
                                     onClick={() => selectProfile(player.id)}
                                   >
                                     {player.name}

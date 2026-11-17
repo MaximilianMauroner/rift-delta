@@ -41,7 +41,18 @@ export function PlayerRoleProfile({
     if (!open) return
     heading.current?.focus({ preventScroll: true })
     if (window.matchMedia('(max-width: 1279px)').matches) window.scrollTo({ top: 0, behavior: 'instant' })
-  }, [selectedId, open])
+  }, [open])
+  useEffect(() => {
+    if (!open) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && window.matchMedia('(max-width: 1279px)').matches) {
+        event.stopPropagation()
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open, onClose])
   const profile = playerRoleProfile(players, selectedId)
   if (!profile) return null
   const { player } = profile
@@ -57,12 +68,6 @@ export function PlayerRoleProfile({
       league={league}
       role="region"
       aria-label="Role profile"
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' && open) {
-          event.stopPropagation()
-          onClose()
-        }
-      }}
     >
       <header className="r8-player-profile-heading">
         <TeamMark team={player.team} code={player.teamCode} className="size-10" />
@@ -77,7 +82,7 @@ export function PlayerRoleProfile({
         </div>
       </header>
       <nav className="r8-player-profile-nav" aria-label="Player navigation">
-        <Button variant="ghost" size="sm" onClick={onClose}>
+        <Button className="r8-player-profile-back" variant="ghost" size="sm" onClick={onClose}>
           <ArrowLeft size={16} />Players
         </Button>
         <Button
@@ -109,9 +114,9 @@ export function PlayerRoleProfile({
           </Select>
         </label>
         <dl className="r8-player-profile-facts">
-          <div><dt>Stat games</dt><dd>{formatNumber(player.statsPower?.sampleGames ?? games)}</dd></div>
+          {player.statsPower ? <div><dt>Stat games</dt><dd>{formatNumber(player.statsPower.sampleGames)}</dd></div> : null}
           <div><dt>Role Power</dt><dd>{formatRating(player.rating)}</dd></div>
-          <div><dt>Team games</dt><dd>{formatNumber(player.teamGames ?? player.games)}</dd></div>
+          <div><dt>Games</dt><dd>{formatNumber(player.teamGames ?? player.games)}</dd></div>
         </dl>
         <div className="r8-player-profile-links">
           <a href={scoutingHref(player)} aria-label={`Full scouting report for ${player.name}`}>Scouting report</a>
