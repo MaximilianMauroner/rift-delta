@@ -15,7 +15,7 @@ const tiers: Record<string, 'S' | 'A' | 'B'> = { alpha: 'S', bravo: 'A', charlie
 
 function render(sortKey: 'rank' | 'wins', visible = rows.slice(1), pageStart = 1) {
   return renderToStaticMarkup(createElement(BoardList, {
-    rows, visibleRows: visible, pageStart, tierFor: (entry) => tiers[entry.teamId], sortKey, sortDirection: sortKey === 'rank' ? 'ascending' : 'descending',
+    rows, visibleRows: visible, firstAnswer: false, pageStart, tierFor: (entry) => tiers[entry.teamId], sortKey, sortDirection: sortKey === 'rank' ? 'ascending' : 'descending',
     onSort: () => {}, movementByTeamId: new Map<string, never>(), movementPeriod: 'last 30 days', scopeScoreRanks: new Map<string, number>(), pickedKeys: new Set<string>(),
     onOpen: () => {}, onToggle: () => {}, onPrepare: () => {},
   }))

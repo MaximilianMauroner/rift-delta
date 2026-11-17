@@ -326,3 +326,24 @@ test('the phone team screen steps through the board with Previous and Next in on
     await page.waitForFunction(() => document.activeElement?.getAttribute('title') === 'Open Synthetic Alpha', undefined, { timeout: 2_000 })
   }, 390)
 })
+
+test('the Power field keeps one mark in the tab order, moves with the arrow keys and opens the chosen team', { timeout: 60_000 }, async () => {
+  await withFixture(async (page, base) => {
+    await page.goto(`${base}${board('2026')}`)
+    const field = page.getByRole('group', { name: /teams on one Power axis/ })
+    const current = field.locator('button[tabindex="0"]')
+    await current.waitFor()
+    assert.equal(await current.count(), 1)
+    const strongest = await current.getAttribute('aria-label')
+    await current.focus()
+    await page.keyboard.press('ArrowLeft')
+    const moved = await page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? '')
+    assert.notEqual(moved, strongest, 'ArrowLeft moves to the next team down the Power axis')
+    assert.equal(await current.getAttribute('aria-label'), moved)
+    await page.keyboard.press('Enter')
+    const name = /Synthetic (\w+)/.exec(moved)?.[1]
+    assert.ok(name)
+    await expectTeam(page, name)
+    assert.equal(await field.locator('button[aria-current="true"]').getAttribute('aria-label'), moved)
+  })
+})

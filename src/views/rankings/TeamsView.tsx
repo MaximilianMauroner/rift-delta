@@ -21,7 +21,7 @@ import {
   tournamentIdFromFilter, type TournamentFilterValue, type TournamentInstanceId
 } from '../../domains/rankings/evidence'
 import {
-  ELIGIBILITY_FILTERS, gameWinChanceForGap, NEAR_TIE_WIN_PROBABILITY, nearTieGroups, SORT_DIRECTIONS,
+  ELIGIBILITY_FILTERS, gameWinChanceForGap, NEAR_TIE_WIN_PROBABILITY, SORT_DIRECTIONS,
   SORT_KEYS,
   TIER_FILTERS, type EligibilityFilter, type PublicMatchupModel, type RankingUniverse, type RegionStrength, type SortDirection,
   type SortKey,
@@ -41,7 +41,7 @@ import { BoardList } from './BoardList'
 import { DataSourcesDisclosure } from './DataSourcesDisclosure'
 import { LazyTeamHistoryLineChart, loadTeamHistoryLineChart } from './historyChart'
 import { playersForTeam } from './playerData'
-import { PowerLadder } from './PowerLadder'
+import { PowerField } from './PowerField'
 import { TeamDossier } from './TeamDossier'
 import { dailyChartPointsFromHistoryPoints, deriveDailyRankSeries, internationalChartEvents, tournamentChartPoints } from './teamHistoryChart'
 import { type TrajectoryInsight } from './trajectory'
@@ -53,7 +53,6 @@ const TEAM_PAGE_SIZES = [15, 25, 50, 80] as const
 const DEFAULT_TEAM_PAGE_SIZE = 25
 
 /** The ladder stays readable in a 320px rail up to about this many rows. */
-const LADDER_TEAM_LIMIT = 16
 
 const DEFAULT_FOCUS_TEAMS = 5
 
@@ -231,10 +230,6 @@ export function TeamsView({
   // Near ties only mean something when neighbours on screen are neighbours in
   // the ranking, so they follow the ranked order and not a Power or record sort.
   const rankedOrder = sortKey === 'rank' && sortDirection === 'ascending'
-  const ladderGroups = useMemo(
-    () => nearTieGroups(board.rankedRows.slice(0, LADDER_TEAM_LIMIT), model),
-    [board.rankedRows, model],
-  )
   const headline = useMemo(
     () => activeTournament ? undefined : boardHeadline(universe.rankedStandings, model),
     [activeTournament, model, universe.rankedStandings],
@@ -430,6 +425,17 @@ export function TeamsView({
         </Alert>
       ) : null}
       {headline ? <p className="board-headline max-w-[72ch] text-lg leading-[1.3] font-semibold text-text">{headline}</p> : null}
+      {rows.length >= 2 ? (
+        <PowerField
+          teams={rows}
+          ranked={universe.rankedStandings}
+          tierFor={tierFor}
+          selectedKey={detailKey}
+          gapExample={gapExample}
+          onOpen={openTeam}
+          onPrepare={prepareTeamDetails}
+        />
+      ) : null}
       <div className="board-layout">
         <div className="board-main min-w-0">
           <Panel className="ranking-board">
@@ -529,7 +535,6 @@ export function TeamsView({
               </label>
               </div>
               <p className="board-legend flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" title={`Model ${formatModelVersion(model?.version)}${model?.configHash ? ` · config ${model.configHash}` : ''}`}>
-                <span><b className="font-semibold">100 points</b> ≈ {gapExample}% game win</span>
                 {rankedOrder ? <span><b className="font-semibold">Δ</b> is the gap to the team above. <b className="font-semibold">Tie</b> marks a near tie, under {Math.round(NEAR_TIE_WIN_PROBABILITY * 100)}% per game</span> : null}
                 <span><b className="font-semibold">{activeTournament ? 'Event move' : '30 days'}</b> rank change {movementPeriod}</span>
                 <span><b className="font-semibold">Form</b> oldest → latest · latest underlined</span>
@@ -572,6 +577,7 @@ export function TeamsView({
               <BoardList
                 rows={rows}
                 visibleRows={visibleRows}
+                firstAnswer={rows.length < 2}
                 pageStart={page.start}
                 tierFor={tierFor}
                 model={model}
@@ -634,18 +640,8 @@ export function TeamsView({
       </div>
 
       <div className="board-extras grid min-w-0 gap-4">
-        <aside className="board-sidebar grid min-w-0 content-start gap-4 min-[900px]:grid-cols-2" aria-label="Ranking overview">
-          {ladderGroups.flat().length >= 2 ? (
-            <Panel aria-label="Power ladder">
-              <PanelHeader title="Power ladder" actions={<span className="text-xs text-muted">{ladderGroups.flat().length < rows.length ? `top ${ladderGroups.flat().length}` : 'all ranked'}</span>} />
-              <PanelBody className="px-2 py-2">
-                <PowerLadder groups={ladderGroups} tierFor={tierFor} gapExample={gapExample} onOpen={openTeam} />
-              </PanelBody>
-            </Panel>
-          ) : null}
-          <WhatChanged period={activeTournament ? activeTournament.label : '30 days'} riser={changes.riser} faller={changes.faller} upset={changes.upset} />
-          <RegionalStrengthTeaser regions={regions} href={regionsHref} />
-        </aside>
+        <WhatChanged period={activeTournament ? activeTournament.label : '30 days'} riser={changes.riser} faller={changes.faller} upset={changes.upset} />
+        <RegionalStrengthTeaser regions={regions} href={regionsHref} />
 
       <Panel
         ref={trajectoryPanelRef}

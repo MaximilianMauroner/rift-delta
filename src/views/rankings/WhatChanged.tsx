@@ -1,5 +1,4 @@
 import { Badge } from '../../components/ui/badge'
-import { Panel, PanelHeader } from '../../components/ui/panel'
 import { formatSigned } from '../../shared/display'
 import { matchEventLabel } from '../../domains/rankings/read'
 import { cn } from '../../shared/utils'
@@ -42,8 +41,11 @@ export function WhatChanged({
 }) {
   if (!riser && !faller && !upset) return null
   return (
-    <Panel aria-label="What changed">
-      <PanelHeader title="What changed" actions={<span className="text-xs text-muted">{period}</span>} />
+    <details className="board-disclosure">
+      <summary>
+        <span className="text-base font-semibold">What changed</span>
+        <span className="text-xs text-muted">{period}</span>
+      </summary>
       <ul className="grid gap-px bg-line">
         {riser ? <MovementRow movement={riser} /> : null}
         {faller ? <MovementRow movement={faller} /> : null}
@@ -57,7 +59,7 @@ export function WhatChanged({
           </li>
         ) : null}
       </ul>
-    </Panel>
+    </details>
   )
 }
 

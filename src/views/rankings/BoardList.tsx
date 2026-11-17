@@ -44,6 +44,7 @@ function boardLaneAxis(rows: readonly RankingSummaryStanding[]) {
 export function BoardList({
   rows,
   visibleRows,
+  firstAnswer,
   pageStart,
   tierFor,
   model,
@@ -62,6 +63,8 @@ export function BoardList({
 }: {
   rows: readonly RankingSummaryStanding[]
   visibleRows: readonly RankingSummaryStanding[]
+  /** The rows carry the screen's first answer when no field sits above them. */
+  firstAnswer: boolean
   pageStart: number
   tierFor: (team: RankingSummaryStanding) => RankingTierLabel | undefined
   model?: PublicMatchupModel
@@ -169,7 +172,7 @@ export function BoardList({
                 </tr>
               ) : null}
               <TableRow
-                data-first-answer="rankings"
+                data-first-answer={firstAnswer ? 'rankings' : undefined}
                 data-team-key={key}
                 aria-current={key === selectedKey ? 'true' : undefined}
                 className={cn(

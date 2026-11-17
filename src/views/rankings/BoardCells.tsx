@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { RegionBadge } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { Panel, PanelFooter, PanelHeader } from '../../components/ui/panel'
 import { displayRegionPowerScore, NEAR_TIE_WIN_PROBABILITY, type NearTiePosition, type RegionStrength } from '../../domains/rankings/read'
 import type { RankingSummaryStanding } from '../../domains/rankings/types'
 import { formatNumber, formatRating } from '../../shared/display'
@@ -86,11 +85,11 @@ export function RegionalStrengthTeaser({ regions, href }: { regions: RegionStren
   const ranked = useMemo(() => [...regions].sort((a, b) => displayRegionPowerScore(b) - displayRegionPowerScore(a)), [regions])
   if (ranked.length === 0) return null
   return (
-    <Panel aria-label="Region power scores">
-      <PanelHeader
-        title="Region power"
-        actions={href ? <a className="inline-flex min-h-6 min-w-6 shrink-0 items-center text-xs font-semibold underline" href={href}>Details</a> : undefined}
-      />
+    <details className="board-disclosure" aria-label="Region power scores">
+      <summary>
+        <span className="text-base font-semibold">Region power</span>
+        <span className="text-xs text-muted">{ranked[0].region} leads at {formatRating(displayRegionPowerScore(ranked[0]))}</span>
+      </summary>
       <div className="grid grid-cols-1 gap-px bg-line">
         {ranked.map((region) => (
           <div className="flex min-w-0 items-center gap-2.5 bg-surface px-4 py-2 [&_.region-badge]:h-5 [&_.region-badge]:w-[22px]" key={region.region}>
@@ -100,10 +99,11 @@ export function RegionalStrengthTeaser({ regions, href }: { regions: RegionStren
           </div>
         ))}
       </div>
-      <PanelFooter className="text-xs leading-[1.35] text-muted">
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line px-4 py-3 text-xs leading-[1.35] text-muted">
         Average of each region’s top three eligible flagship teams.
-      </PanelFooter>
-    </Panel>
+        {href ? <a className="inline-flex min-h-6 items-center font-semibold text-focus underline" href={href}>Open Regions</a> : null}
+      </p>
+    </details>
   )
 }
 
