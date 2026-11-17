@@ -117,14 +117,21 @@ const tournamentFeedFixture: Plugin = {
   },
 }
 
+// A title counts as hover-only when it holds a word that the element does not
+// already show or announce. Verbs and joining words do not count, so "Open
+// Bilibili Gaming" on a button that reads "Bilibili Gaming" adds nothing.
+const addsNothing = ['open', 'close', 'show', 'hide', 'view', 'see', 'go', 'select', 'choose', 'compare', 'clear', 'sort', 'expand', 'collapse', 'toggle', 'remove', 'add', 'pin', 'unpin', 'copy', 'filter', 'find', 'search', 'play', 'watch', 'visit', 'to', 'the', 'a', 'an', 'for', 'of', 'on', 'in', 'by', 'with', 'and', 'or', 'this', 'that']
+
 const measure = `(answer) => {
   const element = [...document.querySelectorAll(answer)].find((node) => node.getClientRects().length > 0)
   const text = (ids) => (ids ?? '').split(/\\s+/).map((id) => document.getElementById(id)?.textContent ?? '').join(' ')
+  const words = (value) => value.toLowerCase().match(/[\\p{L}\\p{N}]+/gu) ?? []
+  const addsNothing = new Set(${JSON.stringify(addsNothing)})
   const titleOnly = [...document.querySelectorAll('[title]')].filter((node) => {
-    const title = node.getAttribute('title').trim().toLowerCase()
-    if (!title || node.getClientRects().length === 0) return false
-    const explained = [node.getAttribute('aria-label'), text(node.getAttribute('aria-labelledby')), text(node.getAttribute('aria-describedby')), node.innerText ?? node.textContent]
-    return !explained.join(' ').toLowerCase().includes(title)
+    const title = words(node.getAttribute('title'))
+    if (!title.length || node.getClientRects().length === 0) return false
+    const explained = new Set(words([node.getAttribute('aria-label'), text(node.getAttribute('aria-labelledby')), text(node.getAttribute('aria-describedby')), node.innerText ?? node.textContent].join(' ')))
+    return title.some((word) => !addsNothing.has(word) && !explained.has(word))
   })
   return {
     firstAnswerY: element ? Math.round(element.getBoundingClientRect().top + window.scrollY) : null,
