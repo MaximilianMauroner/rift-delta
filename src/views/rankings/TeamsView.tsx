@@ -1,6 +1,6 @@
 import { shouldIgnoreTeamRowClick } from './boardEvents'
-import { ChevronRight, SlidersHorizontal, Users, X } from 'lucide-react'
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, ChevronRight, SlidersHorizontal, Users, X } from 'lucide-react'
+import { Fragment, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { currentHashQuery, hashEnum, hashInt, hashParam, useHashSync } from '../../browser/navigation'
 import type {
   TeamHistoryArtifactState,
@@ -32,18 +32,18 @@ import {
 import type { CompactPlayer, PublicCurrentLineup, RankingSummaryStanding, TeamHistorySeries } from '../../domains/rankings/types'
 import { useTeamDetailAddress } from '../../hooks/useTeamDetailAddress'
 import type { ChartPoint } from '../../shared/chartPoints'
-import { assignColorSlots, sameColorSlots } from '../../shared/colorSlots'
 import { extent, formatDate, formatDateRange, formatModelVersion, formatNumber, formatRating, formatRatio, formatRecord, formatSigned, teamKey } from '../../shared/display'
 import { cn } from '../../shared/utils'
+import { leagueColor } from '../../shared/teamColor'
 import { ChipGroup, NearTieMark, RegionalStrengthTeaser, TeamBoardRank, TeamScoreCell, TierBadge, TournamentMoveChip } from './BoardCells'
-import { activeMovement, eligibilityReasonsTitle, eligibilitySummary, rankAxisForSeries, rollingMovementTitle, teamRankFor, teamScoreFor } from './boardFormat'
+import { activeMovement, eligibilityReasonsTitle, eligibilitySummary, rankAxisForSeries, rollingMovementTitle, teamRankFor, teamScoreFor, teamScoreTitle } from './boardFormat'
 import { boardHeadline } from './boardHeadline'
 import { boardChanges, tournamentTrajectoryInsight } from './boardHistory'
 import { CompareToggle } from './CompareToggle'
 import { DataSourcesDisclosure } from './DataSourcesDisclosure'
 import { LazyTeamHistoryLineChart, loadTeamHistoryLineChart } from './historyChart'
 import { playersForTeam } from './playerData'
-import { PowerLadder } from './PowerLadder'
+import { PowerField } from './PowerField'
 import { TeamDetailDrawer } from './TeamDetailDrawer'
 import { dailyChartPointsFromHistoryPoints, deriveDailyRankSeries, internationalChartEvents, tournamentChartPoints } from './teamHistoryChart'
 import { type TrajectoryInsight } from './trajectory'
@@ -54,12 +54,7 @@ const TEAM_PAGE_SIZES = [15, 25, 50, 80] as const
 
 const DEFAULT_TEAM_PAGE_SIZE = 25
 
-/** The ladder stays readable in a 320px rail up to about this many rows. */
-const LADDER_TEAM_LIMIT = 16
-
 const DEFAULT_FOCUS_TEAMS = 5
-
-const SERIES_COLORS = ['var(--league-lck)', 'var(--league-lpl)', 'var(--league-lec)', 'var(--league-lcs)', 'var(--league-lcp)', 'var(--league-cblol)']
 
 /**
  * The board filters this view keeps in the hash, read on mount and on every
@@ -171,7 +166,6 @@ export function TeamsView({
   const [metric, setMetric] = useState<TrajectoryMetric>('rating')
   // Phones fold the filters behind one button so the first screen shows teams.
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [colorSlots, setColorSlots] = useState<ReadonlyMap<string, number>>(() => new Map())
   const trajectoryPanelRef = useRef<HTMLDivElement | null>(null)
   const [trajectoryRequested, setTrajectoryRequested] = useState(false)
   const history = historyState.status === 'ready' ? historyState.data.series : undefined
@@ -234,13 +228,9 @@ export function TeamsView({
   // Near ties only mean something when neighbours on screen are neighbours in
   // the ranking, so they follow the ranked order and not a Power or record sort.
   const rankedOrder = sortKey === 'rank' && sortDirection === 'ascending'
-  const ladderGroups = useMemo(
-    () => nearTieGroups(board.rankedRows.slice(0, LADDER_TEAM_LIMIT), model),
-    [board.rankedRows, model],
-  )
   const tiePositions = useMemo(
-    () => rankedOrder ? nearTiePositions(nearTieGroups(visibleRows.filter((team) => team.eligibility?.eligible), model), teamKey) : new Map<string, NearTiePosition>(),
-    [model, rankedOrder, visibleRows],
+    () => rankedOrder ? nearTiePositions(nearTieGroups(rows.filter((team) => team.eligibility?.eligible !== false), model), teamKey) : new Map<string, NearTiePosition>(),
+    [model, rankedOrder, rows],
   )
   const headline = useMemo(
     () => activeTournament ? undefined : boardHeadline(universe.rankedStandings, model),
@@ -259,10 +249,13 @@ export function TeamsView({
     () => (detailTeam ? playersForTeam(players, detailTeam) : []),
     [detailTeam, players],
   )
+  const detailRows = rows.some((team) => teamKey(team) === (detailTeam && teamKey(detailTeam))) ? rows : standings
+  const detailIndex = detailTeam ? detailRows.findIndex((team) => teamKey(team) === teamKey(detailTeam)) : -1
+  const standalone = currentHashQuery().get('teamPage') === '1'
   const detailLineup = detailTeam ? currentLineups?.[detailTeam.teamId] : undefined
 
   useEffect(() => {
-    if (!onRequestTeamHistory || exactTournamentId || detailTeam) return undefined
+    if (!onRequestTeamHistory || exactTournamentId) return undefined
     const panel = trajectoryPanelRef.current
     if (!panel) return undefined
 
@@ -290,17 +283,15 @@ export function TeamsView({
     () => pickedFocusTeams.length > 0 ? pickedFocusTeams : rows.slice(0, DEFAULT_FOCUS_TEAMS),
     [pickedFocusTeams, rows],
   )
-  // Colours follow teams, not positions. Derived during render and stored only
-  // when the assignment changes, so an unchanged assignment keeps its identity.
-  const requestedHistoryTeams = (detailTeam ? [teamKey(detailTeam)] : focusTeams.map(teamKey)).sort().join('\u0000')
+  const requestedHistoryTeams = [...new Set([
+    ...(detailTeam ? [teamKey(detailTeam)] : []),
+    ...(!detailTeam || trajectoryRequested ? focusTeams.map(teamKey) : []),
+  ])].sort().join('\u0000')
   useEffect(() => {
     if ((detailTeam || trajectoryRequested) && !exactTournamentId) onRequestTeamHistory?.(requestedHistoryTeams.split('\u0000').filter(Boolean))
   }, [detailTeam, trajectoryRequested, exactTournamentId, onRequestTeamHistory, requestedHistoryTeams])
 
-  const assignedSlots = assignColorSlots(colorSlots, focusTeams.map(teamKey), SERIES_COLORS.length)
-  const slots = sameColorSlots(assignedSlots, colorSlots) ? colorSlots : assignedSlots
-  if (slots !== colorSlots) setColorSlots(slots)
-  const colorFor = useCallback((team: RankingSummaryStanding) => SERIES_COLORS[slots.get(teamKey(team)) ?? 0], [slots])
+  const colorFor = useCallback((team: RankingSummaryStanding) => leagueColor(team.league), [])
   const dailyRankSeries = useMemo(
     () => metric === 'rank' && activeHistory && !exactTournamentId ? deriveDailyRankSeries(activeHistory) : new Map<string, ChartPoint[]>(),
     [activeHistory, exactTournamentId, metric],
@@ -392,16 +383,19 @@ export function TeamsView({
   }
 
   return (
-    <PageShell className="rankings-view">
+    <PageShell className={cn("rankings-view", detailTeam && "has-team", standalone && detailTeam && "is-team-page")}>
       {detail.missing ? (
         <Alert variant="warning" role="status">
+          <AlertTriangle size={16} aria-hidden="true" />
           This team is not available in {dataSummary?.scopeLabel ?? 'the selected scope'}. Showing the ranking board.
           <Button variant="ghost" onClick={detail.dismissMissing}>Dismiss</Button>
         </Alert>
       ) : null}
-      {headline ? <p className="board-headline max-w-[72ch] text-lg leading-[1.3] font-semibold text-text">{headline}</p> : null}
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_320px] items-start gap-6 max-[1488px]:grid-cols-1">
-        <div className="min-w-0">
+      <div className={cn('rankings-layout', detailTeam && 'rankings-layout--selected')}>
+        <div className="rankings-list min-w-0">
+          {headline ? <p className="board-headline max-w-[72ch] text-lg leading-[1.3] font-semibold text-text">{headline}</p> : null}
+          <PowerField teams={rows} selected={detailTeam && teamKey(detailTeam)} onOpen={openTeam} firstAnswer />
+
           <Panel className="ranking-board">
             <PanelHeader
               title={activeTournament ? `${activeTournament.label} standings` : 'Power ranking'}
@@ -426,12 +420,12 @@ export function TeamsView({
               </div>
               <div id="board-filters" className={cn('grid gap-2.5', !filtersOpen && 'max-sm:hidden')}>
               <div className="flex min-w-0 flex-wrap items-center gap-2" role="group" aria-label="Board filters">
-                <ChipGroup
+                <div className="board-region-filter"><ChipGroup
                   label="Region"
                   value={region}
                   options={universe.regionOptions.map((option) => ({ value: option, label: option === 'All' ? 'All regions' : formatCompetitionRegionLabel(option) }))}
                   onChange={setRegion}
-                />
+                /></div>
                 <ChipGroup
                   label="Tier"
                   value={tierFilter}
@@ -498,12 +492,15 @@ export function TeamsView({
                 </Select>
               </label>
               </div>
+              <details className="board-reading-guide"><summary>How to read this board</summary>
               <p className="board-legend flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" title={`Model ${formatModelVersion(model?.version)}${model?.configHash ? ` · config ${model.configHash}` : ''}`}>
                 <span><b className="font-semibold">100 points</b> ≈ {gapExample}% game win</span>
-                {rankedOrder ? <span><b className="font-semibold">Bracket</b> marks a near tie, under {Math.round(NEAR_TIE_WIN_PROBABILITY * 100)}% per game</span> : null}
+                {rankedOrder ? <span><b className="font-semibold">Δ tie</b> and brackets mark a near tie, under {Math.round(NEAR_TIE_WIN_PROBABILITY * 100)}% per game</span> : null}
                 <span><b className="font-semibold">{activeTournament ? 'Event move' : '30 days'}</b> rank change {movementPeriod}</span>
                 <span><b className="font-semibold">Form</b> oldest → latest · latest underlined</span>
               </p>
+              <p className="text-xs text-muted break-all">Model {formatModelVersion(model?.version)}{model?.configHash ? `, config ${model.configHash}` : ''}.</p>
+              </details>
             </PanelBody>
 
             {tournamentMovementIndexState.status === 'missing' || tournamentMovementIndexState.status === 'error' ? (
@@ -561,22 +558,34 @@ export function TeamsView({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {visibleRows.map((team) => {
+                    {visibleRows.map((team, index) => {
                       const key = teamKey(team)
                       const total = team.wins + team.losses
                       const rank = teamRankFor(team)
                       const tier = tierFor(team)
                       const excludedFromRankedBoard = team.eligibility?.eligible === false
                       const tie = tiePositions.get(key)
+                      const previous = rows[page.start + index - 1]
+                      const previousScore = previous && teamScoreFor(previous)
+                      const score = teamScoreFor(team)
+                      const gap = typeof score === 'number' && typeof previousScore === 'number' ? previousScore - score : undefined
+                      const nearTie = previous && previous.eligibility?.eligible !== false && !excludedFromRankedBoard && nearTieGroups([previous, team], model).length === 1
+                      const groupStart = index === 0 || tier !== tierFor(visibleRows[index - 1])
                       return (
+                        <Fragment key={key}>
+                          {groupStart ? <TableRow className="board-tier-header" data-tier={tier ?? 'unranked'}>
+                            <TableHead colSpan={7} scope="row"><span>{tier ? `${tier} tier` : 'Unranked'}</span><small>{tier ? `${tierCounts.find((entry) => entry.tier === tier)?.count ?? 0} in filtered field` : 'Eligibility checks pending'}</small></TableHead>
+                          </TableRow> : null}
                         <TableRow
                           data-first-answer="rankings"
                           key={key}
                           className={cn(
                             'board-row group/board cursor-pointer outline-offset-[-2px] hover:bg-raised focus-visible:outline-2 focus-visible:outline-focus',
                             pickedKeys.has(key) && 'is-picked',
+                            detailTeam && teamKey(detailTeam) === key && 'is-selected',
                             excludedFromRankedBoard && 'is-excluded bg-[color-mix(in_srgb,var(--raised)_58%,transparent)] text-[color-mix(in_srgb,var(--text)_76%,var(--muted))] hover:bg-[color-mix(in_srgb,var(--line)_70%,transparent)]',
                           )}
+                          style={{ '--league-color': leagueColor(team.league) } as CSSProperties}
                           title={excludedFromRankedBoard ? eligibilityReasonsTitle(team) : undefined}
                           onPointerEnter={prepareTeamDetails}
                           onTouchStart={prepareTeamDetails}
@@ -604,12 +613,14 @@ export function TeamsView({
                               <TeamMark team={team.team} code={team.code} className="team-mark sm h-8 w-10" />
                               <div className="ent flex min-w-0 flex-col gap-px overflow-hidden [&_b]:block [&_b]:overflow-hidden [&_b]:text-ellipsis [&_b]:whitespace-nowrap [&_b]:font-semibold [&_b]:text-text [&_small]:block [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap [&_small]:text-xs [&_small]:text-muted">
                                 <b>{team.team}</b>
-                                <small>{excludedFromRankedBoard ? `${team.league} · ${eligibilitySummary(team)}` : team.league}</small>
+                                <small><span className="league-dot" aria-hidden="true" />{excludedFromRankedBoard ? `${team.league} · ${eligibilitySummary(team)}` : team.league}</small>
                               </div>
                             </Button>
+
                           </TableCell>
                           <TableCell className="board-col-score" aria-label={`Power ${formatRating(teamScoreFor(team))}`}>
                             <TeamScoreCell team={team} min={ratingMin} max={ratingMax} exactTournament={Boolean(activeTournament)} />
+                            {gap !== undefined ? <span className={cn('board-gap', nearTie && 'board-gap--tie')} aria-label={`Gap to ${previous.team}: ${formatSigned(gap)} Power${nearTie ? ', near tie, stronger Bo1 chance under 53%' : ''}`}><b>Δ</b>{formatRating(Math.abs(gap))}{gap < 0 ? ' higher' : ''}{nearTie ? ' tie' : ''}</span> : null}
                           </TableCell>
                           <TableCell className="board-col-move">
                             {activeTournament ? (
@@ -622,8 +633,12 @@ export function TeamsView({
                             <FormDots form={team.form} />
                           </TableCell>
                           <TableCell className="right num board-col-record" aria-label={`Match wins ${formatNumber(team.wins)}, losses ${formatNumber(team.losses)}; win rate ${formatRatio(total > 0 ? team.wins / total : undefined)}`}>
-                            <b className="font-semibold text-text">{formatRecord(team.wins, team.losses)}</b>{' '}
-                            <span className="text-sm text-muted">{formatRatio(total > 0 ? team.wins / total : undefined)}</span>
+                            <details className="board-row-details" data-row-click-exclude>
+                              <summary><b className="font-semibold text-text">{formatRecord(team.wins, team.losses)}</b>{' '}<span>{formatRatio(total > 0 ? team.wins / total : undefined)}</span></summary>
+                              <p>{teamScoreTitle(team)}</p>
+                              <p>{activeTournament ? `Event endpoint ${formatDate(activeTournament.boundaryDate)}. ${tournamentBoundaryLabel(activeTournament.status)}.` : rollingMovementTitle(team, movementPeriod)}</p>
+                              {excludedFromRankedBoard ? <p>{eligibilityReasonsTitle(team)}</p> : null}
+                            </details>
                           </TableCell>
                           <TableCell className="board-col-action">
                             <span className="flex items-center justify-end gap-2">
@@ -632,6 +647,7 @@ export function TeamsView({
                             </span>
                           </TableCell>
                         </TableRow>
+                        </Fragment>
                       )
                     })}
                   </TableBody>
@@ -656,23 +672,37 @@ export function TeamsView({
           </Panel>
         </div>
 
-        {/* Beside the board on wide screens, below it on narrow ones, so a
-            phone reaches the teams first. */}
-        <aside className="board-sidebar grid min-w-0 content-start gap-4 max-[1280px]:grid-cols-2 max-[900px]:grid-cols-1" aria-label="Ranking overview">
-          {ladderGroups.flat().length >= 2 ? (
-            <Panel aria-label="Power ladder">
-              <PanelHeader title="Power ladder" actions={<span className="text-xs text-muted">{ladderGroups.flat().length < rows.length ? `top ${ladderGroups.flat().length}` : 'all ranked'}</span>} />
-              <PanelBody className="px-2 py-2">
-                <PowerLadder groups={ladderGroups} tierFor={tierFor} gapExample={gapExample} onOpen={openTeam} />
-              </PanelBody>
-            </Panel>
-          ) : null}
-          <WhatChanged period={activeTournament ? activeTournament.label : '30 days'} riser={changes.riser} faller={changes.faller} upset={changes.upset} />
-          <RegionalStrengthTeaser regions={regions} href={regionsHref} />
-        </aside>
+      {detailTeam ? (
+        <TeamDetailDrawer
+          team={detailTeam}
+          standings={standings}
+          rankedStandings={universe.rankedStandings}
+          model={model}
+          tier={tierFor(detailTeam)}
+          series={activeHistory?.[teamKey(detailTeam)]}
+          historyState={historyState}
+          tournament={activeTournament}
+          tournamentMovement={movementByTeamId.get(detailTeam.teamId)}
+          players={detailPlayers}
+          currentLineup={detailLineup}
+          playerLoadState={playerLoadState}
+          playerScopeLabel={playerScopeLabel}
+          onRequestPlayers={onRequestPlayers}
+          seeded={Boolean(panelData?.seeded)}
+          events={seasonEvents}
+          onClose={detail.close}
+          onPrevious={detailIndex > 0 ? () => openTeam(detailRows[detailIndex - 1]) : undefined}
+          onNext={detailIndex >= 0 && detailIndex < detailRows.length - 1 ? () => openTeam(detailRows[detailIndex + 1]) : undefined}
+        />
+      ) : null}
       </div>
 
+      <details className="rankings-secondary ranking-changes"><summary>What changed</summary>
+        <WhatChanged period={activeTournament ? activeTournament.label : '30 days'} riser={changes.riser} faller={changes.faller} upset={changes.upset} />
+        <RegionalStrengthTeaser regions={regions} href={regionsHref} />
+      </details>
       <Panel
+        className="rankings-secondary"
         ref={trajectoryPanelRef}
         onFocusCapture={() => setTrajectoryRequested(true)}
         onPointerEnter={() => setTrajectoryRequested(true)}
@@ -696,7 +726,7 @@ export function TeamsView({
             />
           }
         />
-        {detailTeam ? <div className="min-h-[300px]" aria-hidden="true" /> : exactTournamentId && tournamentMovementState.status === 'loading' ? (
+        {exactTournamentId && tournamentMovementState.status === 'loading' ? (
           <LoadingState presentation="chart" className="m-5" label="Loading tournament movement" />
         ) : exactTournamentId && tournamentMovementState.status === 'idle' ? (
           <p className="text-muted p-5">Tournament movement has not been requested.</p>
@@ -773,29 +803,8 @@ export function TeamsView({
         ) : null}
       </Panel>
 
-      <DataSourcesDisclosure model={model} data={panelData} />
+      <div className="rankings-data-sources"><DataSourcesDisclosure model={model} data={panelData} /></div>
 
-      {detailTeam ? (
-        <TeamDetailDrawer
-          team={detailTeam}
-          standings={standings}
-          rankedStandings={universe.rankedStandings}
-          model={model}
-          tier={tierFor(detailTeam)}
-          series={activeHistory?.[teamKey(detailTeam)]}
-          historyState={historyState}
-          tournament={activeTournament}
-          tournamentMovement={movementByTeamId.get(detailTeam.teamId)}
-          players={detailPlayers}
-          currentLineup={detailLineup}
-          playerLoadState={playerLoadState}
-          playerScopeLabel={playerScopeLabel}
-          onRequestPlayers={onRequestPlayers}
-          seeded={Boolean(panelData?.seeded)}
-          events={seasonEvents}
-          onClose={detail.close}
-        />
-      ) : null}
     </PageShell>
   )
 }

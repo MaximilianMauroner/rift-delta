@@ -1,5 +1,5 @@
-import { X } from 'lucide-react'
-import { Suspense, useMemo } from 'react'
+import { ArrowLeft, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Suspense, useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import type {
   TeamHistoryArtifactState
 } from '../../browser/rankings/usePublicArtifacts'
@@ -9,13 +9,14 @@ import { FormDots } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { LoadingState } from '../../components/ui/loading'
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from '../../components/ui/sheet'
+import { currentHashQuery } from '../../browser/navigation'
+import { leagueColor } from '../../shared/teamColor'
 import {
   tournamentBoundaryLabel
 } from '../../domains/rankings/evidence'
 import { eventTierConfig } from '../../domains/rankings/policy'
 import type { RankingTierLabel } from '../../domains/rankings/read'
-import { estimatePublicMatchup, type PublicMatchupModel } from '../../domains/rankings/read'
+import { estimatePublicMatchup, nearTieGroups, type PublicMatchupModel } from '../../domains/rankings/read'
 import type { CompactPlayer, EventTier, PublicCurrentLineup, PublicTournamentMovementShard, PublicTournamentMovementTeam, RankingSummaryStanding, TeamHistorySeries } from '../../domains/rankings/types'
 import { formatDate, formatModelVersion, formatNumber, formatRating, formatRatio, formatRecord, teamKey } from '../../shared/display'
 import { cn } from '../../shared/utils'
@@ -111,6 +112,8 @@ export function TeamDetailDrawer({
   seeded,
   events,
   onClose,
+  onPrevious,
+  onNext,
 }: {
   team: RankingSummaryStanding
   standings: readonly RankingSummaryStanding[]
@@ -130,17 +133,20 @@ export function TeamDetailDrawer({
   /** International events to mark on the season chart. */
   events: ChartEvent[]
   onClose: () => void
+  onPrevious?: () => void
+  onNext?: () => void
 }) {
   const trendSeries = useMemo<ChartSeries[]>(() => {
     if (!series || series.points.length < 2) return []
     return [{
       id: teamKey(team),
       label: team.code ?? team.team,
-      color: 'var(--league-lck)',
+      color: leagueColor(team.league),
       points: tournament ? tournamentChartPoints(series.points, 'rating') : dailyChartPointsFromHistoryPoints(series.points),
     }]
   }, [series, team, tournament])
 
+  const nearTeams = rankedStandings.filter((other) => teamKey(other) !== teamKey(team) && nearTieGroups([team, other], model).length === 1)
   const totalGames = team.wins + team.losses
   const opponentFactor = Math.round((team.factors?.opponent ?? 0) * 100)
   const trendSummary = useMemo(() => summarizeTeamTrend(series), [series])
@@ -156,43 +162,57 @@ export function TeamDetailDrawer({
     playerLoadState.status === 'loading' ? 'player rankings' : '',
   ].filter(Boolean).join(' and ')
 
+  const dossierRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const heading = dossierRef.current?.querySelector<HTMLElement>('h2')
+    heading?.focus({ preventScroll: true })
+    if (window.matchMedia('(max-width: 1023px)').matches || currentHashQuery().get('teamPage') === '1') {
+      window.scrollTo({ top: 0, behavior: 'instant' })
+    }
+  }, [team.teamId])
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  const matchesQuery = new URLSearchParams({ scope: currentHashQuery().get('scope') ?? 'all', team: team.team })
+  const pageQuery = new URLSearchParams(currentHashQuery())
+  pageQuery.set('teamDetail', teamKey(team))
+  pageQuery.set('teamPage', '1')
+
   return (
-    <Sheet open onOpenChange={(nextOpen) => {
-      if (!nextOpen) onClose()
-    }}>
-      <SheetContent
-        side="right"
-        showCloseButton={false}
-        aria-label={`${team.team} details`}
-        aria-modal="true"
-        className="team-detail-sheet h-dvh max-h-dvh gap-0 overflow-hidden border-l border-line bg-[var(--detail-surface)] p-0 text-text shadow-[var(--overlay-shadow)] [--detail-surface-2:var(--raised)] [--detail-surface-3:var(--line)] [--detail-surface:var(--surface)] data-[side=right]:w-[min(820px,100vw)] data-[side=right]:max-w-none data-[side=right]:sm:w-[min(820px,94vw)] data-[side=right]:sm:max-w-none"
-      >
+      <section ref={dossierRef} className="team-dossier" aria-label={`${team.team} details`} style={{ '--league-color': leagueColor(team.league) } as CSSProperties}>
+
         {drawerLoading ? <p className="sr-only" role="status" aria-live="polite">Loading {drawerLoading} for {team.team}.</p> : null}
         {/* The title is the team. Rank and Power sit beside it at the size the
             product exists to show. */}
-        <SheetHeader className="flex-row items-center gap-3.5 border-b border-line bg-[var(--detail-surface)] px-5 py-4 text-left max-sm:p-3.5">
+        <header data-first-answer="team-detail" className="team-dossier__header">
           <TeamMark team={team.team} code={team.code} className="size-11" />
           <div className="mr-auto grid min-w-0 gap-1">
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              <SheetTitle data-first-answer="team-detail" className="text-lg font-semibold text-text">{team.team}</SheetTitle>
+              <h2 tabIndex={-1} data-first-answer="team-detail" className="text-lg font-semibold text-text">{team.team}</h2>
               {seeded ? <Badge variant="warning">Sample data</Badge> : null}
             </div>
             <span className="flex flex-wrap items-center gap-2 text-sm text-muted">
               <LeagueSigil league={team.league} />
-              {team.league}
               {tier ? <TierBadge tier={tier} /> : null}
             </span>
           </div>
           <div className="grid shrink-0 justify-items-end leading-none">
             <span className="text-3xl font-semibold text-text tabular-nums">{teamBoardRankLabel(team, rank)}</span>
-            <span className="mt-1 text-sm text-muted tabular-nums">{formatRating(score)} Power</span>
+            <span className="mt-1 text-sm text-muted tabular-nums">{formatRating(score)} {formatUncertaintyBand(team.ratingComponents?.uncertainty ?? team.uncertainty)} Power</span>
           </div>
-          <SheetClose asChild>
-            <Button type="button" variant="ghost" size="icon" aria-label="Close">
-              <X size={18} aria-hidden="true" />
-            </Button>
-          </SheetClose>
-        </SheetHeader>
+        </header>
+        <nav className="team-dossier__navigation" aria-label="Team navigation">
+          <Button variant="ghost" size="sm" onClick={onClose}><ArrowLeft size={16} />Rankings</Button>
+          <Button variant="ghost" size="icon-sm" aria-label="Previous team" disabled={!onPrevious} onClick={onPrevious}><ChevronLeft size={16} /></Button>
+          <Button variant="ghost" size="icon-sm" aria-label="Next team" disabled={!onNext} onClick={onNext}><ChevronRight size={16} /></Button>
+          <a className="team-dossier__page-link" href={`#rankings?${pageQuery.toString()}`}>Open team page</a>
+          <Button type="button" variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}><X size={16} aria-hidden="true" /></Button>
+        </nav>
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain bg-[var(--detail-surface)] p-4 [&>*]:shrink-0 max-sm:gap-3 max-sm:p-3">
           <section className="grid grid-cols-4 gap-px overflow-hidden rounded-md border border-line bg-line max-[700px]:grid-cols-2 [&>div]:grid [&>div]:content-start [&>div]:gap-0.5 [&>div]:bg-[var(--detail-surface-2)] [&>div]:px-3.5 [&>div]:py-3 [&_b]:text-base [&_b]:font-bold [&_b]:text-text [&_b]:tabular-nums [&_small]:text-xs [&_small]:text-muted" aria-label={`${team.team} key facts`}>
@@ -205,6 +225,7 @@ export function TeamDetailDrawer({
               </>
             ) : (
               <>
+                <div><small>Near tie</small><b>{team.eligibility?.eligible === false ? 'Unranked' : nearTeams.length ? nearTeams.map((other) => other.code ?? other.team).join(', ') : 'None'}</b><small>stronger Bo1 chance under 53%</small></div>
                 <div title={rankEvidence?.title}><small>Likely rank</small><b>{rankEvidence?.label ?? 'Unavailable'}</b><small>range its results support</small></div>
                 <div title={rollingMovementTitle(team, 'last 30 days')}><small>Last 30 days</small><b className={cn(movement && (movement.rankMovement ?? 0) > 0 && 'text-up!', movement && (movement.rankMovement ?? 0) < 0 && 'text-down!')}>{movement ? formatRankMovementLabel(movement.rankMovement) : 'No series'}</b><small>{movement ? `${formatRatingMovement(movement.ratingDelta ?? 0)} Power` : 'no scored matches'}</small></div>
                 <div title={recordBasisLabel(team.recordBasis)}><small>Record</small><b>{formatRecord(team.wins, team.losses)}</b><small>{formatRatio(totalGames > 0 ? team.wins / totalGames : undefined)} of series won</small></div>
@@ -213,12 +234,10 @@ export function TeamDetailDrawer({
             )}
           </section>
 
-          {tournament ? null : <TeamLeagueProfile team={team} standings={standings} />}
-
           <section className="overflow-hidden rounded-md border border-line bg-[var(--detail-surface-2,var(--surface))]" aria-label="Power over time">
             <div className="grid gap-2 border-b border-line px-5 pt-4 pb-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="text-base font-semibold text-text">{tournament ? `${tournament.label} movement` : 'Power this season'}</h3>
+                <h3 className="text-base font-semibold text-text">{tournament ? `${tournament.label} movement` : currentHashQuery().get('scope') === 'all' ? 'Power over time' : 'Power this season'}</h3>
                 {trendSummary ? (
                   <p className="text-xs text-muted tabular-nums">
                     From {formatRating(trendSummary.opening)} on {formatDate(trendSummary.startDate)} · net <b className={cn('font-semibold', trendSummary.netChange >= 0 ? 'text-up' : 'text-down')}>{formatRatingMovement(trendSummary.netChange)}</b> · peak {formatRating(trendSummary.peak.value)}{typeof trendSummary.bestRank === 'number' ? ` · best #${trendSummary.bestRank}` : ''}
@@ -252,6 +271,8 @@ export function TeamDetailDrawer({
             ) : null}
           </section>
 
+          {tournament ? null : <TeamLeagueProfile team={team} standings={standings} />}
+
           {opponents.length > 0 ? (
             <section className="rounded-md border border-line bg-[var(--detail-surface-2,var(--surface))] px-5 py-4" aria-label={`${team.code ?? team.team} against the top teams`}>
               <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -263,7 +284,7 @@ export function TeamDetailDrawer({
                   <li className="grid grid-cols-[56px_minmax(0,1fr)_44px] items-center gap-3 text-sm" key={teamKey(opponent)} title={`${team.team} vs ${opponent.team}: ${chance}% to win a best of three`}>
                     <b className="truncate font-bold text-text">{opponent.code ?? opponent.team}</b>
                     <span className="relative h-2.5 overflow-hidden rounded-full bg-line" aria-hidden="true">
-                      <span className="absolute inset-y-0 left-0 rounded-full bg-[var(--league-lck)]" style={{ width: `${chance}%` }} />
+                      <span className="absolute inset-y-0 left-0 rounded-full bg-[var(--league-color)]" style={{ width: `${chance}%` }} />
                       <span className="absolute inset-y-[-2px] left-1/2 w-px bg-muted" />
                     </span>
                     <b className="text-right font-semibold text-text tabular-nums">{chance}%</b>
@@ -275,7 +296,7 @@ export function TeamDetailDrawer({
 
           <section className="overflow-hidden rounded-md border border-line bg-[var(--detail-surface-2,var(--surface))] p-5 max-[900px]:p-4" aria-label="Match results">
             <div className="flex items-start justify-between gap-3.5 border-b border-line pb-4 max-sm:flex-col">
-              <h3 className="text-base font-semibold text-text">Match results</h3>
+              <h3 className="text-base font-semibold text-text">Recent series</h3>
               <FormDots form={team.form} />
             </div>
             <RecentMatches
@@ -286,6 +307,8 @@ export function TeamDetailDrawer({
               seriesOnly={Boolean(tournament)}
             />
           </section>
+
+          <a className="team-dossier__matches" href={`#matches?${matchesQuery.toString()}`}>All {team.team} series in Matches</a>
 
           <details className="rounded-md border border-line bg-[var(--detail-surface-2)] p-3">
             <summary className="cursor-pointer text-sm font-semibold">How the score is built</summary>
@@ -334,8 +357,7 @@ export function TeamDetailDrawer({
             <PlayerRankingCard team={team} players={players} currentLineup={currentLineup} loadState={playerLoadState} playerScopeLabel={playerScopeLabel} />
           </details>
         </div>
-      </SheetContent>
-    </Sheet>
+      </section>
   )
 }
 

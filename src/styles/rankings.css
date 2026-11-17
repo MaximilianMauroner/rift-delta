@@ -111,7 +111,7 @@ table.ranking-table.board-grid tbody td {
    two-line list row: rank, team and Power on the first line, form, record
    and the 30-day move under them, and Compare beside both lines. Rows touch,
    so the near-tie bracket in the rank cell still joins neighbours. */
-@media (max-width: 860px) {
+@container board (width < 860px) {
   .board-sort { display: flex; }
   table.ranking-table.board-grid,
   table.ranking-table.board-grid tbody,
@@ -749,4 +749,139 @@ table.ranking-table.board-grid tbody td {
   .players-table .player-team { width: 100%; min-height: 16px; line-height: 16px; }
   .players-table .player-team img { display: none; }
   .players-table .player-team > span { min-width: 0; overflow-wrap: anywhere; }
+}
+
+.rankings-layout { display: grid; min-width: 0; gap: 20px; align-items: start; }
+.rankings-layout--selected { grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr); }
+.board-sort { display: flex; }
+.rankings-view .board-headline { font-size: 20px; font-weight: 600; }
+.rankings-view .board-row { border-left: 3px solid var(--league-color); }
+.rankings-view .board-row.is-selected { background: var(--focus-wash); }
+.rankings-view .team-cell .ent small { display: flex; align-items: center; gap: 6px; }
+.rankings-view .board-tier-header { --tier-color: var(--muted); background: var(--surface); }
+.rankings-view .board-tier-header[data-tier="S"] { --tier-color: var(--tier-s); }
+.rankings-view .board-tier-header[data-tier="A"] { --tier-color: var(--tier-a); }
+.rankings-view .board-tier-header[data-tier="B"] { --tier-color: var(--tier-b); }
+.rankings-view .board-tier-header[data-tier="C"] { --tier-color: var(--tier-c); }
+.rankings-view .board-tier-header > th { padding: 8px 12px; border-bottom: 1px solid var(--tier-color); text-align: left; color: var(--tier-color); font-size: 12px; }
+.board-tier-header small { margin-left: 12px; color: var(--muted); font-weight: 400; }
+.board-gap { display: inline-flex; align-items: center; gap: 3px; margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 400; }
+.board-gap--tie { color: var(--text); }
+.board-gap--tie b { padding: 0 3px; border: 1px solid var(--text); border-radius: 3px; line-height: 1.2; }
+.rankings-view .score-track { flex: 1; }
+.rankings-view .ranking-changes { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.ranking-changes > summary { padding: 12px 16px; cursor: pointer; font-size: 14px; font-weight: 600; }
+.ranking-changes[open] { display: grid; gap: 12px; padding-bottom: 12px; }
+.ranking-changes[open] > :not(summary) { margin-inline: 12px; }
+.power-field { min-width: 0; padding: 12px 20px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.power-field__plot { position: relative; height: 108px; margin-inline: 12px; border-bottom: 1px solid var(--line); }
+.power-field__team { position: absolute; top: calc(18px + var(--field-row) * 30px); width: 24px; height: 24px; padding: 0; transform: translate(-50%, -50%); border: 0; background: transparent; cursor: pointer; z-index: 1; }
+.power-field__team::before { content: ''; display: block; width: 7px; height: 7px; margin: auto; border-radius: 50%; background: var(--league-color); }
+.power-field__team--logo { width: 34px; height: 34px; border: 2px solid var(--league-color); border-radius: 50%; background: var(--surface); z-index: 2; }
+.power-field__team--logo::before { display: none; }
+.power-field__team--logo > * { display: block; margin: auto; }
+.power-field__team[aria-pressed="true"] { outline: 2px solid var(--focus); outline-offset: 3px; }
+.power-field__axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; padding-top: 5px; }
+.power-field__caption { margin-top: 6px; color: var(--muted); font-size: 12px; }
+.power-field__inspection { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 36px; margin-top: 6px; color: var(--muted); font-size: 12px; }
+.team-dossier { --detail-surface: var(--surface); --detail-surface-2: var(--surface); --detail-surface-3: var(--raised); position: sticky; top: 16px; min-width: 0; max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--line); border-top: 3px solid var(--league-color); border-radius: 12px; background: var(--surface); }
+.team-dossier__navigation { display: flex; align-items: center; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.team-dossier__page-link { margin-left: auto; font-size: 12px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.team-dossier__matches { font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.team-dossier > header { flex-wrap: wrap; }
+.team-dossier h2 { overflow-wrap: anywhere; outline: none; }
+.team-dossier > header > div:last-of-type { margin-left: auto; }
+.team-dossier > header > button { margin-left: auto; }
+.team-dossier :is(.team-league-profile, section, details) { min-width: 0; }
+.is-team-page { max-width: 900px; }
+.is-team-page > :is(.board-headline, .power-field, .rankings-secondary),
+.is-team-page .rankings-list { display: none; }
+.is-team-page .rankings-layout { grid-template-columns: minmax(0, 1fr); }
+.is-team-page .team-dossier { position: static; max-height: none; }
+.is-team-page .team-dossier__page-link { display: none; }
+main:has(.is-team-page) > :is(.app-mode-header, [aria-label="Ranking period"]),
+main:has(.comparison-page) > .app-mode-header { display: none; }
+main:has(.team-dossier) > [class*="fixed"] { display: none; }
+.comparison-page { min-width: 0; margin: 16px var(--page-x) 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.comparison-page > div { overflow: visible; }
+.comparison-page .power-field { margin: 16px 20px 0; }
+.comparison-page .forecast-label { display: inline-flex; margin-left: 8px; padding: 2px 6px; border: 1px dashed var(--forecast); border-radius: 7px; color: var(--text); font-size: 12px; font-weight: 400; }
+@container board (width < 860px) {
+  table.ranking-table.board-grid tbody tr.board-tier-header { display: block; min-height: 0; padding: 0; border-left: 0; }
+  .rankings-view .board-tier-header > th { display: block; }
+  table.ranking-table.board-grid td.board-col-record { display: block; grid-column: 2 / 4; grid-row: 3; justify-self: start; padding-bottom: 6px; }
+  .rankings-view .ranking-table .score-track { display: none; }
+  .rankings-view .team-cell .ent small { font-size: 12px; }
+  .rankings-view .board-gap { margin-top: 0; }
+}
+@media (max-width: 1023px) {
+  .rankings-layout--selected { grid-template-columns: minmax(0, 1fr); }
+  .has-team > :is(.board-headline, .power-field, .rankings-secondary), .has-team .rankings-list { display: none; }
+  .team-dossier { position: static; max-height: none; }
+  main:has(.team-dossier) > :is(.app-mode-header, [aria-label="Ranking period"]) { display: none; }
+}
+@media (max-width: 639px) {
+  .rankings-view .board-headline { font-size: 17px; }
+  .power-field { height: 48px; padding: 0 12px; border-radius: 7px; }
+  .power-field__plot { height: 29px; margin: 0; }
+  .power-field__team, .power-field__team--logo { top: calc(8px + var(--field-row) * 6px); width: 12px; height: 12px; border: 0; background: transparent; }
+  .power-field__team--logo::before { display: block; }
+  .power-field__team--logo > *, .power-field__caption, .power-field__inspection, .power-field__axis > span:nth-child(2) { display: none; }
+  .power-field__team::before { width: 5px; height: 5px; }
+  .power-field__axis { padding-top: 0; }
+  .team-dossier__page-link { display: none; }
+  .team-dossier > header { padding: 12px; gap: 10px; }
+  .team-dossier > header > div:last-of-type { font-size: 12px; }
+  .team-dossier > header > div:last-of-type > span:last-child { max-width: 18ch; text-align: right; font-size: 12px; }
+  .comparison-page { margin-top: 12px; }
+  .comparison-page .power-field { margin: 12px; }
+}
+
+.rankings-list > .board-headline { margin-bottom: 14px; }
+.rankings-list > .power-field { margin-bottom: 16px; }
+.team-dossier > .team-dossier__header { display: grid; grid-template-columns: 36px minmax(0, 1fr) 112px; align-items: center; gap: 10px; padding: 16px; border-bottom: 1px solid var(--line); }
+.team-dossier__header > .team-mark { width: 36px; height: 36px; }
+.team-dossier__header h2 { font-size: 18px; line-height: 1.25; }
+.team-dossier__header > div:last-child { margin-left: 0; }
+.team-dossier__header > div:last-child > span:last-child { font-size: 12px; text-align: right; line-height: 1.4; }
+.team-dossier section[aria-label$="key facts"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+main:has(.team-dossier) > :is(.app-mode-header, [aria-label="Ranking period"]),
+main:has(.comparison-page) > [aria-label="Ranking period"] { display: none; }
+.comparison-page { margin-top: 12px; }
+.power-field__band { position: absolute; top: calc(18px + var(--field-row) * 30px); height: 5px; transform: translateY(-50%); border-radius: 3px; background: var(--league-color); }
+.power-field--comparison .power-field__plot { height: calc(30px * var(--field-count) + 18px); }
+@media (max-width: 639px) {
+  body:has(.team-dossier) .app-phone-header { display: none; }
+  .power-field--comparison { height: auto; padding: 12px; }
+  .power-field--comparison .power-field__plot { height: calc(30px * var(--field-count) + 18px); }
+  .power-field--comparison .power-field__team { top: calc(18px + var(--field-row) * 30px); }
+  .power-field--comparison .power-field__caption { display: block; }
+}
+
+.board-reading-guide { color: var(--muted); font-size: 12px; }
+.board-reading-guide > summary { cursor: pointer; width: fit-content; min-height: 28px; align-content: center; }
+.board-reading-guide[open] > p { margin-top: 6px; }
+.board-row-details { margin-top: 3px; color: var(--muted); font-size: 12px; }
+.board-row-details > summary { cursor: pointer; width: fit-content; min-height: 24px; align-content: center; }
+.board-row-details[open] { overflow-wrap: anywhere; }
+.board-row-details[open] p { margin-top: 6px; line-height: 1.5; }
+.team-dossier section[aria-label$="key facts"] > div:last-child { grid-column: 1 / -1; }
+@media (min-width: 1024px) {
+  .board-region-filter { display: none; }
+}
+
+.board-row-details > summary { white-space: normal; }
+.board-row-details[open] > p { text-align: left; white-space: normal; }
+@container board (width < 860px) {
+  .board-col-record .board-row-details { margin-top: 0; }
+  .board-col-record .board-row-details > summary::after { content: " series"; }
+}
+
+.rankings-view.has-team { padding-top: 13px; }
+@media (max-width: 639px) {
+  .rankings-view.has-team { padding-top: 11px; }
+}
+@media (min-width: 360px) {
+  .rankings-view .team-cell .team-mark { display: block; flex-shrink: 0; width: 24px; height: 24px; }
+  .rankings-view .team-cell__button { gap: 8px; }
 }

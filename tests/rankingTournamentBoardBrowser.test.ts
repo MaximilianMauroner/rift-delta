@@ -94,7 +94,7 @@ async function withBoard(matches: MatchRecord[], run: (page: Page, base: string,
 test('a tournament board lists every participant without changing the unranked setting', { timeout: 60_000 }, async () => {
   await withBoard(fixtureMatches(), async (page, base) => {
     const hashParams = () => page.evaluate(() => Object.fromEntries(new URLSearchParams(location.hash.split('?')[1] ?? '')))
-    const rows = page.locator('table tbody tr')
+    const rows = page.locator('table tbody tr.board-row')
     const tournamentSelect = page.locator('select').filter({ has: page.locator('option', { hasText: 'Any tournament' }) })
     const filtersButton = page.getByRole('button', { name: /^Filters/ })
     const unrankedSetting = page.getByRole('checkbox', { name: /Include unranked/ })
@@ -120,7 +120,7 @@ test('a tournament board lists every participant without changing the unranked s
 
     // A tier filter removes the unranked participant, so the note goes with it.
     await tierChip('S · 1').click()
-    await page.waitForFunction(() => document.querySelectorAll('table tbody tr').length === 1)
+    await page.waitForFunction(() => document.querySelectorAll('table tbody tr.board-row').length === 1)
     assert.equal(await unrankedNote.count(), 0)
     assert.equal(await filtersButton.textContent(), 'Filters (2)')
 
@@ -133,7 +133,7 @@ test('a tournament board lists every participant without changing the unranked s
 
     // The user's own unranked setting survives a tournament and does not count as a filter there.
     await unrankedSetting.check()
-    await page.waitForFunction(() => document.querySelectorAll('table tbody tr').length === 5)
+    await page.waitForFunction(() => document.querySelectorAll('table tbody tr.board-row').length === 5)
     await tournamentSelect.selectOption('tournament:msi:2026')
     await page.getByRole('heading', { name: 'MSI 2026 standings' }).waitFor()
     assert.equal(await filtersButton.textContent(), 'Filters (1)')
@@ -165,7 +165,7 @@ test('a comparison shows the board values when the address names a tournament ou
     await shardLoaded
     await page.waitForLoadState('networkidle')
 
-    const row = page.locator('table tbody tr').filter({ has: page.getByRole('cell', { name: /^Rank \d+$/ }) }).first()
+    const row = page.locator('table tbody tr.board-row').filter({ has: page.getByRole('cell', { name: /^Rank \d+$/ }) }).first()
     const team = (await row.getByTitle(/^Open /).getAttribute('title'))!.replace('Open ', '')
     const rank = (await row.getByRole('cell', { name: /^Rank \d+$/ }).getAttribute('aria-label'))!.replace('Rank ', '')
     const power = (await row.getByRole('cell', { name: /^Power / }).getAttribute('aria-label'))!.replace('Power ', '')

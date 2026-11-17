@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { estimatePublicMatchup, type PublicMatchupModel } from '../../domains/rankings/read'
 import { formatModelVersion } from '../../shared/display'
 import type { RankingSummaryStanding } from '../../domains/rankings/types'
+import { TeamMark } from '../../components/TeamMark'
+import { leagueColor } from '../../shared/teamColor'
 import { Segmented } from '../../components/ui'
 
 const FORMATS = ['1', '3', '5'] as const
@@ -25,7 +27,7 @@ export function HeadToHead({ home, away, model }: { home: RankingSummaryStanding
   return (
     <section data-first-answer="comparison" className="grid gap-3 border-b border-line px-5 py-5 max-sm:px-3.5" aria-label={`${home.team} against ${away.team}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-base font-semibold text-text">Who would win</h3>
+        <h3 className="text-base font-semibold text-text">Who would win <span className="forecast-label">Forecast</span></h3>
         <Segmented
           value={format}
           options={FORMATS.map((value) => ({ value, label: `Bo${value}` }))}
@@ -35,19 +37,21 @@ export function HeadToHead({ home, away, model }: { home: RankingSummaryStanding
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
         <span className="grid">
-          <b className="text-sm font-semibold text-text">{home.team}</b>
+          <TeamMark team={home.team} code={home.code} className="size-10" /><b className="text-sm font-semibold text-text">{home.team}</b>
+          <span className="league-label" style={{ '--league-color': leagueColor(home.league) } as CSSProperties}><i className="league-dot" aria-hidden="true" />{home.league}</span>
           <span className="text-3xl leading-none font-bold text-text">{homeChance}%</span>
         </span>
         <span className="pb-1 text-xs text-muted">vs</span>
         <span className="grid justify-items-end text-right">
-          <b className="text-sm font-semibold text-text">{away.team}</b>
+          <TeamMark team={away.team} code={away.code} className="size-10" /><b className="text-sm font-semibold text-text">{away.team}</b>
+          <span className="league-label" style={{ '--league-color': leagueColor(away.league) } as CSSProperties}><i className="league-dot" aria-hidden="true" />{away.league}</span>
           <span className="text-3xl leading-none font-bold text-text">{100 - homeChance}%</span>
         </span>
       </div>
       <div className="grid gap-1">
         <span className="flex h-3 gap-0.5 overflow-hidden rounded-full" aria-hidden="true">
-          <span className="rounded-l-full bg-[var(--league-lck)]" style={{ width: `${homeChance}%` }} />
-          <span className="rounded-r-full bg-[var(--league-lpl)]" style={{ width: `${100 - homeChance}%` }} />
+          <span className="rounded-l-full" style={{ background: leagueColor(home.league), width: `${homeChance}%` }} />
+          <span className="rounded-r-full" style={{ background: leagueColor(away.league), width: `${100 - homeChance}%` }} />
         </span>
         {low !== undefined && high !== undefined ? (
           <span className="relative h-2" aria-hidden="true">

@@ -27,6 +27,8 @@ import {
   teamKey,
 } from '../../shared/display'
 import { cn } from '../../shared/utils'
+import { useComparisonAddress } from '../../hooks/useComparisonAddress'
+import { PowerField } from './PowerField'
 import { AppNavigation, ErrorScreen, ManifestRouteShell, ModeHeader, ScopedSnapshotState } from '../AppShell'
 import { MODE_TITLES, PAGE_LAYOUTS, type Mode } from '../shellConfig'
 import {
@@ -72,9 +74,10 @@ export function RankingRoute() {
   const [mode, setMode] = useState<Mode>(readModeFromHash)
   const [scope, setScope] = useState(() => scopeForMode(readModeFromHash(), readScopeFromHash() ?? currentSeasonScope()))
   const [loadPlayers, setLoadPlayers] = useState(() => readModeFromHash() === 'players')
-  const [loadTeamHistory, setLoadTeamHistory] = useState(false)
+  const [boardHashQuery, setBoardHashQuery] = useState(currentHashQuery)
+  const comparison = useComparisonAddress(boardHashQuery)
+  const [loadTeamHistory, setLoadTeamHistory] = useState(() => currentHashQuery().has('compare'))
   const [historyTeams, setHistoryTeams] = useState<readonly string[]>([])
-  const [teamPicks, setTeamPicks] = useState<RankingSummaryStanding[]>([])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [matchYear, setMatchYear] = useState(() => hashParam('matchesYear'))
   const [loadRegionHistory, setLoadRegionHistory] = useState(() => readModeFromHash() === 'regions')
@@ -106,7 +109,7 @@ export function RankingRoute() {
   } = usePublicArtifacts(scope, {
     loadPlayers,
     loadTeamHistory,
-    teamHistoryTeams: drawerOpen && mode === 'rankings' ? teamPicks.map(teamKey) : historyTeams,
+    teamHistoryTeams: comparison.isOpen && mode === 'rankings' ? comparison.ids : historyTeams,
     matchHistoryYear: matchYear,
     loadRegionHistory,
     loadTournamentMovements: mode === 'rankings',
@@ -115,7 +118,6 @@ export function RankingRoute() {
   })
   const [regionPicks, setRegionPicks] = useState<RegionStrength[]>([])
   const [teamSearch, setTeamSearch] = useState(() => hashParam('team') ?? '')
-  const [boardHashQuery, setBoardHashQuery] = useState(currentHashQuery)
   const [matchesHashQuery, setMatchesHashQuery] = useState(currentHashQuery)
   const [playersHashQuery, setPlayersHashQuery] = useState(currentHashQuery)
   const mainRef = useRef<HTMLElement | null>(null)
@@ -190,6 +192,7 @@ export function RankingRoute() {
       // filters back to the hash before a second listener could read them.
       if (nextMode === 'rankings') {
         const query = currentHashQuery()
+        if (query.has('compare')) setLoadTeamHistory(true)
         setTournamentFilter(readTournamentFilterFromHash(query))
         setTeamSearch(hashParam('team', query) ?? '')
         setBoardHashQuery(query)
@@ -279,7 +282,10 @@ export function RankingRoute() {
     return { status: playersState.status, message: playersState.message }
   }, [playersState])
   const activeRegionPicks = useMemo(() => reconcilePicks(regionPicks, regions, regionKey), [regionPicks, regions])
-  const activeTeamPicks = useMemo(() => reconcilePicks(teamPicks, universe.standings, teamKey), [teamPicks, universe.standings])
+  const activeTeamPicks = comparison.ids.flatMap((id) => {
+    const team = universe.standings.find((standing) => teamKey(standing) === id)
+    return team ? [team] : []
+  })
   const regionPickIds = useMemo(() => new Set(activeRegionPicks.map(regionKey)), [activeRegionPicks])
 
   function toggleRegion(region: RegionStrength) {
@@ -289,7 +295,7 @@ export function RankingRoute() {
 
   function toggleTeam(team: RankingSummaryStanding) {
     preloadComparison()
-    setTeamPicks((current) => toggleLimitedPick(reconcilePicks(current, universe.standings, teamKey), team, teamKey))
+    comparison.toggle(teamKey(team))
   }
 
   useEffect(() => {
@@ -314,7 +320,7 @@ export function RankingRoute() {
   }
 
   const loadedData = manifestState.data
-  const hasCompareTray = mode === 'rankings' || mode === 'regions'
+  const hasCompareTray = (mode === 'rankings' && !comparison.isOpen) || mode === 'regions'
   const seeded = loadedData.dataMode === 'seeded-sample' || loadedData.coverage?.seededSample === true
   const matchCount = snapshot?.matchCount ?? loadedData.coverage?.matchCount
   const compareEntities: CompareDockEntity[] = mode === 'regions'
@@ -339,7 +345,7 @@ export function RankingRoute() {
   const regionColumns = regionCompareColumns(activeRegionPicks)
   const movementBaseline = movementBaselineFor(activeCheckpoint, checkpointTabs)
   const pendingCheckpoint = pendingCheckpointForSeason(activeSeason, seasonYears, checkpointTabs)
-  const teamCompareAfter = drawerOpen && mode === 'rankings' ? (
+  const teamCompareAfter = comparison.isOpen && mode === 'rankings' ? (
     <Suspense fallback={<LoadingState label="Loading team comparison" />}>
       <TeamCompareAnalysis teams={activeTeamPicks} columns={teamColumns} historyState={teamHistoryState} />
     </Suspense>
@@ -426,12 +432,12 @@ export function RankingRoute() {
               onRemove={(id) => {
                 if (compareEntities.length === 1) mainRef.current?.focus({ preventScroll: true })
                 if (mode === 'regions') setRegionPicks((current) => current.filter((region) => regionKey(region) !== id))
-                else setTeamPicks((current) => current.filter((team) => teamKey(team) !== id))
+                else comparison.remove(id)
               }}
               onClear={() => {
                 mainRef.current?.focus({ preventScroll: true })
                 if (mode === 'regions') setRegionPicks([])
-                else setTeamPicks([])
+                else comparison.clear()
               }}
               onOpen={() => {
                 if (mode === 'regions') {
@@ -440,7 +446,8 @@ export function RankingRoute() {
                 } else {
                   requestTeamHistory(activeTeamPicks.map(teamKey))
                 }
-                setDrawerOpen(true)
+                if (mode === 'regions') setDrawerOpen(true)
+                else comparison.open(activeTeamPicks.map(teamKey))
               }}
             />
           </div>
@@ -455,6 +462,29 @@ export function RankingRoute() {
           </div>
         ) : null}
 
+        {comparison.isOpen && mode === 'rankings' && snapshotState.status === 'ready' ? (
+          <TeamCompareDrawer
+            open
+            title="Team comparison"
+            entities={activeTeamPicks}
+            columns={teamColumns}
+            rows={TEAM_COMPARE_ROWS}
+            before={<>
+              {comparison.ids.length > activeTeamPicks.length ? <p role="status" className="p-4 text-sm text-muted">Some picked teams are unavailable in this scope.</p> : null}
+              {compareMatchup && activeTeamPicks.length === 2 ? <HeadToHead home={compareMatchup.home} away={compareMatchup.away} model={compareMatchup.model} /> : null}
+              <PowerField bands teams={activeTeamPicks} onOpen={(team) => {
+                const query = currentHashQuery()
+                query.delete('compare')
+                query.set('teamDetail', teamKey(team))
+                query.set('teamPage', '1')
+                writeNavigationHash(`#rankings?${query.toString()}`, 'navigate')
+              }} />
+            </>}
+            after={teamCompareAfter}
+            onClose={comparison.close}
+            onRemove={comparison.remove}
+          />
+        ) : null}
         {snapshotState.status !== 'ready' ? (
           <ScopedSnapshotState state={snapshotState} scope={scopeLabel(effectiveScope)} layout={PAGE_LAYOUTS[mode]} />
         ) : (
@@ -475,7 +505,7 @@ export function RankingRoute() {
                   onRequestRegionHistory={requestRegionHistory}
                 />
               ) : null}
-              {mode === 'rankings' ? (
+              {mode === 'rankings' && !comparison.isOpen ? (
                 <>
                   <TeamsView
                     universe={universe}
@@ -513,7 +543,7 @@ export function RankingRoute() {
                     }}
                     onToggle={toggleTeam}
                     onRequestPlayers={requestPlayers}
-                    onRequestTeamHistory={drawerOpen ? undefined : requestTeamHistory}
+                    onRequestTeamHistory={requestTeamHistory}
                     onTournamentFilterChange={setTournamentFilter}
                     onPrefetchTournament={prefetchTournament}
                   />
@@ -545,19 +575,6 @@ export function RankingRoute() {
           after={regionCompareAfter}
           onClose={() => setDrawerOpen(false)}
           onRemove={(id) => setRegionPicks((current) => current.filter((region) => regionKey(region) !== id))}
-        />
-      ) : null}
-      {drawerOpen && mode === 'rankings' ? (
-        <TeamCompareDrawer
-          open
-          title="Team comparison"
-          entities={activeTeamPicks}
-          columns={teamColumns}
-          rows={TEAM_COMPARE_ROWS}
-          before={compareMatchup ? <HeadToHead home={compareMatchup.home} away={compareMatchup.away} model={compareMatchup.model} /> : undefined}
-          after={teamCompareAfter}
-          onClose={() => setDrawerOpen(false)}
-          onRemove={(id) => setTeamPicks((current) => current.filter((team) => teamKey(team) !== id))}
         />
       ) : null}
     </div>

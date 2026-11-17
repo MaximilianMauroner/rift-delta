@@ -13,6 +13,7 @@ import { LineChart, type ChartSeries } from '../../components/LineChart'
 import { TeamHistoryLineChart } from './TeamHistoryLineChart'
 import { dailyChartPointsFromHistoryPoints } from './teamHistoryChart'
 import type { RegionHistoryScopeState, TeamHistoryArtifactState } from '../../browser/rankings/usePublicArtifacts'
+import { leagueColor } from '../../shared/teamColor'
 import { cn } from '../../shared/utils'
 import { LoadingState } from '../../components/ui/loading'
 
@@ -78,7 +79,10 @@ export function TeamCompareAnalysis({
 }) {
   return (
     <>
-      <CompareProfileChart title="Team profile" entities={teams} columns={columns} metrics={TEAM_PROFILE_METRICS} />
+      <details>
+        <summary className="cursor-pointer text-sm font-semibold">Team profile ranges</summary>
+        <CompareProfileChart title="Team profile" entities={teams} columns={columns} metrics={TEAM_PROFILE_METRICS} />
+      </details>
       <TeamCompareChart teams={teams} historyState={historyState} />
     </>
   )
@@ -124,7 +128,7 @@ export function CompareProfileChart<E>({
               <div className="grid min-w-0 gap-2">
                 {entities.map((entity, index) => {
                   const value = metric.value(entity)
-                  const color = COMPARE_SERIES_COLORS[index % COMPARE_SERIES_COLORS.length]
+                  const color = columns[index].color ?? COMPARE_SERIES_COLORS[index % COMPARE_SERIES_COLORS.length]
                   const percent = profilePercent(value, values, metric.better)
                   const isBest = best.has(columns[index].id)
                   return (
@@ -453,7 +457,7 @@ function TeamCompareChart({
   const series = useMemo<ChartSeries[]>(() => {
     if (!history) return []
     return teams
-      .map((team, index): ChartSeries | null => {
+      .map((team): ChartSeries | null => {
         const teamSeries = history.series[teamKey(team)]
         if (!teamSeries || teamSeries.points.length < 2) return null
         const points = dailyChartPointsFromHistoryPoints(teamSeries.points)
@@ -461,7 +465,7 @@ function TeamCompareChart({
         return {
           id: teamKey(team),
           label: team.code ?? team.team,
-          color: COMPARE_SERIES_COLORS[index % COMPARE_SERIES_COLORS.length],
+          color: leagueColor(team.league),
           points,
         }
       })

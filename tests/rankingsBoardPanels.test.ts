@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { TeamsView } from '../src/views/rankings/TeamsView.tsx'
+import { PowerField } from '../src/views/rankings/PowerField.tsx'
 import { WhatChanged } from '../src/views/rankings/WhatChanged.tsx'
 import { createRankingBoard, type RankingBoardSelection, type RankingEvidence } from '../src/domains/rankings/internal/queries/rankingBoard.ts'
 import type { RankingSummaryStanding } from '../src/domains/rankings/internal/projections/snapshot.ts'
@@ -133,3 +135,33 @@ function pickedTeams({ movement }: ReturnType<RankingUniverse['select']>) {
   if (movement.kind !== 'tournament') assert.fail('expected tournament movement')
   return { riser: movement.riser?.team, faller: movement.faller?.team }
 }
+
+
+test('the field includes every filtered team beyond the page size and gives unranked teams dots', () => {
+  const standings = Array.from({ length: 40 }, (_, index) => standing(`Team ${index + 1}`, { rank: index + 1, rating: 2300 - index * 20 }))
+  standings[0].eligibility = { eligible: false } as RankingSummaryStanding['eligibility']
+  const html = renderToStaticMarkup(createElement(PowerField, { teams: standings, onOpen() {} }))
+  assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 40)
+  assert.equal((html.match(/power-field__team--logo/g) ?? []).length, 8)
+  assert.match(html, /Team 40, LCK, rank 40, Power 1,520/)
+  assert.match(html, /Team 1, LCK, unranked, Power 2,300/)
+})
+
+test('a near tie and its adjacent gap continue across a tier header', () => {
+  const standings = [
+    standing('Leader', { rank: 1, rating: 2300 }),
+    standing('Middle', { rank: 2, rating: 2251 }),
+    standing('Next tier', { rank: 3, rating: 2211 }),
+  ]
+  const universe = createRankingBoard(evidence(standings))
+  assert.deepEqual(standings.map(universe.tierFor), ['S', 'S', 'A'])
+  const html = renderToStaticMarkup(createElement(TeamsView, {
+    universe, regions: [], playerLoadState: { status: 'idle' }, search: '', onSearchChange() {}, pickedTeams: [],
+    historyState: { status: 'idle' }, requestedTournamentFilter: 'All', tournamentMovementIndexState: { status: 'idle' },
+    tournamentMovementState: { status: 'idle' }, hashQuery: new URLSearchParams(), requestedScope: 'all', effectiveScope: 'all',
+    onToggle() {}, onTournamentFilterChange() {},
+  }))
+  assert.match(html, /data-tier="A"/)
+  assert.match(html, /Gap to Middle: \+40 Power, near tie, stronger Bo1 chance under 53%/)
+  assert.match(html, /board-gap board-gap--tie/)
+})

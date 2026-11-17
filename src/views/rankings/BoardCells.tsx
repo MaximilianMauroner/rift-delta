@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { RegionBadge } from '../../components/ui'
+import { Lane } from '../../components/ui/lane'
 import { Button } from '../../components/ui/button'
 import { Panel, PanelFooter, PanelHeader } from '../../components/ui/panel'
 import type { RankingTierLabel } from '../../domains/rankings/read'
@@ -7,7 +8,7 @@ import { displayRegionPowerScore, NEAR_TIE_WIN_PROBABILITY, type NearTiePosition
 import type { RankingSummaryStanding } from '../../domains/rankings/types'
 import { formatNumber, formatRating } from '../../shared/display'
 import { cn } from '../../shared/utils'
-import { clampNumber, teamScoreFor, teamScoreTitle } from './boardFormat'
+import { teamScoreFor, teamScoreTitle } from './boardFormat'
 
 export function ChipGroup<T extends string>({
   label,
@@ -72,13 +73,11 @@ export function TeamScoreCell({
   if (typeof score !== 'number') {
     return <span className="score-unavailable text-sm font-semibold text-muted" aria-hidden="true">—</span>
   }
-  const share = max > min ? clampNumber(((score - min) / (max - min)) * 100, 4, 100) : 100
+  const uncertainty = team.ratingComponents?.uncertainty ?? team.uncertainty ?? 0
   return (
     <span className="team-score-stack flex min-w-0 items-center gap-2.5" title={exactTournament ? `Tournament endpoint Power ${formatRating(score)}` : teamScoreTitle(team)}>
       <span className="team-score-value min-w-[3.4em] text-right text-base font-bold text-text tabular-nums">{formatRating(score)}</span>
-      <span className="score-track relative h-1.5 min-w-10 flex-1 overflow-hidden rounded-full bg-line" aria-hidden="true">
-        <span className="absolute inset-y-0 left-0 rounded-full bg-muted" style={{ width: `${share}%` }} />
-      </span>
+      <Lane className="score-track" league={team.league} value={score} low={score - uncertainty} high={score + uncertainty} min={min} max={max} label={`Power ${formatRating(score)}, evidence band ${formatRating(score - uncertainty)} to ${formatRating(score + uncertainty)}`} />
     </span>
   )
 }

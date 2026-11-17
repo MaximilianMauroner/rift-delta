@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Plus, X } from 'lucide-react'
 import { DataState } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from '../../components/ui/sheet'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../../components/ui/sheet'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import type { PublicTeamStanding as RankingSummaryStanding } from '../../domains/rankings/types'
 import type { RegionStrength } from '../../domains/rankings/read'
@@ -13,6 +13,7 @@ export type CompareColumn = {
   name: string
   sub?: string
   badge?: ReactNode
+  color?: string
 }
 
 export type CompareRow<E> = {
@@ -34,6 +35,7 @@ export type CompareDrawerProps<E> = {
   after?: ReactNode
   onClose: () => void
   onRemove: (id: string) => void
+  presentation?: 'sheet' | 'page'
 }
 
 export function CompareDrawer<E>({
@@ -46,33 +48,33 @@ export function CompareDrawer<E>({
   after,
   onClose,
   onRemove,
+  presentation = 'sheet',
 }: CompareDrawerProps<E>) {
-  return (
-    <Sheet open={open} onOpenChange={(nextOpen) => {
-      if (!nextOpen) onClose()
-    }}>
-      <SheetContent
-        side="right"
-        showCloseButton={false}
-        className="compare-sheet data-[side=right]:w-[min(980px,100vw)] data-[side=right]:max-w-none gap-0 border-l border-line bg-surface p-0 text-text shadow-[var(--overlay-shadow)] data-[side=right]:sm:w-[min(980px,94vw)] data-[side=right]:sm:max-w-none"
-      >
-        <SheetHeader className="flex-row items-center gap-3 border-b border-line px-5 py-4 text-left">
-          <SheetTitle className="mr-auto text-base font-semibold text-text">{title}</SheetTitle>
-          <SheetClose asChild>
-            <Button type="button" variant="ghost">
-              <X size={16} aria-hidden="true" />
-              Close
-            </Button>
-          </SheetClose>
-        </SheetHeader>
+  const pageRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (presentation !== 'page') return
+    pageRef.current?.focus({ preventScroll: true })
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [presentation])
+  const contents = (
+    <>
+      {presentation === 'page' ? before : null}
+      <header className="flex items-center gap-3 border-b border-line px-5 py-3">
+        <h2 className="mr-auto text-base font-semibold text-text">{title}</h2>
+        <Button type="button" variant="ghost" onClick={onClose}>
+          <X size={16} aria-hidden="true" />Close
+        </Button>
+      </header>
+
         <div className="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain p-0">
+          {presentation === 'sheet' ? before : null}
           {entities.length === 0 ? (
             <DataState icon={<Plus size={26} aria-hidden="true" />} title="Nothing selected yet" />
           ) : (
             <>
-              {before}
               <div className="px-5 py-4 max-sm:px-3.5">
                 <Table
+                  data-first-answer={presentation === 'page' && entities.length !== 2 ? 'comparison' : undefined}
                   containerClassName="max-w-full rounded-md border border-line [contain:paint] [overscroll-behavior-x:contain]"
                   className="compare-table w-full border-collapse"
                   data-compare-count={columns.length}
@@ -132,6 +134,20 @@ export function CompareDrawer<E>({
             </>
           )}
         </div>
+    </>
+  )
+  if (presentation === 'page') {
+    return (
+      <section ref={pageRef} tabIndex={-1} className="comparison-page" aria-label={title}>
+        {contents}
+      </section>
+    )
+  }
+  return (
+    <Sheet open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose() }}>
+      <SheetContent side="right" showCloseButton={false} className="compare-sheet data-[side=right]:w-[min(980px,100vw)] data-[side=right]:max-w-none gap-0 border-l border-line bg-surface p-0 text-text shadow-[var(--overlay-shadow)] data-[side=right]:sm:w-[min(980px,94vw)] data-[side=right]:sm:max-w-none">
+        <SheetHeader className="sr-only"><SheetTitle>{title}</SheetTitle></SheetHeader>
+        {contents}
       </SheetContent>
     </Sheet>
   )
@@ -142,7 +158,7 @@ export function RegionCompareDrawer(props: CompareDrawerProps<RegionStrength>) {
 }
 
 export function TeamCompareDrawer(props: CompareDrawerProps<RankingSummaryStanding>) {
-  return <CompareDrawer {...props} />
+  return <CompareDrawer {...props} presentation="page" />
 }
 
 function bestIds<E>(entities: E[], columns: CompareColumn[], row: CompareRow<E>) {

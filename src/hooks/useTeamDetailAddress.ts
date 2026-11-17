@@ -37,12 +37,13 @@ export function useTeamDetailAddress(
     const liveScope = live.get('scope')
     if (liveScope !== null && liveScope !== requestedScope && liveScope !== effectiveScope) return
     live.delete('teamDetail')
+    live.delete('teamPage')
     writeNavigationHash(`#rankings?${live.toString()}`, 'replace')
   }, [detail, effectiveScope, requestedScope])
 
   function open(value: string) {
-    writeNavigationHash(hashWithParam('teamDetail', value), 'push')
-    setModel((current) => ({ ...current, detail: { kind: 'open', value, origin: 'pushed' } }))
+    writeNavigationHash(hashWithParam('teamDetail', value), detail.kind === 'open' ? 'replace' : 'push')
+    setModel((current) => ({ ...current, detail: { kind: 'open', value, origin: detail.kind === 'open' ? detail.origin : 'pushed' } }))
   }
 
   function close() {
@@ -51,7 +52,10 @@ export function useTeamDetailAddress(
       window.history.back()
       return
     }
-    writeNavigationHash(hashWithParam('teamDetail', null), 'replace')
+    const query = currentHashQuery()
+    query.delete('teamDetail')
+    query.delete('teamPage')
+    writeNavigationHash(`#rankings?${query.toString()}`, 'replace')
     setModel((current) => ({ ...current, detail: { kind: 'closed' } }))
   }
 

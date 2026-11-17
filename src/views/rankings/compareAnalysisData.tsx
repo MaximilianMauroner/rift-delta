@@ -1,4 +1,5 @@
 import type { PublicTeamStanding as RankingSummaryStanding } from '../../domains/rankings/types'
+import { leagueColor } from '../../shared/teamColor'
 import {
   formatDecimal,
   formatNumber,
@@ -122,7 +123,7 @@ export function regionCompareColumns(regions: RegionStrength[]): CompareColumn[]
 }
 
 export function teamCompareColumns(teams: RankingSummaryStanding[]): CompareColumn[] {
-  return teams.map((team) => ({ id: teamKey(team), name: team.team, sub: `${team.region ?? '—'} · #${team.rank ?? '—'}` }))
+  return teams.map((team) => ({ id: teamKey(team), name: team.team, sub: `${team.league} · #${team.rank ?? '—'}`, color: leagueColor(team.league) }))
 }
 
 function winRate(wins?: number, losses?: number) {
