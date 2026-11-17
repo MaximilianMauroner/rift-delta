@@ -1,5 +1,5 @@
 import { SlidersHorizontal, Users, X } from 'lucide-react'
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { currentHashQuery, hashEnum, hashInt, hashParam, useHashSync } from '../../browser/navigation'
 import type {
   TeamHistoryArtifactState,
@@ -30,7 +30,6 @@ import {
 import type { CompactPlayer, PublicCurrentLineup, RankingSummaryStanding, TeamHistorySeries } from '../../domains/rankings/types'
 import { useTeamDetailAddress } from '../../hooks/useTeamDetailAddress'
 import type { ChartPoint } from '../../shared/chartPoints'
-import { assignColorSlots, sameColorSlots } from '../../shared/colorSlots'
 import { formatDate, formatDateRange, formatModelVersion, formatNumber, formatRating, formatSigned, teamKey } from '../../shared/display'
 import { cn } from '../../shared/utils'
 import { ChipGroup, RegionalStrengthTeaser } from './BoardCells'
@@ -47,6 +46,8 @@ import { dailyChartPointsFromHistoryPoints, deriveDailyRankSeries, international
 import { type TrajectoryInsight } from './trajectory'
 import { type PlayerLoadState, type TeamDataSummary, type TrajectoryMetric } from './types'
 import { WhatChanged } from './WhatChanged'
+import { leagueColor } from '../../shared/teamColor'
+import { compareSeriesColors } from './compareAnalysisData'
 
 const TEAM_PAGE_SIZES = [15, 25, 50, 80] as const
 
@@ -60,7 +61,6 @@ const DEFAULT_FOCUS_TEAMS = 5
 const TEAM_PAGE_QUERY = '(max-width: 1279px)'
 const isTeamPageWidth = () => window.matchMedia(TEAM_PAGE_QUERY).matches
 
-const SERIES_COLORS = ['var(--league-lck)', 'var(--league-lpl)', 'var(--league-lec)', 'var(--league-lcs)', 'var(--league-lcp)', 'var(--league-cblol)']
 
 /**
  * The board filters this view keeps in the hash, read on mount and on every
@@ -172,7 +172,6 @@ export function TeamsView({
   const [metric, setMetric] = useState<TrajectoryMetric>('rating')
   // Phones fold the filters behind one button so the first screen shows teams.
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [colorSlots, setColorSlots] = useState<ReadonlyMap<string, number>>(() => new Map())
   const trajectoryPanelRef = useRef<HTMLDivElement | null>(null)
   const [trajectoryRequested, setTrajectoryRequested] = useState(false)
   const history = historyState.status === 'ready' ? historyState.data.series : undefined
@@ -290,10 +289,11 @@ export function TeamsView({
     if ((detailTeam || trajectoryRequested) && !exactTournamentId) onRequestTeamHistory?.(requestedHistoryTeams.split('\u0000').filter(Boolean))
   }, [detailTeam, trajectoryRequested, exactTournamentId, onRequestTeamHistory, requestedHistoryTeams])
 
-  const assignedSlots = assignColorSlots(colorSlots, focusTeams.map(teamKey), SERIES_COLORS.length)
-  const slots = sameColorSlots(assignedSlots, colorSlots) ? colorSlots : assignedSlots
-  if (slots !== colorSlots) setColorSlots(slots)
-  const colorFor = useCallback((team: RankingSummaryStanding) => SERIES_COLORS[slots.get(teamKey(team)) ?? 0], [slots])
+  const colorFor = useMemo(() => {
+    const colors = compareSeriesColors(focusTeams.map((team) => team.league))
+    const byTeam = new Map(focusTeams.map((team, index) => [teamKey(team), colors[index]]))
+    return (team: RankingSummaryStanding) => byTeam.get(teamKey(team)) ?? leagueColor(team.league)
+  }, [focusTeams])
   const dailyRankSeries = useMemo(
     () => metric === 'rank' && activeHistory && !exactTournamentId ? deriveDailyRankSeries(activeHistory) : new Map<string, ChartPoint[]>(),
     [activeHistory, exactTournamentId, metric],

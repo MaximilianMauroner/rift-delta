@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { RegionBadge } from '../../components/ui'
+import { LeagueDot } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { displayRegionPowerScore, NEAR_TIE_WIN_PROBABILITY, type NearTiePosition, type RegionStrength } from '../../domains/rankings/read'
 import type { RankingSummaryStanding } from '../../domains/rankings/types'
@@ -92,8 +92,8 @@ export function RegionalStrengthTeaser({ regions, href }: { regions: RegionStren
       </summary>
       <div className="grid grid-cols-1 gap-px bg-line">
         {ranked.map((region) => (
-          <div className="flex min-w-0 items-center gap-2.5 bg-surface px-4 py-2 [&_.region-badge]:h-5 [&_.region-badge]:w-[22px]" key={region.region}>
-            <RegionBadge region={region.region} size="sm" />
+          <div className="flex min-w-0 items-center gap-2.5 bg-surface px-4 py-2" key={region.region}>
+            <LeagueDot league={region.region} />
             <span className="mr-auto min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold text-text">{region.region}</span>
             <strong className="shrink-0 text-sm font-bold text-text tabular-nums">{formatRating(displayRegionPowerScore(region))}</strong>
           </div>

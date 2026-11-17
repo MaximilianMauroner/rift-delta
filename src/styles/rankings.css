@@ -145,61 +145,6 @@ table.ranking-table.board-grid col.board-col-action { width: 104px; }
    custom properties so the `sm` variant is a token override rather than a
    second set of rules. The inset border ring, the 145deg gradient, the double
    box-shadow and the text shadow were decorative and are gone. */
-.region-badge {
-  --badge-hue: 205;
-  --badge-ink: oklch(0.92 0.045 var(--badge-hue));
-  --badge-surface: oklch(0.76 0.12 var(--badge-hue) / 0.14);
-  --badge-line: oklch(0.76 0.12 var(--badge-hue) / 0.44);
-  --badge-w: 44px;
-  --badge-h: 36px;
-  --badge-r: var(--radius);
-  /* Glyph-fitting size for a fixed-width box, not a step on the text scale. */
-  --badge-code: var(--type-xs);
-
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: var(--badge-w);
-  height: var(--badge-h);
-  border: 1px solid var(--badge-line);
-  border-radius: var(--badge-r);
-  background: var(--badge-surface);
-  color: var(--badge-ink);
-  overflow: hidden;
-}
-
-.region-badge--sm {
-  --badge-w: 28px;
-  --badge-h: 24px;
-  --badge-r: var(--radius);
-  --badge-code: var(--type-xs);
-}
-
-.region-badge__logo {
-  display: block;
-  width: 78%;
-  height: 78%;
-  object-fit: contain;
-}
-
-.region-badge__code {
-  font-family: var(--sans);
-  font-size: var(--badge-code);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0;
-}
-
-.region-badge--lck { --badge-hue: 215; }
-.region-badge--lpl { --badge-hue: 28; }
-.region-badge--lec { --badge-hue: 286; }
-.region-badge--lcs { --badge-hue: 198; }
-.region-badge--lcp { --badge-hue: 154; }
-.region-badge--cblol { --badge-hue: 82; }
-.region-badge--pcs { --badge-hue: 244; }
-.region-badge--vcs { --badge-hue: 18; }
-.region-badge--default { --badge-hue: 205; }
-
 .detail-skeleton {
   display: block;
   overflow: hidden;

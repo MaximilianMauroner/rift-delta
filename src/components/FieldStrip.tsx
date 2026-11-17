@@ -75,13 +75,14 @@ export function FieldStrip({
         }${spread ? `. Range ${show(low)} to ${show(high)}` : ''}. ${verdict}.`
   return (
     <li className="grid min-w-0 grid-cols-[4rem_minmax(0,1fr)] gap-x-3 py-3">
-      <span className="grid content-start justify-items-center pt-0.5 text-center leading-none" title={verdict}>
+      <span className="grid content-start justify-items-center pt-0.5 text-center leading-none">
         <span className={cn('text-2xl font-bold tabular-nums', shown ? 'text-text' : 'text-muted')}>
           {shown ? ordinal(shown) : '–'}
         </span>
         <span className="mt-1 text-xs text-muted">
           {shown ? `of ${field.length}` : value === null ? 'no data' : tooFew ? `${position.n} of ${minSamples}` : 'style'}
         </span>
+        {shown && verdict ? <span className="mt-1 text-xs leading-tight text-muted">{verdict}</span> : null}
       </span>
       <span className="grid min-w-0 gap-1">
         <span className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3">

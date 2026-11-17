@@ -13,7 +13,7 @@ import {
   type RegionStrength,
 } from '../../domains/rankings/read'
 import type { CompareColumn, CompareRow } from './CompareDrawer'
-import { FormDots, RegionBadge } from '../../components/ui'
+import { FormDots, LeagueDot } from '../../components/ui'
 import { MovementChip } from './WhatChanged'
 import { leagueColor } from '../../shared/teamColor'
 
@@ -138,7 +138,7 @@ export function regionCompareColumns(regions: RegionStrength[]): CompareColumn[]
     id: regionKey(region),
     name: region.region,
     sub: `#${region.rank} · ${region.flagshipLeague ?? 'Multiple leagues'}`,
-    badge: <RegionBadge region={region.region} size="sm" />,
+    badge: <LeagueDot league={region.region} />,
     color: colors[index],
   }))
 }

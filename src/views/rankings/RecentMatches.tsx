@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import type {
   TeamHistoryArtifactState
 } from '../../browser/rankings/usePublicArtifacts'
-import { RegionBadge } from '../../components/ui'
 import { LoadingState } from '../../components/ui/loading'
 import { Pager } from '../../components/ui/pager'
 import { eventTierConfig } from '../../domains/rankings/policy'
@@ -297,22 +296,4 @@ function matchOutcomeSignal(match: RecentMatchSource) {
     }
   }
   return null
-}
-
-export function LeagueSigil({
-  league,
-  fallbackLabel,
-  small = false,
-}: {
-  league: string
-  fallbackLabel?: string
-  small?: boolean
-}) {
-  const code = league.trim().toUpperCase()
-  const badgeRegion = code || (fallbackLabel ?? league)
-  return (
-    <span className={cn('inline-grid h-6 shrink-0 place-items-center [&_.region-badge]:size-full', small ? 'w-7' : 'w-[30px]')} aria-hidden="true">
-      <RegionBadge region={badgeRegion} size="sm" />
-    </span>
-  )
 }

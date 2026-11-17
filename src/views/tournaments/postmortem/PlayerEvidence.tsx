@@ -10,7 +10,7 @@ import {
 import { Card, CardContent, CardHeader } from '../../../components/ui/card'
 import { Alert } from '../../../components/ui/alert'
 import { FieldStrip, FieldStripKey } from '../../../components/FieldStrip'
-import { signedGold, standingLabel } from '../../../components/fieldFormat'
+import { signedGold } from '../../../components/fieldFormat'
 import { playerPerformanceMetrics } from '../../../domains/rankings/read'
 import {
   reportRoleFieldPositions,
@@ -84,10 +84,7 @@ export function PlayerEvidence({
                   nameFor={(id) => names.get(id) ?? id}
                   within="at the event"
                   minSamples={1}
-                  note={[
-                    position.standing ? standingLabel(position.standing, position.better, 'at the event') : null,
-                    position.missing ? `${position.missing} game${position.missing === 1 ? '' : 's'} without data` : null,
-                  ].filter(Boolean).join(' · ') || undefined}
+                  note={position.missing ? `${position.missing} game${position.missing === 1 ? '' : 's'} without data` : undefined}
                 />
               )
             })}

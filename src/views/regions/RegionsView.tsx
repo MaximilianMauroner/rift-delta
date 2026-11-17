@@ -678,7 +678,7 @@ function RegionDepthLegend() {
   return (
     <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted" aria-label="Chart legend">
       <li className="inline-flex items-center gap-1.5">
-        <span className="size-2.5 rounded-full bg-[var(--league-lck)]" aria-hidden="true" />
+        <span className="size-2.5 rounded-full bg-text" aria-hidden="true" />
         Top three
       </li>
       <li className="inline-flex items-center gap-1.5">

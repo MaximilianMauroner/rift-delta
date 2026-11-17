@@ -7,10 +7,14 @@ import { Alert } from './ui/alert'
 import { Badge } from './ui/badge'
 import { tableHeadClassName } from './ui/table'
 
+export function LeagueDot({ league }: { league: string }) {
+  return <span className="league-dot" style={{ '--league-color': leagueColor(league) } as CSSProperties} aria-hidden="true" />
+}
+
 export function RegionBadge({ region, size = 'md' }: { region: string; size?: 'sm' | 'md' }) {
   return (
-    <span className={cn('league-label', size === 'sm' && 'text-xs')} style={{ '--league-color': leagueColor(region) } as CSSProperties}>
-      <span className="league-dot" aria-hidden="true" />
+    <span className={cn('league-label', size === 'sm' && 'text-xs')}>
+      <LeagueDot league={region} />
       {region.toUpperCase()}
     </span>
   )

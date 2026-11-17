@@ -12,7 +12,7 @@ import {
   seasonFromScope,
   usePublicArtifacts,
 } from '../../browser/rankings/usePublicArtifacts'
-import { RegionBadge } from '../../components/ui'
+import { LeagueDot } from '../../components/ui'
 import { RouteErrorBoundary } from '../../components/RouteErrorBoundary'
 import { Alert } from '../../components/ui/alert'
 import { LoadingState } from '../../components/ui/loading'
@@ -362,7 +362,7 @@ export function RankingRoute() {
         code: region.region,
         name: region.region,
         meta: `${region.teamCount} flagship teams`,
-        badge: <RegionBadge region={region.region} size="sm" />,
+        badge: <LeagueDot league={region.region} />,
       }))
     : activeTeamPicks.map((team) => ({
         id: teamKey(team),
