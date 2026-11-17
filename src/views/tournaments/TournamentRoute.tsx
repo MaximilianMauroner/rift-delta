@@ -16,7 +16,7 @@ export function TournamentRoute() {
   const view = query.get('view')
   const postmortem = view === 'postmortem'
   const [availability, setAvailability] = useState<{ hasEvent: boolean; swiss: boolean | null }>({ hasEvent: true, swiss: null })
-  const onAvailabilityChange = useCallback((hasEvent: boolean, swiss: boolean) => setAvailability({ hasEvent, swiss }), [])
+  const onAvailabilityChange = useCallback((hasEvent: boolean, swiss: boolean | null) => setAvailability({ hasEvent, swiss }), [])
   const activeView = view === 'schedule' ? 'schedule' : view === 'swiss' && availability.swiss !== false ? 'swiss' : 'bracket'
   const current: TournamentTab = postmortem ? 'postmortem' : activeView
   const tabs: TournamentTab[] = postmortem || availability.hasEvent
@@ -34,7 +34,8 @@ export function TournamentRoute() {
     <main id="main-content" tabIndex={-1} ref={mainRef} className="min-w-0 flex-1 pb-6 max-sm:pb-[calc(var(--tabbar-h)+24px+env(safe-area-inset-bottom))]">
       <h1 className="sr-only">Tournaments</h1>
       <TournamentTabs current={current} tabs={tabs} className="px-[var(--page-x)] pt-2" />
-      <RouteErrorBoundary key={current}>
+      {/* Keyed by the requested tab, so a fallback while the feed loads does not remount the view. */}
+      <RouteErrorBoundary key={postmortem ? 'postmortem' : view ?? 'bracket'}>
         <Suspense fallback={<LoadingState presentation="page" layout="schedule" label="Loading Tournaments" />}>
           {postmortem ? <PostmortemView /> : <TournamentsView view={activeView} onAvailabilityChange={onAvailabilityChange} />}
         </Suspense>

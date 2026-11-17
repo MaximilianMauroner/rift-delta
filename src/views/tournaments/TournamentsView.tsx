@@ -32,7 +32,7 @@ function replaceLegacyEventAlias(requested: string, address: string | undefined)
   writeNavigationHash(`#tournaments?${query}`, 'replace')
 }
 
-export function TournamentsView({ view, onAvailabilityChange }: { view: TournamentPanel; onAvailabilityChange: (hasEvent: boolean, swiss: boolean) => void }) {
+export function TournamentsView({ view, onAvailabilityChange }: { view: TournamentPanel; onAvailabilityChange: (hasEvent: boolean, swiss: boolean | null) => void }) {
   const [requestedEvent, setRequestedEvent] = useState(() => hashParam('event') ?? '')
   const { state, now, forecastArtifacts, refresh } = useTournamentResources(view)
   const events = state.status === 'ready' ? state.feed.events : EMPTY_EVENTS
@@ -56,7 +56,8 @@ export function TournamentsView({ view, onAvailabilityChange }: { view: Tourname
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time'
   const grouped = useMemo(() => groupTournamentSeries(selected?.series ?? []), [selected])
 
-  const swissAvailable = selected !== undefined && selected === findSwissEvent(events)
+  // Unknown until the feed is ready, so a direct Swiss link does not fall back to Bracket while it loads.
+  const swissAvailable = state.status === 'ready' ? selected !== undefined && selected === findSwissEvent(events) : null
   const hasEvent = state.status !== 'ready' || selected !== undefined
   useEffect(() => {
     onAvailabilityChange(hasEvent, swissAvailable)
