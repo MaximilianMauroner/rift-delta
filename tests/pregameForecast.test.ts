@@ -138,13 +138,17 @@ test('dependence fits the complete score even when winner loss prefers independe
   }
 })
 
-test('forecast CLI runs through a symlinked entry point', async () => {
+test('forecast CLI runs through a symlinked entry point and stays inactive on import', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'pregame-entry-'))
   try {
     const entry = join(dir, 'export.ts')
     await symlink(resolve('scripts/rankings/export-pregame-series.ts'), entry)
     const stdout = execFileSync(process.execPath, ['--import', 'tsx', entry, '--help'], { encoding: 'utf8' })
     assert.match(stdout, /^Usage: export-pregame-series /)
+    const imported = execFileSync(process.execPath, ['--import', 'tsx', '--input-type=module', '--eval',
+      `await import(${JSON.stringify(new URL('../scripts/rankings/export-pregame-series.ts', import.meta.url).href)})`,
+      join(dir, 'not-an-entry')], { encoding: 'utf8' })
+    assert.equal(imported, '')
   } finally { await rm(dir, { recursive: true, force: true }) }
 })
 
