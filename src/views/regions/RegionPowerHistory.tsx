@@ -69,9 +69,14 @@ function RegionPowerDetails({ active, codes }: { active: ChartActiveRow; codes: 
               <i className="inline-block h-[3px] w-[11px] shrink-0 self-center rounded-full" style={{ background: series.color }} aria-hidden="true" />
               <b className="font-semibold text-text">{series.label}</b>
               <strong className="text-right text-text tabular-nums">{formatRating(point.y)}</strong>
-              <span className="min-w-0 text-xs text-muted" title={teams.join(', ')}>
-                {teams.length ? teams.map((team) => codes.get(team) ?? team).join(' · ') : 'Contributors unavailable'}
-              </span>
+              <div className="min-w-0 text-xs text-muted">
+                {teams.length ? (
+                  <details>
+                    <summary className="cursor-pointer">{teams.map((team) => codes.get(team) ?? team).join(' · ')}</summary>
+                    <p className="mt-1">{teams.join(', ')}</p>
+                  </details>
+                ) : 'Contributors unavailable'}
+              </div>
             </li>
           )
         })}
