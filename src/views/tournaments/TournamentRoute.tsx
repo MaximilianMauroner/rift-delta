@@ -15,9 +15,9 @@ export function TournamentRoute() {
   const query = useTournamentReportAddress()
   const view = query.get('view')
   const postmortem = view === 'postmortem'
-  const [availability, setAvailability] = useState({ hasEvent: true, swiss: false })
+  const [availability, setAvailability] = useState<{ hasEvent: boolean; swiss: boolean | null }>({ hasEvent: true, swiss: null })
   const onAvailabilityChange = useCallback((hasEvent: boolean, swiss: boolean) => setAvailability({ hasEvent, swiss }), [])
-  const activeView = view === 'schedule' ? 'schedule' : view === 'swiss' && availability.swiss ? 'swiss' : 'bracket'
+  const activeView = view === 'schedule' ? 'schedule' : view === 'swiss' && availability.swiss !== false ? 'swiss' : 'bracket'
   const current: TournamentTab = postmortem ? 'postmortem' : activeView
   const tabs: TournamentTab[] = postmortem || availability.hasEvent
     ? ['bracket', 'schedule', ...(!postmortem && availability.swiss ? ['swiss' as const] : []), 'postmortem']
