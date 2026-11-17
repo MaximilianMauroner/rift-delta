@@ -59,8 +59,31 @@
     color: var(--warn);
   }
 
+  .b-demo::before,
   .warn::before {
     content: "⚠ ";
+  }
+
+  .skip-setup {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .skip-setup:focus-visible {
+    position: static;
+    width: auto;
+    height: auto;
+    clip: auto;
+    justify-self: start;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--raised);
+    color: var(--text);
   }
 
   .lab {

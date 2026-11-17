@@ -126,85 +126,86 @@ export function OpenerCard({
 }) {
   const illegal = !actions.every((action) => actionAvailable(action, level));
   return (
-    <details className="fold opener-fold">
-      <summary>Opener and fight length</summary>
-      <div className="fold-body">
-        <span className="fl">Preset</span>
-        <div className="toggle" aria-label="Combo presets">
-          {COMBO_PRESETS.map((preset) => (
-            <Button variant="outline" key={preset.id} onClick={() => onPreset(preset)}>
-              {preset.label}
-            </Button>
-          ))}
-        </div>
-        <span className="fl">Sequence</span>
-        <div className="opener">
-          {actions.map((action, index) => (
-            <span className="op-wrap" key={`${action}-${index}`}>
-              <Button variant="outline" className="op" onClick={() => onRemoveAction(index)} aria-label={`Remove ${action} action ${index + 1}`}>
-                {action} <small aria-hidden>×</small>
+    <>
+      {illegal && (
+        <p className="warn">
+          This opener contains an ability unavailable at level {level}; choose a preset or remove it.
+        </p>
+      )}
+      <details className="fold opener-fold">
+        <summary>Opener and fight length</summary>
+        <div className="fold-body">
+          <span className="fl">Preset</span>
+          <div className="toggle" aria-label="Combo presets">
+            {COMBO_PRESETS.map((preset) => (
+              <Button variant="outline" key={preset.id} onClick={() => onPreset(preset)}>
+                {preset.label}
               </Button>
+            ))}
+          </div>
+          <span className="fl">Sequence</span>
+          <div className="opener">
+            {actions.map((action, index) => (
+              <span className="op-wrap" key={`${action}-${index}`}>
+                <Button variant="outline" className="op" onClick={() => onRemoveAction(index)} aria-label={`Remove ${action} action ${index + 1}`}>
+                  {action} <small aria-hidden>×</small>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="op-move"
+                  aria-label={`Move ${action} ${index === 0 ? "later" : "earlier"}`}
+                  onClick={() => onMoveAction(index, index === 0 ? 1 : -1)}
+                >
+                  {index === 0 ? "↓" : "↑"}
+                </Button>
+              </span>
+            ))}
+          </div>
+          <div className="addrow">
+            {ACTION_KEYS.map((action) => (
               <Button
                 variant="outline"
-                className="op-move"
-                aria-label={`Move ${action} ${index === 0 ? "later" : "earlier"}`}
-                onClick={() => onMoveAction(index, index === 0 ? 1 : -1)}
+                key={action}
+                onClick={() => onAddAction(action)}
+                disabled={!actionAvailable(action, level)}
               >
-                {index === 0 ? "↓" : "↑"}
+                + {action}
               </Button>
-            </span>
-          ))}
-        </div>
-        <div className="addrow">
-          {ACTION_KEYS.map((action) => (
+            ))}
+          </div>
+          <span className="fl">After the opener</span>
+          <div className="toggle" role="group" aria-label="Continue autos">
             <Button
               variant="outline"
-              key={action}
-              onClick={() => onAddAction(action)}
-              disabled={!actionAvailable(action, level)}
+              className={continueAutos ? "on" : ""}
+              onClick={() => onContinueAutos(true)}
+              aria-pressed={continueAutos}
             >
-              + {action}
+              Keep autoing
             </Button>
-          ))}
+            <Button
+              variant="outline"
+              className={!continueAutos ? "on" : ""}
+              onClick={() => onContinueAutos(false)}
+              aria-pressed={!continueAutos}
+            >
+              Stop
+            </Button>
+          </div>
+          <label className="fl" htmlFor="duration">
+            Custom fight length (seconds)
+          </label>
+          <Input
+            id="duration"
+            type="number"
+            min={1}
+            max={60}
+            value={duration}
+            onChange={(event) => onDuration(Number(event.target.value))}
+          />
         </div>
-        {illegal && (
-          <p className="warn">
-            This opener contains an ability unavailable at level {level}; choose a preset or remove
-            it.
-          </p>
-        )}
-        <span className="fl">After the opener</span>
-        <div className="toggle" role="group" aria-label="Continue autos">
-          <Button
-            variant="outline"
-            className={continueAutos ? "on" : ""}
-            onClick={() => onContinueAutos(true)}
-            aria-pressed={continueAutos}
-          >
-            Keep autoing
-          </Button>
-          <Button
-            variant="outline"
-            className={!continueAutos ? "on" : ""}
-            onClick={() => onContinueAutos(false)}
-            aria-pressed={!continueAutos}
-          >
-            Stop
-          </Button>
-        </div>
-        <label className="fl" htmlFor="duration">
-          Custom fight length (seconds)
-        </label>
-        <Input
-          id="duration"
-          type="number"
-          min={1}
-          max={60}
-          value={duration}
-          onChange={(event) => onDuration(Number(event.target.value))}
-        />
-      </div>
-    </details>
+      </details>
+    </>
   );
 }
 

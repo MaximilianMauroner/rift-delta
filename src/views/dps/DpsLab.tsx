@@ -119,6 +119,7 @@ export default function Home() {
   const optimizerSlotEditedRef = useRef(false);
   const optimizerInputKeyRef = useRef<string | null>(null);
   const requestIdRef = useRef(0);
+  const railRef = useRef<HTMLElement | null>(null);
   const autoRunTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cohortRef = useRef<{ key: string; payload: CohortPayload } | null>(null);
   const progressionCacheRef = useRef(new Map<number, ProgressionApiResponse>());
@@ -727,6 +728,9 @@ export default function Home() {
 
       <div className="lab">
         <div className="board">
+          <button type="button" className="skip-setup" onClick={() => railRef.current?.focus()}>
+            Skip to setup
+          </button>
           {error && (
             <div className="error" role="alert">
               {error}
@@ -845,7 +849,7 @@ export default function Home() {
           />
         </div>
 
-        <aside className="rail" aria-label="Simulation setup">
+        <aside className="rail" aria-label="Simulation setup" ref={railRef} tabIndex={-1}>
           <AttackerCard
             level={level}
             ranks={ranks}
