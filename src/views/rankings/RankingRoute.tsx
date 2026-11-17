@@ -56,6 +56,18 @@ function scopeForMode(mode: Mode, scope: string) {
   return mode === 'players' && checkpointFromScope(scope) ? `season:${seasonFromScope(scope)}` : scope
 }
 
+/** The tray wraps to several rows on phones, so the space main reserves for it follows its real height. */
+function reserveTrayHeight(tray: HTMLDivElement | null) {
+  const main = tray?.closest('main')
+  if (!tray || !main) return undefined
+  const observer = new ResizeObserver(() => main.style.setProperty('--tray-h', `${tray.offsetHeight}px`))
+  observer.observe(tray)
+  return () => {
+    observer.disconnect()
+    main.style.removeProperty('--tray-h')
+  }
+}
+
 export function RankingRoute() {
   const [mode, setMode] = useState<Mode>(readModeFromHash)
   const [scope, setScope] = useState(() => scopeForMode(readModeFromHash(), readScopeFromHash() ?? currentSeasonScope()))
@@ -393,7 +405,7 @@ export function RankingRoute() {
             first pick: there the labelled row checkbox announces the feature
             and the screen height is better spent on teams. */}
         {hasCompareTray ? (
-          <div className={cn('fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line-strong)] bg-[color-mix(in_oklch,var(--surface)_94%,var(--bg))] px-[var(--page-x)] py-2 shadow-[var(--shadow-tray)] max-sm:bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] max-sm:px-3', compareEntities.length === 0 && 'max-sm:hidden')}>
+          <div ref={reserveTrayHeight} className={cn('fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line-strong)] bg-[color-mix(in_oklch,var(--surface)_94%,var(--bg))] px-[var(--page-x)] py-2 shadow-[var(--shadow-tray)] max-sm:bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] max-sm:px-3', compareEntities.length === 0 && 'max-sm:hidden')}>
             <CompareDock
               subject={mode === 'regions' ? 'regions' : 'teams'}
               limit={COMPARE_LIMIT}

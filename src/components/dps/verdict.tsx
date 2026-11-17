@@ -195,7 +195,7 @@ export function IdenticalBuildsBand({
         {damage !== null && (
           <p className="note">
             The single build still simulates: {Math.round(damage).toLocaleString()} damage,{" "}
-            {Math.round(dps ?? 0).toLocaleString()} DPS, TTK {ttk === null ? "censored" : `${ttk}s`}
+            {Math.round(dps ?? 0).toLocaleString()} DPS, TTK {ttk === null ? "censored" : `${ttk.toFixed(2)}s`}
             . Current inventory holds {itemName}.
           </p>
         )}

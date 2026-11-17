@@ -220,6 +220,7 @@ table,
 
 .rail-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -729,7 +730,7 @@ table.heat tbody th {
 
 .slot {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) 22px;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
   gap: 6px;
   align-items: center;
   padding: 4px;
@@ -1540,7 +1541,24 @@ footer {
   }
 }
 
+/* base.css raises every button to 44px at these widths. Four steppers no
+   longer fit one row of the rail, so the ranks take two. */
+@media (max-width: 900px), (pointer: coarse) {
+  .ranks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 700px) {
+  /* The header wraps to three rows here; pinned, it would cover a fifth of a phone screen. */
+  .top {
+    position: static;
+  }
+
+  .optimizer-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .top-in {
     height: auto;
     min-height: 56px;

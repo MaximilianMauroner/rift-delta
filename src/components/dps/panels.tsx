@@ -47,7 +47,7 @@ function CycleTable({ result, label }: { result: SimulationResult; label: string
         <tr className="total-row">
           <th scope="row">Applied</th>
           <td className="num" colSpan={sources.length}>
-            {result.killed ? `Target dies at ${result.ttk}s` : "Target survives the window"}
+            {result.killed && result.ttk !== null ? `Target dies at ${result.ttk.toFixed(2)}s` : "Target survives the window"}
           </td>
           <td className="num emphasis-cell">{Math.round(applied).toLocaleString()}</td>
           <td className="num">overkill {Math.round(result.overkill).toLocaleString()}</td>
@@ -79,8 +79,8 @@ export function TraceFold({
   const targets: Target[] = dataset?.targets ?? [];
   const selected = targets.find((target) => target.id === selectedTargetId) ?? targets[0];
   const summary = resultA
-    ? resultA.killed
-      ? `killed at ${resultA.ttk}s`
+    ? resultA.killed && resultA.ttk !== null
+      ? `killed at ${resultA.ttk.toFixed(2)}s`
       : "not killed in the window"
     : "waiting for a run";
   return (
