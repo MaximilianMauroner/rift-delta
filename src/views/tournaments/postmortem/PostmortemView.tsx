@@ -28,7 +28,7 @@ export function PostmortemView() {
     >
       {state.status !== 'ready' ? (
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h2 className="text-xl font-semibold">Worlds team reports</h2>
+          <h2 className="text-2xl font-semibold">Worlds team reports</h2>
           <Button variant="outline" onClick={retry}>
             Refresh reports
           </Button>
@@ -136,11 +136,11 @@ function ReportBody({ report }: { report: TournamentReport }) {
   const players = new Set(report.teams.flatMap((team) => team.participants.map((player) => player.playerId))).size
   return (
     <>
-      <header className="grid gap-3 rounded-md border border-border bg-card p-4">
+      <header className="grid gap-3 rounded-md border border-line bg-surface p-4">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-8 gap-y-3">
           <div className="grid gap-1">
-            <h2 className="text-xl font-bold">{report.label}</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-2xl font-bold">{report.label}</h2>
+            <p className="text-sm text-muted">
               {coverage.observedGames} games · {coverage.observedTeams} teams ·{' '}
               {players} players · {coverage.since} to {coverage.through}
             </p>
@@ -234,8 +234,8 @@ function ReportBody({ report }: { report: TournamentReport }) {
           ) : null}
         </div>
       ) : null}
-      <details className="min-w-0 break-words border-t border-border pt-3 text-xs text-muted-foreground">
-        <summary className="cursor-pointer font-semibold text-foreground">
+      <details className="min-w-0 break-words border-t border-line pt-3 text-xs text-muted">
+        <summary className="cursor-pointer font-semibold text-text">
           Method and source provenance
         </summary>
         <div className="mt-3 grid gap-2">

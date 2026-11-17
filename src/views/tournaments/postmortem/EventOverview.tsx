@@ -43,7 +43,7 @@ export function EventOverview({
   return (
     <section className="grid min-w-0 gap-3" aria-label="Tournament statistics">
       <h3 className="text-lg font-bold">Tournament</h3>
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md bg-border lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md bg-line lg:grid-cols-4">
         <RateTile label="Blue side wins" rate={summary.blueSide} />
         <RateTile label="Team ahead at 15 wins" rate={summary.leaderAt15} />
         <Tile
@@ -66,7 +66,7 @@ export function EventOverview({
         <Card className="gap-0 py-0">
           <CardContent className="grid min-w-0 gap-2 py-4">
             <h4 className="text-sm font-bold">Win rate and gold at 15</h4>
-            <p className="text-xs text-muted-foreground">The dashed line is the average win rate. Select a team to open it.</p>
+            <p className="text-xs text-muted">The dashed line is the average win rate. Select a team to open it.</p>
             <div
               className="h-72 min-w-0"
               role="img"
@@ -102,10 +102,10 @@ export function EventOverview({
                     tick={{ fill: 'var(--muted)' }}
                     tickFormatter={(value: number) => `${value}%`}
                   />
-                  <ReferenceLine x={0} stroke="var(--line-strong)" />
+                  <ReferenceLine x={0} stroke="var(--line)" />
                   <ReferenceLine
                     y={meanOf(points.map((point) => point.winRate))}
-                    stroke="var(--line-strong)"
+                    stroke="var(--line)"
                     strokeDasharray="4 4"
                   />
                   <Tooltip
@@ -113,7 +113,7 @@ export function EventOverview({
                     content={({ payload }) => {
                       const point = payload?.[0]?.payload as (typeof points)[number] | undefined
                       return point ? (
-                        <div className="rounded-md border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 py-2 text-xs">
+                        <div className="rounded-md border border-line bg-raised px-3 py-2 text-xs">
                           <p className="font-semibold">{teams.get(point.id)?.name}</p>
                           <p>
                             {point.winRate.toFixed(0)}% wins · {signedGold(point.gold)} gold at 15 ·{' '}
@@ -125,7 +125,7 @@ export function EventOverview({
                   />
                   <Scatter
                     data={points}
-                    fill="var(--accent)"
+                    fill="var(--focus)"
                     stroke="var(--surface)"
                     strokeWidth={2}
                     isAnimationActive={false}
@@ -158,7 +158,7 @@ export function EventOverview({
         <CardContent className="grid min-w-0 gap-2 py-4">
           <h4 className="text-sm font-bold">Most picked champions</h4>
           <table className="w-full table-fixed text-xs" aria-label="Most picked champions">
-            <thead className="text-left text-muted-foreground">
+            <thead className="text-left text-muted">
               <tr>
                 <th className="w-[34%] py-1 font-normal">Champion</th>
                 <th className="py-1 text-right font-normal">Picks</th>
@@ -167,7 +167,7 @@ export function EventOverview({
                 <th className="w-[38%] py-1 pl-3 font-normal">Win rate and likely range</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-line">
               {summary.champions.slice(0, CHAMPION_ROWS).map((champion) => (
                 <tr key={champion.champion}>
                   <td className="truncate py-1.5 font-semibold">{champion.champion}</td>
@@ -183,7 +183,7 @@ export function EventOverview({
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-muted-foreground">The bar shows the likely range of the true win rate.</p>
+          <p className="text-xs text-muted">The bar shows the likely range of the true win rate.</p>
         </CardContent>
       </Card>
     </section>
@@ -192,10 +192,10 @@ export function EventOverview({
 
 function Tile({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <div className="min-w-0 bg-[var(--surface-2)] p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-lg font-bold tabular-nums sm:text-xl">{value}</p>
-      <p className="mt-1 text-2xs text-muted-foreground">{detail}</p>
+    <div className="min-w-0 bg-raised p-3">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-lg font-bold tabular-nums sm:text-2xl">{value}</p>
+      <p className="mt-1 text-xs text-muted">{detail}</p>
     </div>
   )
 }
@@ -218,17 +218,17 @@ function IntervalBar({ rate }: { rate: Rate }) {
       title={`Likely win rate ${percent(rate.interval.low)}–${percent(rate.interval.high)} after ${rate.trials} games`}
     >
       <span className="relative block h-3 min-w-0 flex-1" aria-hidden="true">
-        <span className="absolute inset-x-0 top-1/2 border-t border-border" />
-        <span className="absolute inset-y-0 left-1/2 border-l border-dashed border-[var(--line-strong)]" />
+        <span className="absolute inset-x-0 top-1/2 border-t border-line" />
+        <span className="absolute inset-y-0 left-1/2 border-l border-dashed border-line" />
         <span
-          className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-sm bg-[var(--accent-soft)]"
+          className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-md bg-[var(--focus-wash)]"
           style={{
             left: `${rate.interval.low * 100}%`,
             width: `${(rate.interval.high - rate.interval.low) * 100}%`,
           }}
         />
         <span
-          className="absolute inset-y-0 w-0.5 bg-[var(--accent)]"
+          className="absolute inset-y-0 w-0.5 bg-text"
           style={{ left: `${rate.value * 100}%` }}
         />
       </span>
@@ -253,23 +253,23 @@ function GameList({
       <CardContent className="grid min-w-0 gap-2 py-4">
         <div className="flex items-baseline justify-between gap-3">
           <h4 className="text-sm font-bold">{title}</h4>
-          <span className="text-2xs text-muted-foreground">Gold at 15 → end</span>
+          <span className="text-xs text-muted">Gold at 15 → end</span>
         </div>
         {rows.length ? (
-          <ol className="grid min-w-0 divide-y divide-border">
+          <ol className="grid min-w-0 divide-y divide-line">
             {rows.map((row) => (
               <li key={`${row.matchId}|${row.teamId}`}>
                 <Button
                   variant="ghost"
                   aria-label={`Open ${code(row.teamId)} team report from ${title}`}
                   onClick={() => onSelectTeam(row.teamId)}
-                  className="grid h-auto w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-none px-0 py-2 text-left whitespace-normal hover:bg-[var(--surface-2)]"
+                  className="grid h-auto w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-none px-0 py-2 text-left whitespace-normal hover:bg-raised"
                 >
                   <span className="min-w-0">
                     <span className="block text-sm font-semibold">
                       {code(row.teamId)} {row.result === 'W' ? 'beat' : 'lost to'} {code(row.opponentId)}
                     </span>
-                    <span className="block text-2xs font-normal text-muted-foreground">
+                    <span className="block text-xs font-normal text-muted">
                       {row.date}
                       {row.gameNumber ? ` · Game ${row.gameNumber}` : ''}
                       {row.phase ? ` · ${row.phase}` : ''}

@@ -23,7 +23,7 @@ export function Panel({ className, ...props }: React.ComponentProps<'div'>) {
  * on the trailing edge.
  *
  * There is deliberately no eyebrow slot. Every panel used to open with an
- * uppercase grey label above its title, which cost a line of vertical space per
+ * grey label above its title, which cost a line of vertical space per
  * panel and pushed the actual data further down on every screen. Where the
  * eyebrow carried real information it now belongs in the title or in a badge
  * passed to `actions`.
@@ -49,12 +49,12 @@ export function PanelHeader({
   return (
     <div
       data-slot="panel-header"
-      className={cn('flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-border px-4 py-3', className)}
+      className={cn('flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-line px-4 py-3', className)}
     >
       <div className="mr-auto grid min-w-0 flex-[1_1_260px] gap-0.5">
-        <h2 id={titleId} className="text-base font-semibold text-[var(--text-strong)]">{title}</h2>
+        <h2 id={titleId} className="text-base font-semibold text-text">{title}</h2>
         {description ? (
-          <p className="max-w-[74ch] text-sm leading-[1.45] text-muted-foreground">{description}</p>
+          <p className="max-w-[74ch] text-sm leading-[1.45] text-muted">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
@@ -71,7 +71,7 @@ export function PanelFooter({ className, ...props }: React.ComponentProps<'div'>
   return (
     <div
       data-slot="panel-footer"
-      className={cn('min-w-0 border-t border-border px-4 py-2.5', className)}
+      className={cn('min-w-0 border-t border-line px-4 py-2.5', className)}
       {...props}
     />
   )

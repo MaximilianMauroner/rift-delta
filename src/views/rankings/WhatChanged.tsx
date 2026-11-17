@@ -43,16 +43,16 @@ export function WhatChanged({
   if (!riser && !faller && !upset) return null
   return (
     <Panel aria-label="What changed">
-      <PanelHeader title="What changed" actions={<span className="text-xs text-[var(--faint)]">{period}</span>} />
-      <ul className="grid gap-px bg-border">
+      <PanelHeader title="What changed" actions={<span className="text-xs text-muted">{period}</span>} />
+      <ul className="grid gap-px bg-line">
         {riser ? <MovementRow movement={riser} /> : null}
         {faller ? <MovementRow movement={faller} /> : null}
         {upset ? (
-          <li className="flex min-w-0 items-center gap-2.5 bg-card px-4 py-2.5 text-sm">
+          <li className="flex min-w-0 items-center gap-2.5 bg-surface px-4 py-2.5 text-sm">
             <Badge variant="warning" className="shrink-0">Upset</Badge>
-            <span className="min-w-0 text-muted-foreground">
-              <b className="font-semibold text-[var(--text-strong)]">{upset.winner}</b> beat {upset.loser} with a {Math.round(upset.chance * 100)}% chance
-              {upset.event ? <span className="block truncate text-xs text-[var(--faint)]">{matchEventLabel(upset.event)}</span> : null}
+            <span className="min-w-0 text-muted">
+              <b className="font-semibold text-text">{upset.winner}</b> beat {upset.loser} with a {Math.round(upset.chance * 100)}% chance
+              {upset.event ? <span className="block truncate text-xs text-muted">{matchEventLabel(upset.event)}</span> : null}
             </span>
           </li>
         ) : null}
@@ -64,13 +64,13 @@ export function WhatChanged({
 function MovementRow({ movement }: { movement: MovementSpotlight }) {
   const up = movement.places > 0 || (movement.places === 0 && movement.ratingDelta > 0)
   return (
-    <li className="flex min-w-0 items-center gap-2.5 bg-card px-4 py-2.5 text-sm" title={movement.detail}>
+    <li className="flex min-w-0 items-center gap-2.5 bg-surface px-4 py-2.5 text-sm" title={movement.detail}>
       <MovementChip places={movement.places} />
-      <span className="min-w-0 truncate text-muted-foreground">
-        <b className="font-semibold text-[var(--text-strong)]">{movement.code ?? movement.team}</b>{' '}
+      <span className="min-w-0 truncate text-muted">
+        <b className="font-semibold text-text">{movement.code ?? movement.team}</b>{' '}
         {movement.places === 0 ? 'held rank' : `${up ? 'up' : 'down'} ${Math.abs(movement.places)} ${Math.abs(movement.places) === 1 ? 'place' : 'places'}`}
       </span>
-      <span className={cn('ml-auto shrink-0 font-mono text-xs font-semibold tabular-nums', movement.ratingDelta >= 0 ? 'text-[var(--up)]' : 'text-[var(--down)]')}>
+      <span className={cn('ml-auto shrink-0 text-xs font-semibold tabular-nums', movement.ratingDelta >= 0 ? 'text-up' : 'text-down')}>
         {formatSigned(movement.ratingDelta)}
       </span>
     </li>
@@ -80,16 +80,16 @@ function MovementRow({ movement }: { movement: MovementSpotlight }) {
 /** Rank change as a small signed chip, shared by the board and this panel. */
 export function MovementChip({ places, title }: { places?: number; title?: string }) {
   if (places === undefined) {
-    return <span className="inline-flex min-w-9 justify-center rounded-sm bg-[var(--surface-2)] px-1.5 py-0.5 font-mono text-2xs font-bold text-[var(--faint)]" title={title}>—</span>
+    return <span className="inline-flex min-w-9 justify-center rounded-md bg-raised px-1.5 py-0.5 text-xs font-bold text-muted" title={title}>—</span>
   }
   const tone = places > 0 ? 'up' : places < 0 ? 'down' : 'flat'
   return (
     <span
       className={cn(
-        'inline-flex min-w-9 justify-center rounded-sm px-1.5 py-0.5 font-mono text-2xs font-bold tabular-nums',
-        tone === 'up' && 'bg-[color-mix(in_oklch,var(--up)_12%,transparent)] text-[var(--up)]',
-        tone === 'down' && 'bg-[color-mix(in_oklch,var(--down)_12%,transparent)] text-[var(--down)]',
-        tone === 'flat' && 'bg-[var(--surface-2)] text-[var(--faint)]',
+        'inline-flex min-w-9 justify-center rounded-md px-1.5 py-0.5 text-xs font-bold tabular-nums',
+        tone === 'up' && 'bg-[color-mix(in_srgb,var(--up)_12%,transparent)] text-up',
+        tone === 'down' && 'bg-[color-mix(in_srgb,var(--down)_12%,transparent)] text-down',
+        tone === 'flat' && 'bg-raised text-muted',
       )}
       title={title}
     >

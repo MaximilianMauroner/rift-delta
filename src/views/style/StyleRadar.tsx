@@ -62,7 +62,7 @@ export function StyleRadar({ measures, compare, selected, onSelect, name, compar
     <div className="style-chart" aria-hidden="true">
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} cx="50%" cy="50%" outerRadius="70%" accessibilityLayer={false}>
-          <PolarGrid gridType="polygon" radialLines={false} stroke="var(--line-strong)" fill="none" />
+          <PolarGrid gridType="polygon" radialLines={false} stroke="var(--line)" fill="none" />
           <PolarAngleAxis dataKey="key" tick={false} axisLine={false} />
           <PolarRadiusAxis domain={[0, 100]} ticks={[25, 50, 75, 100]} tick={false} axisLine={false} />
           {comparisons ? <Radar dataKey="comparison" isAnimationActive={false} activeDot={false}

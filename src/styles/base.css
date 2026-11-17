@@ -1,176 +1,79 @@
 :root {
   color-scheme: dark;
 
-  --bg: #10151c;
-  --surface: #171e28;
-  --surface-2: #202a36;
-  --surface-3: #293645;
-  --rail: #131a23;
-  --line: #303d4c;
-  --line-strong: #4b6075;
-
-  --text: #d7e1eb;
-  --text-strong: #edf3f8;
-  --muted: #b7c3d1;
-  --faint: #a5b4c7;
-
   /* ---- Colour roles. One meaning each. Do not reuse across roles. ----
-     --accent      interactive and selected. Nothing else.
-     --rank-gold   rank quality only (podium, S tier, #1). Never "you are here".
-     --win/--loss  match outcome only.
-     --heat-*      magnitude only.
-     --league-red  destructive only.
-     --preview     hypothetical, user-chosen scenario content only.
-     --live        a series in progress only, always with a "Live" label.
+     ground       the page
+     surface      lists and panes
+     raised       controls and hover
+     line         separators and axes
+     text, muted  primary and secondary text
+     focus        selection and keyboard focus only
+     up, down     movement and win/loss only, always with a sign or letter
+     tier-*       tier chips only
+     identity-*   chart series, the n-th entity in order of first appearance.
+                  teamColor() in src/shared/teamColor.ts makes the same hues.
      -------------------------------------------------------------------- */
-  --accent: #75d9e9;
-  --accent-strong: #a3e9f3;
-  --accent-soft: rgb(117 217 233 / 0.13);
-  --accent-line: rgb(117 217 233 / 0.52);
-  --on-accent: oklch(0.14 0.03 220);
-  --league-red: oklch(0.64 0.23 27);
-  --rank-gold: oklch(0.84 0.1 86);
-  /* Scenario picks and draws the user made. Always paired with a dashed line
-     and a text label, so a preview never reads as a live result. */
-  --preview: oklch(0.76 0.12 300);
-  --preview-soft: oklch(0.76 0.12 300 / 0.12);
-  --preview-line: oklch(0.76 0.12 300 / 0.62);
-  /* Tier hues. S shares rank gold; the rest step away from the accent so a
-     tier never reads as a selection. */
-  --tier-s: var(--rank-gold);
-  --tier-a: oklch(0.82 0.08 215);
-  --tier-b: oklch(0.77 0.12 138);
-  --tier-c: oklch(0.75 0.13 54);
+  --ground: #121519;
+  --surface: #191d23;
+  --raised: #222831;
+  --line: #2e3540;
+  --text: #e8ecf0;
+  --muted: #9aa6b2;
+  --focus: #7fb2ff;
+  --up: #4cc38a;
+  --down: #f07167;
+  --tier-s: #e9c46a;
+  --tier-a: #a8c5e0;
+  --tier-b: #9fb8a0;
+  --tier-c: #8e99a6;
 
-  /* Single selected treatment, shared by nav, tabs and rows. */
-  --selected-bg: color-mix(in oklch, var(--accent) 14%, var(--surface));
-  --selected-bg-hover: color-mix(in oklch, var(--accent) 18%, var(--surface-2));
-  --selected-line: color-mix(in oklch, var(--accent), var(--line) 42%);
-  --selected-bar: inset 3px 0 0 var(--accent);
+  --identity-1: oklch(74% 0.14 332);
+  --identity-2: oklch(74% 0.14 109.5);
+  --identity-3: oklch(74% 0.14 247);
+  --identity-4: oklch(74% 0.14 24.5);
+  --identity-5: oklch(74% 0.14 162);
+  --identity-6: oklch(74% 0.14 299.5);
 
-  /* Sequential strength-heat ramp (cold -> hot) */
-  --heat-1: oklch(0.62 0.07 248);
-  --heat-2: oklch(0.66 0.09 215);
-  --heat-3: oklch(0.71 0.1 168);
-  --heat-4: oklch(0.79 0.13 122);
-  --heat-5: oklch(0.83 0.15 78);
-  --heat-6: oklch(0.74 0.18 46);
-  --heat-ink: oklch(0.2 0.03 60);
+  /* Tints of the roles above. They keep the meaning of their role. */
+  --focus-wash: color-mix(in srgb, var(--focus) 14%, transparent);
+  --focus-bar: inset 3px 0 0 var(--focus);
+  --up-wash: color-mix(in srgb, var(--up) 16%, transparent);
+  --down-wash: color-mix(in srgb, var(--down) 16%, transparent);
 
-  /* Result + status */
-  --win: oklch(0.74 0.14 152);
-  --win-soft: oklch(0.74 0.14 152 / 0.16);
-  --loss: oklch(0.66 0.17 26);
-  --loss-soft: oklch(0.66 0.17 26 / 0.16);
-  --up: oklch(0.78 0.14 150);
-  --down: oklch(0.7 0.16 28);
-  --warn: oklch(0.8 0.13 80);
-  --warn-soft: oklch(0.8 0.13 80 / 0.14);
-  --live: oklch(0.7 0.2 5);
-  --live-soft: oklch(0.7 0.2 5 / 0.14);
+  /* Overlays only: sheets, popovers and their backdrop. */
+  --overlay-shadow: 0 16px 48px rgb(0 0 0 / 0.5);
+  --scrim: rgb(8 10 12 / 0.72);
 
-  /* Categorical series palette for multi-line charts. Validated against the
-     chart surface (#0e1012): every slot sits in the dark lightness band
-     (L 0.48-0.67), clears 3:1 contrast, and adjacent slots keep a colour-blind
-     separation of at least 8.4 dE. The previous set was brighter than the band,
-     which made thin lines vibrate on near-black. Assign slots in fixed order,
-     by team, never by rank. */
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
-  --series-4: #c98500;
-  --series-5: #d55181;
-  --series-6: #9085e9;
+  /* Type: one sans, fixed rem scale at ratio 1.2, weights 400, 600, 700. */
+  --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --type-xs: 0.75rem;
+  --type-sm: 0.875rem;
+  --type-base: 1rem;
+  --type-lg: 1.2rem;
+  --type-xl: 1.44rem;
+  --type-2xl: 1.73rem;
+  --type-3xl: 2.07rem;
 
-  --focus: oklch(0.82 0.13 70);
-  --shadow-1: 0 1px 2px oklch(0 0 0 / 0.38);
-  --shadow-2: 0 10px 28px oklch(0 0 0 / 0.38), 0 1px 2px oklch(0 0 0 / 0.46);
-  --shadow-pop: 0 24px 64px oklch(0 0 0 / 0.55);
-  /* Upward shadow for trays fixed to the bottom edge. */
-  --shadow-tray: 0 -8px 24px oklch(0 0 0 / 0.35);
-  /* Backdrop behind every drawer and sheet. */
-  --scrim: oklch(0.04 0.003 250 / 0.72);
+  /* Shape: controls are the only rounded things. */
+  --radius: 6px;
 
-  /* shadcn/ui semantic tokens mapped to the existing LoL Esports palette. */
-  --background: var(--bg);
-  --foreground: var(--text);
-  --card: var(--surface);
-  --card-foreground: var(--text);
-  --popover: var(--surface);
-  --popover-foreground: var(--text);
-  --primary: var(--accent);
-  --primary-foreground: var(--on-accent);
-  --secondary: var(--surface-2);
-  --secondary-foreground: var(--text);
-  --muted-surface: var(--surface-2);
-  --muted-foreground: var(--muted);
-  --destructive: var(--league-red);
-  --destructive-foreground: var(--text-strong);
-  --border: var(--line);
-  --input: var(--line-strong);
-  --ring: var(--focus);
-  --radius: var(--r-2);
-
-  /* Radius. Three steps plus a pill. Panels are visibly rounder than the
-     controls inside them, which is what makes the surface hierarchy readable. */
-  --r-1: 4px;   /* chips, badges, inline controls */
-  --r-2: 6px;
-  --r-3: 10px;
-  --r-pill: 999px;
-
-  /* Type scale. Do not introduce arbitrary rem sizes. */
-  --t-0: 0.6rem;  /* dense mobile chrome only. Never body text. */
-  --t-1: 0.75rem;
-  --t-2: 0.8125rem;
-  --t-3: 0.875rem;
-  --t-4: 0.92rem; /* emphasised row text */
-  --t-5: 1.05rem; /* panel title */
-  --t-6: 1.25rem; /* section title, headline figure inside a panel */
-  --t-7: 1.7rem;  /* page title */
-  --t-8: 2.1rem;  /* headline figure */
-
-  /* Weight. Four steps. */
-  --w-body: 400;
-  --w-label: 550;
-  --w-emph: 680;
-  --w-figure: 800;
-
-    --track-label: 0.035em;
-
-  /* Spacing, 4px grid. */
-  --s-1: 4px;
-  --s-2: 8px;
-  --s-3: 12px;
-  --s-4: 16px;
-  --s-6: 24px;
-  --s-8: 32px;
-
-    --sans: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Ubuntu Sans", system-ui, sans-serif;
-  /* The one monospace face. It must name the @font-face family in index.css;
-     "JetBrains Mono" without "Variable" matched nothing and fell through to
-     the OS mono. */
-  --mono: 'JetBrains Mono Variable', ui-monospace, monospace;
-
-  --app-nav-h: 66px;
+  --app-nav-h: 56px;
   /* Bottom tab bar on phones and the fixed compare tray. Main content pads
      by these so the last rows are never hidden behind them. */
   --tabbar-h: 56px;
   --tray-h: 60px;
   --page-x: clamp(16px, 3.3vw, 48px);
-  /* One height for every control that sits in a filter or scope bar, so tabs,
+  /* One height for every control in a filter or scope row, so tabs,
      selects, inputs and buttons share a baseline. */
   --control-h: 36px;
-  /* Scope tabs are taller than a plain control because the checkpoint tabs
-     carry a second line. Season and checkpoint tabs share it so the two rows
-     of the scope bar line up. */
-  --scope-h: 42px;
 
   font-family: var(--sans);
+  font-variant-numeric: tabular-nums;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   color: var(--text);
-  background: var(--bg);
+  background: var(--ground);
 }
 
 html,
@@ -189,12 +92,21 @@ html {
 body {
   margin: 0;
   overflow-x: hidden;
-  background: var(--bg);
+  background: var(--ground);
+}
+
+/* dps.css reads --border and --bg from outside the lab. Its own token block
+   sits inside @scope (.dps-surface) as `.dps-surface { ... }`, which matches
+   only a nested element and never the scope root, so the lab gets these two
+   from here. Without them every lab card, input and button loses its border. */
+.dps-surface {
+  --border: var(--line);
+  --bg: var(--ground);
 }
 
 /* Element defaults live in the base layer. Unlayered element rules beat every
    Tailwind utility, so a `font: inherit` here once cancelled `text-xs`,
-   `font-medium` and colour classes on every button, select and input.
+   `font-semibold` and colour classes on every button, select and input.
    Preflight already resets margins and control fonts in this layer. */
 @layer base {
   button,
@@ -204,31 +116,22 @@ body {
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* A bare <b> or <strong> would otherwise get the browser's 700, which is
+  /* A bare <b> or <strong> would otherwise get the browser's bolder, which is
      not on the weight scale. */
   b,
   strong {
-    font-weight: var(--w-emph);
+    font-weight: 600;
   }
 
   a {
-    color: var(--accent-strong);
+    color: inherit;
+    text-underline-offset: 2px;
   }
 
   :focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
-    border-radius: var(--r-1);
   }
-}
-
-.mono {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.num {
-  font-variant-numeric: tabular-nums;
 }
 
 .sr-only {
@@ -255,9 +158,12 @@ body {
 @media (max-width: 640px), (pointer: coarse) {
   :root {
     --control-h: 44px;
-    /* Matches the 44px minimum the touch rule below forces onto buttons, so
-       the scope rows do not desynchronise on touch devices. */
-    --scope-h: 44px;
+  }
+}
+
+@media (max-width: 639px) {
+  :root {
+    --app-nav-h: 48px;
   }
 }
 
@@ -302,14 +208,15 @@ body {
     min-height: 0;
   }
 }
+
 /* Static two-tone fill. Placeholders never animate: an endless shimmer or
    fade repaints for as long as data loads, which keeps a high-refresh display
    busy for nothing. */
 .loading-skeleton,
 .detail-skeleton,
 .loading-dot {
-  background-color: var(--surface-2);
-  background-image: linear-gradient(100deg, transparent 30%, var(--surface-3) 50%, transparent 70%);
+  background-color: var(--raised);
+  background-image: linear-gradient(100deg, transparent 30%, var(--line) 50%, transparent 70%);
 }
 
 /* Placeholders hold their space at once and show after 180ms, so a fast
@@ -328,38 +235,9 @@ body {
 .loading-dot {
   width: 0.55rem;
   height: 0.55rem;
-  border-radius: var(--r-pill);
+  border-radius: 999px;
 }
 
-.app-header {
-  gap: 20px;
-  background: var(--rail);
-}
-.app-wordmark b { font-size: var(--t-5); letter-spacing: -0.025em; font-weight: var(--w-emph); }
-.app-nav-desktop { gap: 2px; align-self: stretch; }
-.app-nav-desktop a {
-  height: auto;
-  padding: 8px 12px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--muted);
-  box-shadow: inset 0 -2px transparent;
-  font-weight: var(--w-label);
-}
-.app-nav-desktop a:hover { background: transparent; color: var(--text-strong); }
-.app-nav-desktop a[aria-current="page"] {
-  background: transparent;
-  color: var(--accent);
-  box-shadow: inset 0 -2px var(--accent);
-}
-.mode-header { display: grid; align-items: start; gap: 5px; padding-block: 20px 16px; }
-.mode-header h1 { font-size: var(--t-7); line-height: 1.15; letter-spacing: -0.025em; font-weight: var(--w-emph); }
-.mode-header p { max-width: 78ch; font-size: var(--t-3); }
-.ranking-period { padding-block: 8px; background: var(--rail); border-top: 1px solid var(--line); }
-.page-shell { gap: 16px; padding-top: 16px; }
-[data-slot="panel-header"] { padding-block: 14px; }
-[data-slot="panel-header"] h2 { letter-spacing: -0.015em; }
 :where([data-slot="select"][data-wrap]) {
   height: auto;
   min-height: var(--control-h);
@@ -367,34 +245,14 @@ body {
   line-height: 1.3;
   white-space: normal;
 }
-:is(.team-detail-sheet, .compare-sheet) [data-slot="sheet-header"] { background: var(--rail); }
-:is(.team-detail-sheet, .compare-sheet) [data-slot="sheet-title"] { font-size: var(--t-6); letter-spacing: -0.02em; }
-@media (min-width: 640px) and (max-width: 1100px) {
-  .app-header { flex-wrap: wrap; gap: 8px 12px; }
-  .app-nav-desktop { flex: 1; justify-content: flex-end; }
-  .app-nav-desktop a { padding-inline: 8px; font-size: var(--t-3); }
-  .app-header-search { order: 3; width: 100%; }
-}
+
 @media (max-width: 639px) {
   :is(.team-detail-sheet, .compare-sheet)[data-side="right"] { width: 100%; max-width: 100%; }
-  :root { --app-nav-h: 56px; }
-  .app-header { gap: 8px; padding-block: 6px; }
-  .app-wordmark { gap: 8px; padding-right: 0; }
-  .app-wordmark img { width: 28px; height: 28px; }
-  .app-wordmark b { font-size: var(--t-4); }
-  .mode-header { gap: 4px; padding-block: 12px; }
-  .mode-header h1 { font-size: var(--t-6); }
-  .mode-header p { font-size: var(--t-2); line-height: 1.45; }
-  .ranking-period:not(:has([role="group"])) > p { flex: 1 1 0; min-width: 0; }
-  .app-nav-mobile { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(76px, 1.25fr); }
-  .app-nav-mobile a { width: 100%; padding-inline: 2px; font-size: 0.625rem; font-weight: var(--w-label); letter-spacing: -0.015em; }
-  .app-nav-mobile a[aria-current="page"] { color: var(--accent); border-top: 2px solid var(--accent); }
-  .page-shell { gap: 16px; padding-top: 16px; }
 }
 
 @media (max-width: 639px) {
-  .stat-ribbon-compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .stat-ribbon-compact > div { padding: 10px; }
+  .stat-ribbon-compact { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, auto); }
+  .stat-ribbon-compact > div { grid-row: span 3; grid-template-rows: subgrid; padding: 10px; }
   .stat-ribbon-compact > div > span { display: block; line-height: 16px; }
   .stat-ribbon-compact > div > span > svg { display: inline; margin-right: 4px; vertical-align: text-bottom; }
   .stat-ribbon-compact > div > b,
@@ -402,23 +260,11 @@ body {
   .stat-ribbon-compact > div > small { line-height: 16px; }
   .regions-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, auto) auto; }
   .regions-summary > div { grid-row: 1 / 4; grid-template-rows: subgrid; gap: 4px; padding: 10px; }
-  .regions-summary > div > span { display: block; font-size: var(--t-3); line-height: 1.4; }
+  .regions-summary > div > span { display: block; font-size: var(--type-sm); line-height: 1.4; }
   .regions-summary > div > span > svg { display: inline; margin-right: 4px; vertical-align: text-bottom; }
   .regions-summary > div > b,
   .regions-summary > div > small { overflow: visible; white-space: normal; }
-  .regions-summary > div > small { font-size: var(--t-3); line-height: 1.4; }
+  .regions-summary > div > small { font-size: var(--type-sm); line-height: 1.4; }
   .regions-summary > div:nth-child(2) { grid-column: 1 / -1; grid-row: 4; grid-template-columns: auto auto 1fr; grid-template-rows: none; align-items: center; gap: 12px; }
   .regions-summary > div:nth-child(2) > small { text-align: right; }
-}
-
-@media (max-width: 639px) {
- .ranking-period { display:grid; grid-template-columns:auto minmax(0,1fr); }
- .ranking-period > span { grid-column:1; grid-row:1; }
- .ranking-period > [role="group"] { grid-column:1 / -1; grid-row:2; }
- .ranking-period > p { grid-column:2; grid-row:1; margin:0; }
-}
-
-@media(max-width:639px){
- .stat-ribbon-compact{grid-template-rows:repeat(3,auto)}
- .stat-ribbon-compact>div{grid-row:span 3;grid-template-rows:subgrid}
 }

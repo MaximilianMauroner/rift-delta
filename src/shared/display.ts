@@ -8,16 +8,6 @@ const oneDecimal = new Intl.NumberFormat('en', { maximumFractionDigits: 1 })
 const dateFormatter = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' })
 const calendarDateFormatter = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 
-export const HEAT_BINS = 6
-
-/** Maps a value within [min, max] to a 1..6 strength-heat bin (cold to hot). */
-export function heatBin(value: number, min: number, max: number) {
-  if (!Number.isFinite(value)) return 1
-  if (max <= min) return 3
-  const t = (value - min) / (max - min)
-  return Math.min(HEAT_BINS, Math.max(1, Math.ceil(t * HEAT_BINS)))
-}
-
 export function extent(values: number[]): [number, number] {
   let min = Infinity
   let max = -Infinity

@@ -17,13 +17,13 @@ export function LegalPage({ page }: { page: LegalPageName }) {
   }, [title])
 
   return (
-    <main className="min-h-screen bg-background px-[var(--page-x)] py-8 text-foreground">
+    <main className="min-h-screen bg-ground px-[var(--page-x)] py-8 text-text">
       <div className="mx-auto grid w-full max-w-[900px] gap-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-5">
           <div>
-            <a className="text-xs tracking-label text-[var(--accent)] uppercase" href="/">rift-delta</a>
-            <h1 className="mt-2 text-xl font-semibold text-[var(--text-strong)]">{title}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Last updated: {UPDATED_AT}</p>
+            <a className="text-base font-bold no-underline" href="/">rift-delta</a>
+            <h1 className="mt-2 text-2xl font-semibold text-text">{title}</h1>
+            <p className="mt-1 text-sm text-muted">Last updated: {UPDATED_AT}</p>
           </div>
           <nav className="flex flex-wrap gap-3 text-sm" aria-label="Legal pages">
             <LegalLink href="/legal">Legal</LegalLink>
@@ -34,8 +34,8 @@ export function LegalPage({ page }: { page: LegalPageName }) {
 
         {page === 'legal' ? <LegalNotice /> : page === 'privacy' ? <PrivacyPolicy /> : <Licenses />}
 
-        <footer className="border-t border-border pt-5 text-sm text-muted-foreground">
-          <a className="hover:text-foreground hover:underline" href="/">Back to the rankings</a>
+        <footer className="border-t border-line pt-5 text-sm text-muted">
+          <a className="hover:text-text hover:underline" href="/">Back to the rankings</a>
         </footer>
       </div>
     </main>
@@ -115,7 +115,7 @@ function Licenses() {
         <p>Original project source code is available under the MIT License in the <ExternalLink href={`${PROJECT_REPOSITORY_URL}/blob/main/LICENSE`}>repository</ExternalLink>. That license does not override third-party data, asset, font, icon, or trademark terms.</p>
       </Section>
       <Section title="Third-party software">
-        <p>The application uses open-source packages including React, Recharts, Base UI, Lucide, Tailwind CSS, Inter, and JetBrains Mono. Their MIT, ISC, Apache-2.0, BSD, and SIL Open Font License terms remain with the respective authors. The <LegalLink href="/licenses/inter-OFL.txt">Inter copyright and license</LegalLink> is included with the bundled font. Package names and exact versions are recorded in the repository's <ExternalLink href={`${PROJECT_REPOSITORY_URL}/blob/main/package.json`}>package manifest</ExternalLink> and lockfile.</p>
+        <p>The application uses open-source packages including React, Recharts, Base UI, Lucide, Tailwind CSS, and Inter. Their MIT, ISC, Apache-2.0, BSD, and SIL Open Font License terms remain with the respective authors. The <LegalLink href="/licenses/inter-OFL.txt">Inter copyright and license</LegalLink> is included with the bundled font. Package names and exact versions are recorded in the repository's <ExternalLink href={`${PROJECT_REPOSITORY_URL}/blob/main/package.json`}>package manifest</ExternalLink> and lockfile.</p>
       </Section>
     </div>
   )
@@ -123,21 +123,21 @@ function Licenses() {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-md border border-border bg-card p-5 text-sm leading-7 text-muted-foreground shadow-[var(--shadow-1)]">
-      <h2 className="mb-3 text-lg font-bold text-[var(--text-strong)]">{title}</h2>
+    <section className="rounded-md border border-line bg-surface p-5 text-sm leading-7 text-muted">
+      <h2 className="mb-3 text-lg font-bold text-text">{title}</h2>
       {children}
     </section>
   )
 }
 
 function LegalLink({ href, children }: { href: string; children: ReactNode }) {
-  return <a className="text-muted-foreground hover:text-foreground hover:underline" href={href}>{children}</a>
+  return <a className="text-muted hover:text-text hover:underline" href={href}>{children}</a>
 }
 
 function EmailLink() {
-  return <a className="text-[var(--accent)] hover:underline" href={`mailto:${PROJECT_CONTACT_EMAIL}`}>{PROJECT_CONTACT_EMAIL}</a>
+  return <a className="underline" href={`mailto:${PROJECT_CONTACT_EMAIL}`}>{PROJECT_CONTACT_EMAIL}</a>
 }
 
 function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
-  return <a className="text-[var(--accent)] hover:underline" href={href} target="_blank" rel="noreferrer">{children}</a>
+  return <a className="underline" href={href} target="_blank" rel="noreferrer">{children}</a>
 }

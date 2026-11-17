@@ -362,7 +362,7 @@ export function RankingRoute() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <a className="fixed top-[-56px] left-3 z-80 rounded-md border border-[var(--accent-line)] bg-[var(--surface-2)] px-3 py-2 text-sm font-semibold text-[var(--text-strong)] no-underline shadow-[var(--shadow-2)] transition-[top] duration-120 ease-out focus-visible:top-3" href="#main-content" onClick={(event) => { event.preventDefault(); mainRef.current?.focus(); mainRef.current?.scrollIntoView({ block: 'start' }) }}>Skip to content</a>
+      <a className="fixed top-[-56px] left-3 z-80 rounded-md border border-focus bg-raised px-3 py-2 text-sm font-semibold text-text no-underline transition-[top] duration-120 ease-out focus-visible:top-3" href="#main-content" onClick={(event) => { event.preventDefault(); mainRef.current?.focus(); mainRef.current?.scrollIntoView({ block: 'start' }) }}>Skip to content</a>
       <AppNavigation mode={mode} scope={effectiveScope} onGoHome={goHome} search={teamSearch} onSearch={mode === 'matches' || mode === 'players' ? undefined : searchTeams} searchRef={searchRef} onIntent={prepareMode} />
 
       {/* Space is reserved for the fixed compare tray on the two views that have
@@ -405,7 +405,7 @@ export function RankingRoute() {
             first pick: there the labelled row checkbox announces the feature
             and the screen height is better spent on teams. */}
         {hasCompareTray ? (
-          <div ref={reserveTrayHeight} className={cn('fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line-strong)] bg-[color-mix(in_oklch,var(--surface)_94%,var(--bg))] px-[var(--page-x)] py-2 shadow-[var(--shadow-tray)] max-sm:bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] max-sm:px-3', compareEntities.length === 0 && 'max-sm:hidden')}>
+          <div ref={reserveTrayHeight} className={cn('fixed inset-x-0 bottom-0 z-40 border-t border-line bg-[color-mix(in_srgb,var(--surface)_94%,var(--ground))] px-[var(--page-x)] py-2 max-sm:bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] max-sm:px-3', compareEntities.length === 0 && 'max-sm:hidden')}>
             <CompareDock
               subject={mode === 'regions' ? 'regions' : 'teams'}
               limit={COMPARE_LIMIT}
@@ -513,13 +513,13 @@ export function RankingRoute() {
             </Suspense>
           </RouteErrorBoundary>
         )}
-        <footer aria-label="Project disclaimer" className="mx-[var(--page-x)] mt-7 flex flex-wrap gap-x-3 gap-y-1 border-t border-border pt-4 text-xs leading-[1.55] text-[var(--faint)] [&>a]:inline-flex [&>a]:min-h-6 [&>a]:min-w-6 [&>a]:items-center">
+        <footer aria-label="Project disclaimer" className="mx-[var(--page-x)] mt-7 flex flex-wrap gap-x-3 gap-y-1 border-t border-line pt-4 text-xs leading-[1.55] text-muted [&>a]:inline-flex [&>a]:min-h-6 [&>a]:min-w-6 [&>a]:items-center">
           <span>{RIOT_PROJECT_NOTICE}</span>
-          <a className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" href={PROJECT_REPOSITORY_URL}>Source code</a>
-          <a className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" href={PROJECT_FEEDBACK_URL}>Report feedback</a>
-          <a className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" href="/legal">Legal notice</a>
-          <a className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" href="/privacy">Privacy</a>
-          <a className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" href="/licenses">Licenses</a>
+          <a className="text-muted underline-offset-2 hover:text-text hover:underline" href={PROJECT_REPOSITORY_URL}>Source code</a>
+          <a className="text-muted underline-offset-2 hover:text-text hover:underline" href={PROJECT_FEEDBACK_URL}>Report feedback</a>
+          <a className="text-muted underline-offset-2 hover:text-text hover:underline" href="/legal">Legal notice</a>
+          <a className="text-muted underline-offset-2 hover:text-text hover:underline" href="/privacy">Privacy</a>
+          <a className="text-muted underline-offset-2 hover:text-text hover:underline" href="/licenses">Licenses</a>
         </footer>
       </main>
 

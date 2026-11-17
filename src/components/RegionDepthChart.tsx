@@ -52,7 +52,7 @@ export function RegionDepthChart({ regions }: { regions: RegionDepthInput[] }) {
               <line key={band.y1} x1={tick.x} x2={tick.x} y1={band.y1} y2={band.y2} stroke="var(--line)" strokeWidth={1} />
             ))}
             {layout.axisLabelYs.map((y) => (
-              <text key={y} x={tick.x} y={y} textAnchor="middle" fill="var(--faint)" className="text-2xs tabular-nums">
+              <text key={y} x={tick.x} y={y} textAnchor="middle" fill="var(--muted)" className="text-xs tabular-nums">
                 {formatRating(tick.value)}
               </text>
             ))}
@@ -62,19 +62,19 @@ export function RegionDepthChart({ regions }: { regions: RegionDepthInput[] }) {
         {layout.rows.map((row) => (
           <g key={row.region}>
             <text x={0} y={row.labelY} className="text-xs tabular-nums">
-              <tspan fill="var(--text-strong)" className="font-bold">{row.rank}. {row.region}</tspan>
+              <tspan fill="var(--text)" className="font-bold">{row.rank}. {row.region}</tspan>
               {layout.stacked ? (
-                <tspan fill="var(--faint)" className="text-2xs" dx={8}>{row.detail}</tspan>
+                <tspan fill="var(--muted)" className="text-xs" dx={8}>{row.detail}</tspan>
               ) : null}
             </text>
             {layout.stacked ? null : (
-              <text x={0} y={row.detailY} fill="var(--faint)" className="text-2xs tabular-nums">{row.detail}</text>
+              <text x={0} y={row.detailY} fill="var(--muted)" className="text-xs tabular-nums">{row.detail}</text>
             )}
 
             {row.span ? (
-              <line x1={row.span.x1} x2={row.span.x2} y1={row.dotY} y2={row.dotY} stroke="var(--line-strong)" strokeWidth={2} strokeLinecap="round" />
+              <line x1={row.span.x1} x2={row.span.x2} y1={row.dotY} y2={row.dotY} stroke="var(--line)" strokeWidth={2} strokeLinecap="round" />
             ) : (
-              <text x={layout.plotLeft} y={row.dotY + 4} fill="var(--faint)" className="text-2xs">No ranked teams</text>
+              <text x={layout.plotLeft} y={row.dotY + 4} fill="var(--muted)" className="text-xs">No ranked teams</text>
             )}
 
             {row.dots.map((dot) => {
@@ -93,7 +93,7 @@ export function RegionDepthChart({ regions }: { regions: RegionDepthInput[] }) {
                         cx={dot.x}
                         cy={row.dotY + dot.dy}
                         r={dotRadius(dot.counts)}
-                        fill={dot.counts ? 'var(--series-1)' : 'var(--muted)'}
+                        fill={dot.counts ? 'var(--identity-1)' : 'var(--muted)'}
                         stroke="var(--surface)"
                         strokeWidth={1.5}
                       />
@@ -104,20 +104,20 @@ export function RegionDepthChart({ regions }: { regions: RegionDepthInput[] }) {
                     <div className="flex items-center gap-3">
                       <TeamMark team={dot.team} code={dot.code} />
                       <div className="min-w-0">
-                        <p className="font-semibold text-[var(--text-strong)]">{dot.team}</p>
-                        <p className="text-xs text-muted-foreground">{dot.rank !== undefined ? `#${dot.rank} globally · ` : ''}{row.region}</p>
+                        <p className="font-semibold text-text">{dot.team}</p>
+                        <p className="text-xs text-muted">{dot.rank !== undefined ? `#${dot.rank} globally · ` : ''}{row.region}</p>
                       </div>
                     </div>
-                    <div className="my-3 flex items-baseline justify-between gap-3 border-y border-border py-3">
-                      <span className="text-muted-foreground">Power</span>
-                      <strong className="font-mono text-lg tabular-nums">{formatRating(dot.rating)}</strong>
+                    <div className="my-3 flex items-baseline justify-between gap-3 border-y border-line py-3">
+                      <span className="text-muted">Power</span>
+                      <strong className="text-lg tabular-nums">{formatRating(dot.rating)}</strong>
                     </div>
                     <dl className="grid grid-cols-2 gap-3 text-xs">
-                      <div><dt className="text-muted-foreground">Rank in {row.region}</dt><dd className="mt-1 font-mono font-semibold tabular-nums">{dot.regionalRank} of {row.dots.length}</dd></div>
-                      <div><dt className="text-muted-foreground">{row.region} region score</dt><dd className="mt-1 font-mono font-semibold tabular-nums">{formatRating(row.score)}</dd></div>
+                      <div><dt className="text-muted">Rank in {row.region}</dt><dd className="mt-1 font-semibold tabular-nums">{dot.regionalRank} of {row.dots.length}</dd></div>
+                      <div><dt className="text-muted">{row.region} region score</dt><dd className="mt-1 font-semibold tabular-nums">{formatRating(row.score)}</dd></div>
                     </dl>
-                    <div className="mt-3 border-t border-border pt-3 text-xs">
-                      <p className={dot.counts ? 'font-semibold text-[var(--series-1)]' : 'font-semibold text-foreground'}>{contribution}</p>
+                    <div className="mt-3 border-t border-line pt-3 text-xs">
+                      <p className={dot.counts ? 'font-semibold text-[var(--identity-1)]' : 'font-semibold text-text'}>{contribution}</p>
                     </div>
                   </HoverCardContent>
                 </HoverCard>
@@ -125,13 +125,13 @@ export function RegionDepthChart({ regions }: { regions: RegionDepthInput[] }) {
             })}
 
             {row.dots.length > 0 ? (
-              <line x1={row.scoreX} x2={row.scoreX} y1={row.dotY - 9} y2={row.dotY + 9} stroke="var(--text-strong)" strokeWidth={2}>
+              <line x1={row.scoreX} x2={row.scoreX} y1={row.dotY - 9} y2={row.dotY + 9} stroke="var(--text)" strokeWidth={2}>
                 <title>{`${row.region} region score ${formatRating(row.score)}`}</title>
               </line>
             ) : null}
 
             {row.lead ? (
-              <text x={row.lead.x} y={row.lead.y} textAnchor="middle" fill="var(--muted)" className="font-mono text-2xs font-bold">
+              <text x={row.lead.x} y={row.lead.y} textAnchor="middle" fill="var(--muted)" className="text-xs font-bold">
                 {row.lead.code}
               </text>
             ) : null}

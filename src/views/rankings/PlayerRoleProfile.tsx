@@ -26,8 +26,8 @@ export function PlayerRoleProfile({
   return (
     <Card className="min-w-0 gap-3 overflow-visible p-4" role="region" aria-label="Role profile">
       <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
-        <h3 className="min-w-0 text-base font-semibold text-[var(--text-strong)]">Against other {peers}</h3>
-        <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+        <h3 className="min-w-0 text-base font-semibold text-text">Against other {peers}</h3>
+        <label className="flex flex-col gap-1.5 text-xs text-muted">
           Profile player
           <Select aria-label="Profile player" value={player.id} onChange={(event) => onSelect(event.target.value)}>
             {choices.some((entry) => entry.id === player.id) ? null : <option value={player.id}>{player.name}</option>}
@@ -40,7 +40,7 @@ export function PlayerRoleProfile({
         </label>
       </div>
       {games ? (
-        <ol className="grid min-w-0 divide-y divide-border">
+        <ol className="grid min-w-0 divide-y divide-line">
           {profile.positions.map((position) => (
             <FieldStrip
               key={position.metric}
@@ -57,7 +57,7 @@ export function PlayerRoleProfile({
           ))}
         </ol>
       ) : (
-        <p className="text-sm text-muted-foreground">No stat games for {player.name} in this scope.</p>
+        <p className="text-sm text-muted">No stat games for {player.name} in this scope.</p>
       )}
       <FieldStripKey subject={player.name} others={`Other ${peers}`}>
         <span>Players need {PLAYER_FIELD_MIN_GAMES} games to count. Not adjusted for champion or team.</span>

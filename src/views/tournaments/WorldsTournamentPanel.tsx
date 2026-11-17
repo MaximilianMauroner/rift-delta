@@ -72,7 +72,7 @@ export function WorldsTournamentPanel({ event, forecast, fixtureFeed }: { event:
       {display?.status === 'supported' && display.report.model && display.report.model.dataMode !== 'scheduled-public-data'
         ? <Alert variant="warning">Sample model inputs. These probabilities use seeded or unavailable sample data and are not official forecasts.</Alert> : null}
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-sm text-muted-foreground" role="status">{mode === 'running' ? progress ? `Sampling · ${progress.toLocaleString()} / ${OPTIONS.trials.toLocaleString()} trials` : 'Computing remaining stages.' : mode === 'cancelled' ? 'Simulation cancelled. Observed state remains available.' : mode === 'loading' ? detail : mode === 'done' ? 'Computation complete.' : `Forecast unavailable: ${detail}`}</p>
+        <p className="text-sm text-muted" role="status">{mode === 'running' ? progress ? `Sampling · ${progress.toLocaleString()} / ${OPTIONS.trials.toLocaleString()} trials` : 'Computing remaining stages.' : mode === 'cancelled' ? 'Simulation cancelled. Observed state remains available.' : mode === 'loading' ? detail : mode === 'done' ? 'Computation complete.' : `Forecast unavailable: ${detail}`}</p>
         {mode === 'running' ? <Button variant="outline" size="sm" onClick={() => { stop.current?.(); stop.current = null; setMode('cancelled') }}>Cancel simulation</Button> : artifact ? <Button variant="outline" size="sm" onClick={() => setRun((value) => value + 1)}>Run simulation</Button> : null}
       </div>
       {display?.status === 'unsupported' ? <Alert variant="warning">Forecast unavailable: {display.detail}</Alert> : null}
@@ -114,14 +114,14 @@ function WorldsReportView({ report, name }: { report: WorldsReport; name: (id: s
       </Table>
     </details>
     <details className="text-sm" open><summary className="cursor-pointer font-semibold">Current draw and bracket</summary>
-      <div className="mt-2 grid gap-2 md:grid-cols-2">{currentMatches.map((match, index) => <p className="rounded-md border border-border p-2" key={index}>{match.label}: {name(match.teamIds[0])} vs {name(match.teamIds[1])}{match.winnerId ? ` · Winner: ${name(match.winnerId)}` : ' · Unresolved'}</p>)}</div>
-      {!currentMatches.length ? <p className="mt-2 text-muted-foreground">No observed draw is available for this stage.</p> : null}
-      {report.pinnedState.knockout ? <p className="mt-2 text-muted-foreground">Fixed links: quarterfinals 1–2 feed semifinal 1; quarterfinals 3–4 feed semifinal 2. The semifinal winners meet in the final.</p> : null}
-      {report.currentStage === 'Knockout draw pending' || report.method === 'seeded-monte-carlo' ? <p className="mt-2 text-muted-foreground">The future knockout draw is sampled under §4.3.4. These pairings are not an observed bracket. Winners follow fixed links after each draw.</p> : null}
+      <div className="mt-2 grid gap-2 md:grid-cols-2">{currentMatches.map((match, index) => <p className="rounded-md border border-line p-2" key={index}>{match.label}: {name(match.teamIds[0])} vs {name(match.teamIds[1])}{match.winnerId ? ` · Winner: ${name(match.winnerId)}` : ' · Unresolved'}</p>)}</div>
+      {!currentMatches.length ? <p className="mt-2 text-muted">No observed draw is available for this stage.</p> : null}
+      {report.pinnedState.knockout ? <p className="mt-2 text-muted">Fixed links: quarterfinals 1–2 feed semifinal 1; quarterfinals 3–4 feed semifinal 2. The semifinal winners meet in the final.</p> : null}
+      {report.currentStage === 'Knockout draw pending' || report.method === 'seeded-monte-carlo' ? <p className="mt-2 text-muted">The future knockout draw is sampled under §4.3.4. These pairings are not an observed bracket. Winners follow fixed links after each draw.</p> : null}
     </details>
-    {earlierMatches.length ? <details className="text-sm"><summary className="cursor-pointer font-semibold">Previous draws and results</summary><div className="mt-2 grid gap-2 md:grid-cols-2">{earlierMatches.map((match, index) => <p className="rounded-md border border-border p-2" key={index}>{match.label}: {name(match.teamIds[0])} vs {name(match.teamIds[1])}{match.winnerId ? ` · Winner: ${name(match.winnerId)}` : ' · Unresolved'}</p>)}</div></details> : null}
+    {earlierMatches.length ? <details className="text-sm"><summary className="cursor-pointer font-semibold">Previous draws and results</summary><div className="mt-2 grid gap-2 md:grid-cols-2">{earlierMatches.map((match, index) => <p className="rounded-md border border-line p-2" key={index}>{match.label}: {name(match.teamIds[0])} vs {name(match.teamIds[1])}{match.winnerId ? ` · Winner: ${name(match.winnerId)}` : ' · Unresolved'}</p>)}</div></details> : null}
     <details className="min-w-0 text-sm"><summary className="cursor-pointer font-semibold">Simulation basis and precision</summary>
-      <div className="mt-2 grid gap-2 break-words text-muted-foreground">
+      <div className="mt-2 grid gap-2 break-words text-muted">
         <p>{report.method} · {report.trials.toLocaleString()} sampled trials · Seed {report.seed} · {report.elapsedMs.toFixed(0)} ms. Exact enumeration has no sampling error.</p>
         <p>State {report.stateVersion} · Information through {report.asOf} · Engine {report.engineVersion}.</p>
         <p><a className="underline" target="_blank" rel="noopener noreferrer" href={report.rules.source}>Riot rules v{report.rules.version}</a> · Checked {report.rules.checkedAt} · {report.rules.ids.join(' / ')}.</p>
@@ -137,7 +137,7 @@ function WorldsReportView({ report, name }: { report: WorldsReport; name: (id: s
 function HistoricalGroupView({ result, name, asOf }: { result: GroupReplayResult; name: (id: string) => string; asOf: string }) {
   if (result.status === 'unsupported') return <Alert variant="warning">Historical group replay unavailable: {result.detail}. Historical forecasts require as-of ratings; current ratings are not used.</Alert>
   return <div className="grid gap-2"><h3 className="text-sm font-semibold">Worlds 2022 · Group {result.groupId} · Observed results</h3>
-    <p className="text-sm text-muted-foreground">Information cutoff {asOf}. Top two advance to the knockout draw. Forecast unavailable: historical model inputs are unavailable. Current ratings are not used.</p>
+    <p className="text-sm text-muted">Information cutoff {asOf}. Top two advance to the knockout draw. Forecast unavailable: historical model inputs are unavailable. Current ratings are not used.</p>
     <Table><TableHeader><TableRow><TableHead scope="col">Team</TableHead><TableHead scope="col">Record</TableHead><TableHead scope="col">Advancement</TableHead></TableRow></TableHeader>
       <TableBody>{result.standings.map((team) => <TableRow key={team.id}><TableHead scope="row">{name(team.id)}</TableHead><TableCell>{team.wins}–{team.losses}</TableCell><TableCell>{result.knockoutQualifierIds.includes(team.id) ? 'Reached knockout' : 'Eliminated'}</TableCell></TableRow>)}</TableBody>
     </Table>

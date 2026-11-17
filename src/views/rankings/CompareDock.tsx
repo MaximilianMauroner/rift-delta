@@ -51,21 +51,21 @@ export function CompareDock({
       role="region"
       aria-label={`Compare ${subject}: ${entities.length} selected`}
     >
-      <b className="shrink-0 text-sm font-semibold text-[var(--text-strong)] max-sm:sr-only">Compare</b>
+      <b className="shrink-0 text-sm font-semibold text-text max-sm:sr-only">Compare</b>
       <div className="flex min-w-0 items-center gap-1.5 max-sm:flex-wrap">
         {entities.map((entity) => (
           <span
             key={entity.id}
-            className="inline-flex min-w-0 items-center gap-1.5 rounded-md border border-[var(--selected-line)] bg-[var(--selected-bg)] py-0.5 pr-0.5 pl-2 text-sm"
+            className="inline-flex min-w-0 items-center gap-1.5 rounded-md border border-focus bg-[var(--focus-wash)] py-0.5 pr-0.5 pl-2 text-sm"
             title={entity.meta ? `${entity.name} · ${entity.meta}` : entity.name}
           >
             {entity.badge}
-            <b className="max-w-[10ch] overflow-hidden text-ellipsis whitespace-nowrap font-semibold text-[var(--text-strong)]">{entity.code}</b>
+            <b className="max-w-[10ch] overflow-hidden text-ellipsis whitespace-nowrap font-semibold text-text">{entity.code}</b>
             <Button
               type="button"
               variant="ghost"
               size="icon-xs"
-              className="shrink-0 hover:text-destructive"
+              className="shrink-0 hover:text-text"
               onClick={() => onRemove(entity.id)}
               aria-label={`Remove ${entity.name}`}
             >
@@ -77,7 +77,7 @@ export function CompareDock({
         {Array.from({ length: Math.max(0, 2 - entities.length) }, (_, index) => (
           <span
             key={`slot-${index}`}
-            className="grid h-8 w-11 place-items-center rounded-md border border-dashed border-[var(--line-strong)] text-xs text-[var(--faint)] tabular-nums"
+            className="grid h-8 w-11 place-items-center rounded-md border border-dashed border-line text-xs text-muted tabular-nums"
             aria-hidden="true"
           >
             {entities.length + index + 1}
@@ -87,18 +87,18 @@ export function CompareDock({
 
       {odds ? (
         <div className="flex min-w-0 flex-1 items-center gap-3 max-sm:basis-full">
-          <p className="shrink-0 text-sm whitespace-nowrap text-muted-foreground">
-            <b className="font-semibold text-[var(--text-strong)]">{odds.homeCode} {odds.game}%</b> per game
-            <span className="max-md:hidden"> · <b className="font-semibold text-foreground">{odds.bo5}%</b> in a Bo5</span>
+          <p className="shrink-0 text-sm whitespace-nowrap text-muted">
+            <b className="font-semibold text-text">{odds.homeCode} {odds.game}%</b> per game
+            <span className="max-md:hidden"> · <b className="font-semibold text-text">{odds.bo5}%</b> in a Bo5</span>
           </p>
           <span className="flex h-2 min-w-[80px] max-w-[240px] flex-1 gap-0.5 overflow-hidden rounded-full" aria-hidden="true">
-            <span className="rounded-l-full bg-[var(--series-1)]" style={{ width: `${odds.game}%` }} />
-            <span className="rounded-r-full bg-[var(--series-2)]" style={{ width: `${100 - odds.game}%` }} />
+            <span className="rounded-l-full bg-[var(--identity-1)]" style={{ width: `${odds.game}%` }} />
+            <span className="rounded-r-full bg-[var(--identity-2)]" style={{ width: `${100 - odds.game}%` }} />
           </span>
           <span className="sr-only">{odds.awayCode} {100 - odds.game}% per game.</span>
         </div>
       ) : (
-        <p className="min-w-0 flex-1 text-sm text-muted-foreground">
+        <p className="min-w-0 flex-1 text-sm text-muted">
           {ready
             ? `${entities.length} ${subject} selected.`
             : entities.length === 0
@@ -121,7 +121,7 @@ export function CompareDock({
       </div>
 
       {entities.length >= limit ? (
-        <p className="basis-full text-2xs text-[var(--faint)]">Comparing the latest {limit}. Picking another replaces the oldest.</p>
+        <p className="basis-full text-xs text-muted">Comparing the latest {limit}. Picking another replaces the oldest.</p>
       ) : null}
     </div>
   )

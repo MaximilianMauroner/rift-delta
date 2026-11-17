@@ -59,7 +59,7 @@ const LADDER_TEAM_LIMIT = 16
 
 const DEFAULT_FOCUS_TEAMS = 5
 
-const SERIES_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)', 'var(--series-6)']
+const SERIES_COLORS = ['var(--identity-1)', 'var(--identity-2)', 'var(--identity-3)', 'var(--identity-4)', 'var(--identity-5)', 'var(--identity-6)']
 
 /**
  * The board filters this view keeps in the hash, read on mount and on every
@@ -399,19 +399,19 @@ export function TeamsView({
           <Button variant="ghost" onClick={detail.dismissMissing}>Dismiss</Button>
         </Alert>
       ) : null}
-      {headline ? <p className="board-headline max-w-[72ch] text-lg leading-[1.3] font-semibold text-[var(--text-strong)]">{headline}</p> : null}
+      {headline ? <p className="board-headline max-w-[72ch] text-lg leading-[1.3] font-semibold text-text">{headline}</p> : null}
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_320px] items-start gap-6 max-[1280px]:grid-cols-1">
         <div className="min-w-0">
           <Panel className="ranking-board">
             <PanelHeader
               title={activeTournament ? `${activeTournament.label} standings` : 'Power ranking'}
               description={activeTournament ? `Ranks and scores at the event endpoint, ${formatDate(activeTournament.boundaryDate)}.${board.showsWholeTournamentField ? ' Includes every participant.' : ''}` : undefined}
-              actions={<span className="whitespace-nowrap text-xs text-[var(--faint)] tabular-nums">{resultSummary}</span>}
+              actions={<span className="whitespace-nowrap text-xs text-muted tabular-nums">{resultSummary}</span>}
             />
             {/* One row of filters above the table they scope. The controls
                 carry no per-control height, radius or background overrides:
                 chips, selects and the switch share --control-h and --r-2. */}
-            <PanelBody className="grid gap-2.5 border-b border-border py-3">
+            <PanelBody className="grid gap-2.5 border-b border-line py-3">
               <div className="flex items-center gap-2 sm:hidden">
                 <Button type="button" variant="secondary" size="tab" aria-expanded={filtersOpen} aria-controls="board-filters" onClick={() => setFiltersOpen((open) => !open)}>
                   <SlidersHorizontal size={15} aria-hidden="true" />
@@ -454,15 +454,15 @@ export function TeamsView({
                   <LoadingState presentation="inline" label="Loading tournaments" className="text-xs" />
                 ) : null}
                 {unrankedOnTournamentBoard > 0 ? (
-                  <span className="inline-flex h-[var(--control-h)] items-center text-sm text-muted-foreground" title="A tournament board lists every participant. Unranked teams miss an eligibility check at the event endpoint.">
+                  <span className="inline-flex h-[var(--control-h)] items-center text-sm text-muted" title="A tournament board lists every participant. Unranked teams miss an eligibility check at the event endpoint.">
                     Includes {formatNumber(unrankedOnTournamentBoard)} unranked
                   </span>
                 ) : null}
                 {hiddenFromRankedCount > 0 && !exactTournamentId ? (
-                  <label className="inline-flex h-[var(--control-h)] cursor-pointer items-center gap-2 text-sm text-muted-foreground" title="Unranked teams miss an eligibility check, such as too few recent matches or an incomplete roster.">
+                  <label className="inline-flex h-[var(--control-h)] cursor-pointer items-center gap-2 text-sm text-muted" title="Unranked teams miss an eligibility check, such as too few recent matches or an incomplete roster.">
                     <input
                       type="checkbox"
-                      className="size-4 accent-[var(--accent)]"
+                      className="size-4 accent-[var(--focus)]"
                       checked={eligibilityFilter === 'all'}
                       onChange={(event) => setEligibilityFilter(event.target.checked ? 'all' : 'ranked')}
                     />
@@ -482,7 +482,7 @@ export function TeamsView({
                   </Button>
                 ) : null}
               </div>
-              <label className="board-sort flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <label className="board-sort flex flex-wrap items-center gap-2 text-sm text-muted">
                 Sort by
                 <Select value={`${sortKey}:${sortDirection}`} onChange={(event) => {
                   const [key, direction] = event.target.value.split(':') as [SortKey, SortDirection]
@@ -498,7 +498,7 @@ export function TeamsView({
                 </Select>
               </label>
               </div>
-              <p className="board-legend flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground" title={`Model ${formatModelVersion(model?.version)}${model?.configHash ? ` · config ${model.configHash}` : ''}`}>
+              <p className="board-legend flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" title={`Model ${formatModelVersion(model?.version)}${model?.configHash ? ` · config ${model.configHash}` : ''}`}>
                 <span><b className="font-semibold">100 points</b> ≈ {gapExample}% game win</span>
                 {rankedOrder ? <span><b className="font-semibold">Bracket</b> marks a near tie, under {Math.round(NEAR_TIE_WIN_PROBABILITY * 100)}% per game</span> : null}
                 <span><b className="font-semibold">{activeTournament ? 'Event move' : '30 days'}</b> rank change {movementPeriod}</span>
@@ -572,9 +572,9 @@ export function TeamsView({
                         <TableRow
                           key={key}
                           className={cn(
-                            'board-row group/board cursor-pointer outline-offset-[-2px] hover:bg-[var(--surface-2)] focus-visible:outline-2 focus-visible:outline-[var(--focus)]',
+                            'board-row group/board cursor-pointer outline-offset-[-2px] hover:bg-raised focus-visible:outline-2 focus-visible:outline-focus',
                             pickedKeys.has(key) && 'is-picked',
-                            excludedFromRankedBoard && 'is-excluded bg-[color-mix(in_oklch,var(--surface-2)_58%,transparent)] text-[color-mix(in_oklch,var(--text)_76%,var(--muted))] hover:bg-[color-mix(in_oklch,var(--surface-3)_70%,transparent)]',
+                            excludedFromRankedBoard && 'is-excluded bg-[color-mix(in_srgb,var(--raised)_58%,transparent)] text-[color-mix(in_srgb,var(--text)_76%,var(--muted))] hover:bg-[color-mix(in_srgb,var(--line)_70%,transparent)]',
                           )}
                           title={excludedFromRankedBoard ? eligibilityReasonsTitle(team) : undefined}
                           onPointerEnter={prepareTeamDetails}
@@ -595,13 +595,13 @@ export function TeamsView({
                             <Button
                               type="button"
                               variant="ghost"
-                              className="team-cell team-cell__button h-auto min-h-9 w-full cursor-pointer justify-start gap-3 whitespace-normal rounded-sm border-0 bg-transparent p-0 text-left font-[inherit] text-[inherit] hover:bg-transparent hover:text-[inherit] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--focus)]"
+                              className="team-cell team-cell__button h-auto min-h-9 w-full cursor-pointer justify-start gap-3 whitespace-normal rounded-md border-0 bg-transparent p-0 text-left font-[inherit] text-[inherit] hover:bg-transparent hover:text-[inherit] focus-visible:rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
                               onClick={() => openTeam(team)}
                               onFocus={prepareTeamDetails}
                               title={`Open ${team.team}`}
                             >
                               <TeamMark team={team.team} code={team.code} className="team-mark sm h-8 w-10" />
-                              <div className="ent flex min-w-0 flex-col gap-px overflow-hidden [&_b]:block [&_b]:overflow-hidden [&_b]:text-ellipsis [&_b]:whitespace-nowrap [&_b]:font-semibold [&_b]:text-[var(--text-strong)] [&_small]:block [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap [&_small]:text-xs [&_small]:text-[var(--faint)]">
+                              <div className="ent flex min-w-0 flex-col gap-px overflow-hidden [&_b]:block [&_b]:overflow-hidden [&_b]:text-ellipsis [&_b]:whitespace-nowrap [&_b]:font-semibold [&_b]:text-text [&_small]:block [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap [&_small]:text-xs [&_small]:text-muted">
                                 <b>{team.team}</b>
                                 <small>{excludedFromRankedBoard ? `${team.league} · ${eligibilitySummary(team)}` : team.league}</small>
                               </div>
@@ -621,13 +621,13 @@ export function TeamsView({
                             <FormDots form={team.form} />
                           </TableCell>
                           <TableCell className="right num board-col-record" aria-label={`Match wins ${formatNumber(team.wins)}, losses ${formatNumber(team.losses)}; win rate ${formatRatio(total > 0 ? team.wins / total : undefined)}`}>
-                            <b className="font-semibold text-[var(--text-strong)]">{formatRecord(team.wins, team.losses)}</b>{' '}
-                            <span className="text-sm text-[var(--faint)]">{formatRatio(total > 0 ? team.wins / total : undefined)}</span>
+                            <b className="font-semibold text-text">{formatRecord(team.wins, team.losses)}</b>{' '}
+                            <span className="text-sm text-muted">{formatRatio(total > 0 ? team.wins / total : undefined)}</span>
                           </TableCell>
                           <TableCell className="board-col-action">
                             <span className="flex items-center justify-end gap-2">
                               <CompareToggle picked={pickedKeys.has(key)} onToggle={() => onToggle(team)} label={team.team} />
-                              <ChevronRight className="board-open-hint size-4 shrink-0 text-[var(--faint)] group-hover/board:text-foreground" aria-hidden="true" />
+                              <ChevronRight className="board-open-hint size-4 shrink-0 text-muted group-hover/board:text-text" aria-hidden="true" />
                             </span>
                           </TableCell>
                         </TableRow>
@@ -660,7 +660,7 @@ export function TeamsView({
         <aside className="board-sidebar grid min-w-0 content-start gap-4 max-[1280px]:grid-cols-2 max-[900px]:grid-cols-1" aria-label="Ranking overview">
           {ladderGroups.flat().length >= 2 ? (
             <Panel aria-label="Power ladder">
-              <PanelHeader title="Power ladder" actions={<span className="text-xs text-[var(--faint)]">{ladderGroups.flat().length < rows.length ? `top ${ladderGroups.flat().length}` : 'all ranked'}</span>} />
+              <PanelHeader title="Power ladder" actions={<span className="text-xs text-muted">{ladderGroups.flat().length < rows.length ? `top ${ladderGroups.flat().length}` : 'all ranked'}</span>} />
               <PanelBody className="px-2 py-2">
                 <PowerLadder groups={ladderGroups} tierFor={tierFor} gapExample={gapExample} onOpen={openTeam} />
               </PanelBody>
@@ -698,15 +698,15 @@ export function TeamsView({
         {detailTeam ? <div className="min-h-[300px]" aria-hidden="true" /> : exactTournamentId && tournamentMovementState.status === 'loading' ? (
           <LoadingState presentation="chart" className="m-5" label="Loading tournament movement" />
         ) : exactTournamentId && tournamentMovementState.status === 'idle' ? (
-          <p className="text-muted-foreground p-5">Tournament movement has not been requested.</p>
+          <p className="text-muted p-5">Tournament movement has not been requested.</p>
         ) : exactTournamentId && (tournamentMovementState.status === 'missing' || tournamentMovementState.status === 'error') ? (
-          <p className="text-muted-foreground p-5">{tournamentMovementState.message}</p>
+          <p className="text-muted p-5">{tournamentMovementState.message}</p>
         ) : !exactTournamentId && historyState.status === 'idle' ? (
-          <p className="text-muted-foreground p-5">Rating history loads when this panel is viewed.</p>
+          <p className="text-muted p-5">Rating history loads when this panel is viewed.</p>
         ) : !exactTournamentId && historyState.status === 'loading' ? (
           <LoadingState presentation="chart" className="m-5" label="Loading rating history" />
         ) : !exactTournamentId && (historyState.status === 'missing' || historyState.status === 'error') ? (
-          <p className="text-muted-foreground p-5">{historyState.message}</p>
+          <p className="text-muted p-5">{historyState.message}</p>
         ) : (
           <Suspense fallback={<LoadingState presentation="chart" className="m-5" label="Loading trajectory chart" />}>
             <LazyTeamHistoryLineChart
@@ -740,7 +740,7 @@ export function TeamsView({
                       <TableCell className="tabular-nums">#{start}</TableCell>
                       <TableCell className="tabular-nums">#{best}</TableCell>
                       <TableCell className="font-semibold tabular-nums">#{latest}</TableCell>
-                      <TableCell className={cn('tabular-nums', movement > 0 && 'text-[var(--up)]', movement < 0 && 'text-[var(--down)]')}>{movement === 0 ? 'Same' : `${movement > 0 ? 'Up' : 'Down'} ${Math.abs(movement)}`}</TableCell>
+                      <TableCell className={cn('tabular-nums', movement > 0 && 'text-up', movement < 0 && 'text-down')}>{movement === 0 ? 'Same' : `${movement > 0 ? 'Up' : 'Down'} ${Math.abs(movement)}`}</TableCell>
                     </TableRow>
                   )
                 })}
@@ -750,16 +750,16 @@ export function TeamsView({
         ) : metric !== 'rank' && insights.length > 0 ? (
           <PanelBody className="grid grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-2.5 pt-1 pb-4">
             {insights.map(({ team, color, insight }) => (
-              <article className="grid gap-2 rounded-md border border-border bg-[var(--surface-2)] px-3.5 py-3" key={teamKey(team)}>
+              <article className="grid gap-2 rounded-md border border-line bg-raised px-3.5 py-3" key={teamKey(team)}>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="size-2.5 shrink-0 rounded-sm" style={{ background: color }} aria-hidden="true" />
-                  <b className="mr-auto text-md font-semibold text-[var(--text-strong)]">{team.code ?? team.team}</b>
-                  <span className={cn('font-mono text-xs tabular-nums', insight.netChange > 0 ? 'text-[var(--up)]' : insight.netChange < 0 ? 'text-[var(--down)]' : 'text-[var(--faint)]')}>
+                  <span className="size-2.5 shrink-0 rounded-md" style={{ background: color }} aria-hidden="true" />
+                  <b className="mr-auto text-sm font-semibold text-text">{team.code ?? team.team}</b>
+                  <span className={cn('text-xs tabular-nums', insight.netChange > 0 ? 'text-up' : insight.netChange < 0 ? 'text-down' : 'text-muted')}>
                     Net change {formatSigned(insight.netChange)}
                   </span>
                 </div>
-                <p className="text-sm leading-[1.5] text-muted-foreground">{insight.summary}</p>
-                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--faint)] [&_b]:font-semibold [&_b]:text-foreground [&_b]:tabular-nums">
+                <p className="text-sm leading-[1.5] text-muted">{insight.summary}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted [&_b]:font-semibold [&_b]:text-text [&_b]:tabular-nums">
                   <span>
                     Peak <b>{formatRating(insight.peak.value)}</b>
                     {typeof insight.bestRank === 'number' ? ` · best #${insight.bestRank}` : ''}

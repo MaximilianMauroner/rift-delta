@@ -492,7 +492,7 @@ test('tournament results keep matchup, score and winner metadata readable at eac
             }
             return bounds.width > 0 && bounds.left >= 0 && bounds.right <= innerWidth
           })
-          const score = matchup!.querySelector('.font-mono')!
+          const score = matchup!.querySelector('.tabular-nums')!
           const range = document.createRange()
           range.selectNodeContents(score)
           const matchupBounds = matchup!.getBoundingClientRect()

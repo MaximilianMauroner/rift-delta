@@ -91,7 +91,7 @@ function summarizeTeamMatchWeights(series?: TeamHistorySeries): MatchWeightSumma
   }
 }
 
-const tournamentDataNoteClassName = 'mx-5 mb-5 border-t border-border pt-3 text-xs leading-[1.5] text-muted-foreground'
+const tournamentDataNoteClassName = 'mx-5 mb-5 border-t border-line pt-3 text-xs leading-[1.5] text-muted'
 
 export function TeamDetailDrawer({
   team,
@@ -136,7 +136,7 @@ export function TeamDetailDrawer({
     return [{
       id: teamKey(team),
       label: team.code ?? team.team,
-      color: 'var(--series-1)',
+      color: 'var(--identity-1)',
       points: tournament ? tournamentChartPoints(series.points, 'rating') : dailyChartPointsFromHistoryPoints(series.points),
     }]
   }, [series, team, tournament])
@@ -165,27 +165,27 @@ export function TeamDetailDrawer({
         showCloseButton={false}
         aria-label={`${team.team} details`}
         aria-modal="true"
-        className="team-detail-sheet h-dvh max-h-dvh gap-0 overflow-hidden border-l border-[var(--line-strong)] bg-[var(--detail-surface)] p-0 text-foreground shadow-[var(--shadow-pop)] [--detail-surface-2:var(--surface-2)] [--detail-surface-3:var(--surface-3)] [--detail-surface:var(--surface)] data-[side=right]:w-[min(820px,100vw)] data-[side=right]:max-w-none data-[side=right]:sm:w-[min(820px,94vw)] data-[side=right]:sm:max-w-none"
+        className="team-detail-sheet h-dvh max-h-dvh gap-0 overflow-hidden border-l border-line bg-[var(--detail-surface)] p-0 text-text shadow-[var(--overlay-shadow)] [--detail-surface-2:var(--raised)] [--detail-surface-3:var(--line)] [--detail-surface:var(--surface)] data-[side=right]:w-[min(820px,100vw)] data-[side=right]:max-w-none data-[side=right]:sm:w-[min(820px,94vw)] data-[side=right]:sm:max-w-none"
       >
         {drawerLoading ? <p className="sr-only" role="status" aria-live="polite">Loading {drawerLoading} for {team.team}.</p> : null}
         {/* The title is the team. Rank and Power sit beside it at the size the
             product exists to show. */}
-        <SheetHeader className="flex-row items-center gap-3.5 border-b border-border bg-[var(--detail-surface)] px-5 py-4 text-left max-sm:p-3.5">
+        <SheetHeader className="flex-row items-center gap-3.5 border-b border-line bg-[var(--detail-surface)] px-5 py-4 text-left max-sm:p-3.5">
           <TeamMark team={team.team} code={team.code} className="size-11" />
           <div className="mr-auto grid min-w-0 gap-1">
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              <SheetTitle className="text-lg font-semibold text-[var(--text-strong)]">{team.team}</SheetTitle>
+              <SheetTitle className="text-lg font-semibold text-text">{team.team}</SheetTitle>
               {seeded ? <Badge variant="warning">Sample data</Badge> : null}
             </div>
-            <span className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span className="flex flex-wrap items-center gap-2 text-sm text-muted">
               <LeagueSigil league={team.league} />
               {team.league}
               {tier ? <TierBadge tier={tier} /> : null}
             </span>
           </div>
           <div className="grid shrink-0 justify-items-end leading-none">
-            <span className="text-2xl font-semibold text-[var(--text-strong)] tabular-nums">{teamBoardRankLabel(team, rank)}</span>
-            <span className="mt-1 text-sm text-muted-foreground tabular-nums">{formatRating(score)} Power</span>
+            <span className="text-3xl font-semibold text-text tabular-nums">{teamBoardRankLabel(team, rank)}</span>
+            <span className="mt-1 text-sm text-muted tabular-nums">{formatRating(score)} Power</span>
           </div>
           <SheetClose asChild>
             <Button type="button" variant="ghost" size="icon" aria-label="Close">
@@ -195,18 +195,18 @@ export function TeamDetailDrawer({
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain bg-[var(--detail-surface)] p-4 [&>*]:shrink-0 max-sm:gap-3 max-sm:p-3">
-          <section className="grid grid-cols-4 gap-px overflow-hidden rounded-md border border-border bg-border max-[700px]:grid-cols-2 [&>div]:grid [&>div]:content-start [&>div]:gap-0.5 [&>div]:bg-[var(--detail-surface-2)] [&>div]:px-3.5 [&>div]:py-3 [&_b]:text-base [&_b]:font-bold [&_b]:text-[var(--text-strong)] [&_b]:tabular-nums [&_small]:text-xs [&_small]:text-[var(--faint)]" aria-label={`${team.team} key facts`}>
+          <section className="grid grid-cols-4 gap-px overflow-hidden rounded-md border border-line bg-line max-[700px]:grid-cols-2 [&>div]:grid [&>div]:content-start [&>div]:gap-0.5 [&>div]:bg-[var(--detail-surface-2)] [&>div]:px-3.5 [&>div]:py-3 [&_b]:text-base [&_b]:font-bold [&_b]:text-text [&_b]:tabular-nums [&_small]:text-xs [&_small]:text-muted" aria-label={`${team.team} key facts`}>
             {tournament && tournamentMovement ? (
               <>
                 <div><small>Opening</small><b>{formatRankValue(tournamentMovement.startRank)} · {formatRating(tournamentMovement.startRating)}</b><small>{formatDate(tournament.startDate)}</small></div>
                 <div><small>{tournamentBoundaryLabel(tournament.status)}</small><b>{formatRankValue(tournamentMovement.endRank)} · {formatRating(tournamentMovement.endRating)}</b><small>{formatDate(tournament.boundaryDate)}</small></div>
                 <div><small>Record in event</small><b>{formatRecord(team.wins, team.losses)}</b><small>{formatRatio(totalGames > 0 ? team.wins / totalGames : undefined)} of scored series</small></div>
-                <div><small>Net movement</small><b className={cn(rankMovementTone(tournamentMovement.rankMovement) === 'up' && 'text-[var(--up)]!', rankMovementTone(tournamentMovement.rankMovement) === 'down' && 'text-[var(--down)]!')}>{formatRankMovementLabel(tournamentMovement.rankMovement)}</b><small>{formatRatingMovement(tournamentMovement.ratingDelta)} Power</small></div>
+                <div><small>Net movement</small><b className={cn(rankMovementTone(tournamentMovement.rankMovement) === 'up' && 'text-up!', rankMovementTone(tournamentMovement.rankMovement) === 'down' && 'text-down!')}>{formatRankMovementLabel(tournamentMovement.rankMovement)}</b><small>{formatRatingMovement(tournamentMovement.ratingDelta)} Power</small></div>
               </>
             ) : (
               <>
                 <div title={rankEvidence?.title}><small>Likely rank</small><b>{rankEvidence?.label ?? 'Unavailable'}</b><small>range its results support</small></div>
-                <div title={rollingMovementTitle(team, 'last 30 days')}><small>Last 30 days</small><b className={cn(movement && (movement.rankMovement ?? 0) > 0 && 'text-[var(--up)]!', movement && (movement.rankMovement ?? 0) < 0 && 'text-[var(--down)]!')}>{movement ? formatRankMovementLabel(movement.rankMovement) : 'No series'}</b><small>{movement ? `${formatRatingMovement(movement.ratingDelta ?? 0)} Power` : 'no scored matches'}</small></div>
+                <div title={rollingMovementTitle(team, 'last 30 days')}><small>Last 30 days</small><b className={cn(movement && (movement.rankMovement ?? 0) > 0 && 'text-up!', movement && (movement.rankMovement ?? 0) < 0 && 'text-down!')}>{movement ? formatRankMovementLabel(movement.rankMovement) : 'No series'}</b><small>{movement ? `${formatRatingMovement(movement.ratingDelta ?? 0)} Power` : 'no scored matches'}</small></div>
                 <div title={recordBasisLabel(team.recordBasis)}><small>Record</small><b>{formatRecord(team.wins, team.losses)}</b><small>{formatRatio(totalGames > 0 ? team.wins / totalGames : undefined)} of series won</small></div>
                 <div title={powerResumeGap?.title}><small>Rank on results alone</small><b>{team.deservedStanding?.rank ? `#${team.deservedStanding.rank}` : 'Unavailable'}</b><small>{powerResumeGap?.rankDetail ?? 'results rank unavailable'}</small></div>
               </>
@@ -215,18 +215,18 @@ export function TeamDetailDrawer({
 
           {tournament ? null : <TeamLeagueProfile team={team} standings={standings} />}
 
-          <section className="overflow-hidden rounded-md border border-[var(--line-strong)] bg-[var(--detail-surface-2,var(--surface))]" aria-label="Power over time">
-            <div className="grid gap-2 border-b border-border px-5 pt-4 pb-3">
+          <section className="overflow-hidden rounded-md border border-line bg-[var(--detail-surface-2,var(--surface))]" aria-label="Power over time">
+            <div className="grid gap-2 border-b border-line px-5 pt-4 pb-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="text-base font-semibold text-[var(--text-strong)]">{tournament ? `${tournament.label} movement` : 'Power this season'}</h3>
+                <h3 className="text-base font-semibold text-text">{tournament ? `${tournament.label} movement` : 'Power this season'}</h3>
                 {trendSummary ? (
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    From {formatRating(trendSummary.opening)} on {formatDate(trendSummary.startDate)} · net <b className={cn('font-semibold', trendSummary.netChange >= 0 ? 'text-[var(--up)]' : 'text-[var(--down)]')}>{formatRatingMovement(trendSummary.netChange)}</b> · peak {formatRating(trendSummary.peak.value)}{typeof trendSummary.bestRank === 'number' ? ` · best #${trendSummary.bestRank}` : ''}
+                  <p className="text-xs text-muted tabular-nums">
+                    From {formatRating(trendSummary.opening)} on {formatDate(trendSummary.startDate)} · net <b className={cn('font-semibold', trendSummary.netChange >= 0 ? 'text-up' : 'text-down')}>{formatRatingMovement(trendSummary.netChange)}</b> · peak {formatRating(trendSummary.peak.value)}{typeof trendSummary.bestRank === 'number' ? ` · best #${trendSummary.bestRank}` : ''}
                   </p>
                 ) : null}
               </div>
               {trendSeries.length > 0 ? (
-                <p className="text-xs leading-[1.5] text-muted-foreground">Power is a model rating. Hover, tap or use arrow keys to inspect the recorded evidence below.</p>
+                <p className="text-xs leading-[1.5] text-muted">Power is a model rating. Hover, tap or use arrow keys to inspect the recorded evidence below.</p>
               ) : null}
             </div>
             {trendSeries.length > 0 ? (
@@ -238,9 +238,9 @@ export function TeamDetailDrawer({
             ) : historyState.status === 'loading' ? (
               <TrendChartSkeleton />
             ) : historyState.status === 'missing' || historyState.status === 'error' ? (
-              <p className="p-5 text-muted-foreground">{historyState.message}</p>
+              <p className="p-5 text-muted">{historyState.message}</p>
             ) : (
-              <p className="p-5 text-muted-foreground">{historyState.status === 'idle' ? 'Rating history loads when this panel opens.' : 'Not enough history to chart this team yet.'}</p>
+              <p className="p-5 text-muted">{historyState.status === 'idle' ? 'Rating history loads when this panel opens.' : 'Not enough history to chart this team yet.'}</p>
             )}
             {tournament ? (
               <p className={tournamentDataNoteClassName}>
@@ -253,29 +253,29 @@ export function TeamDetailDrawer({
           </section>
 
           {opponents.length > 0 ? (
-            <section className="rounded-md border border-[var(--line-strong)] bg-[var(--detail-surface-2,var(--surface))] px-5 py-4" aria-label={`${team.code ?? team.team} against the top teams`}>
+            <section className="rounded-md border border-line bg-[var(--detail-surface-2,var(--surface))] px-5 py-4" aria-label={`${team.code ?? team.team} against the top teams`}>
               <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="text-base font-semibold text-[var(--text-strong)]">Chance to beat the top teams</h3>
-                <span className="text-xs text-[var(--faint)]">best of three, neutral side · model {formatModelVersion(model?.version)}</span>
+                <h3 className="text-base font-semibold text-text">Chance to beat the top teams</h3>
+                <span className="text-xs text-muted">best of three, neutral side · model {formatModelVersion(model?.version)}</span>
               </div>
               <ul className="grid gap-2">
                 {opponents.map(({ opponent, chance }) => (
                   <li className="grid grid-cols-[56px_minmax(0,1fr)_44px] items-center gap-3 text-sm" key={teamKey(opponent)} title={`${team.team} vs ${opponent.team}: ${chance}% to win a best of three`}>
-                    <b className="truncate font-mono font-bold text-[var(--text-strong)]">{opponent.code ?? opponent.team}</b>
-                    <span className="relative h-2.5 overflow-hidden rounded-full bg-[var(--surface-3)]" aria-hidden="true">
-                      <span className="absolute inset-y-0 left-0 rounded-full bg-[var(--series-1)]" style={{ width: `${chance}%` }} />
-                      <span className="absolute inset-y-[-2px] left-1/2 w-px bg-muted-foreground" />
+                    <b className="truncate font-bold text-text">{opponent.code ?? opponent.team}</b>
+                    <span className="relative h-2.5 overflow-hidden rounded-full bg-line" aria-hidden="true">
+                      <span className="absolute inset-y-0 left-0 rounded-full bg-[var(--identity-1)]" style={{ width: `${chance}%` }} />
+                      <span className="absolute inset-y-[-2px] left-1/2 w-px bg-muted" />
                     </span>
-                    <b className="text-right font-semibold text-[var(--text-strong)] tabular-nums">{chance}%</b>
+                    <b className="text-right font-semibold text-text tabular-nums">{chance}%</b>
                   </li>
                 ))}
               </ul>
             </section>
           ) : null}
 
-          <section className="overflow-hidden rounded-md border border-[var(--line-strong)] bg-[var(--detail-surface-2,var(--surface))] p-5 max-[900px]:p-4" aria-label="Match results">
-            <div className="flex items-start justify-between gap-3.5 border-b border-[var(--line-strong)] pb-4 max-sm:flex-col">
-              <h3 className="text-base font-semibold text-[var(--text-strong)]">Match results</h3>
+          <section className="overflow-hidden rounded-md border border-line bg-[var(--detail-surface-2,var(--surface))] p-5 max-[900px]:p-4" aria-label="Match results">
+            <div className="flex items-start justify-between gap-3.5 border-b border-line pb-4 max-sm:flex-col">
+              <h3 className="text-base font-semibold text-text">Match results</h3>
               <FormDots form={team.form} />
             </div>
             <RecentMatches
@@ -287,10 +287,10 @@ export function TeamDetailDrawer({
             />
           </section>
 
-          <details className="rounded-md border border-border bg-[var(--detail-surface-2)] p-3">
+          <details className="rounded-md border border-line bg-[var(--detail-surface-2)] p-3">
             <summary className="cursor-pointer text-sm font-semibold">How the score is built</summary>
-            <p className="mt-3 text-sm text-muted-foreground">League strength plus this team's results, roster and form. Evidence band {formatUncertaintyBand(team.ratingComponents?.uncertainty ?? team.uncertainty)}.</p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 [&_small]:block [&_small]:text-xs [&_small]:text-muted-foreground [&_b]:block [&_em]:block [&_em]:text-xs [&_em]:not-italic [&_em]:text-muted-foreground">
+            <p className="mt-3 text-sm text-muted">League strength plus this team's results, roster and form. Evidence band {formatUncertaintyBand(team.ratingComponents?.uncertainty ?? team.uncertainty)}.</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 [&_small]:block [&_small]:text-xs [&_small]:text-muted [&_b]:block [&_em]:block [&_em]:text-xs [&_em]:not-italic [&_em]:text-muted">
               {!tournament ? (
                 <span title={powerResumeGap?.title}>
                   <small>Power rank vs results rank</small>
@@ -327,7 +327,7 @@ export function TeamDetailDrawer({
             </div>
             {tournament ? null : <div className="mt-3"><ComponentBreakdown team={team} /></div>}
           </details>
-          <details className="rounded-md border border-border p-3" onToggle={(event) => {
+          <details className="rounded-md border border-line p-3" onToggle={(event) => {
             if (event.currentTarget.open) onRequestPlayers?.()
           }}>
             <summary className="cursor-pointer text-sm font-semibold">Players</summary>

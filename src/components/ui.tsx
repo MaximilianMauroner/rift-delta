@@ -3,18 +3,6 @@ import { Button } from './ui/button'
 import { cn } from '../shared/utils'
 import { Badge } from './ui/badge'
 import { tableHeadClassName } from './ui/table'
-import { heatBin } from '../shared/display'
-
-export function HeatChip({ value, min, max, label }: { value: number; min: number; max: number; label: string }) {
-  return (
-    <span
-      className="inline-flex items-baseline gap-1 rounded-full px-2 py-1 font-mono text-sm font-semibold text-[var(--heat-ink)] tabular-nums"
-      style={{ background: `var(--heat-${heatBin(value, min, max)})` }}
-    >
-      {label}
-    </span>
-  )
-}
 
 const REGION_BADGE_KEYS = new Set(['LCK', 'LPL', 'LEC', 'LCS', 'LCP', 'CBLOL', 'PCS', 'VCS'])
 const REGION_BADGE_LOGOS: Partial<Record<string, string>> = {
@@ -56,7 +44,7 @@ export function RegionBadge({ region, size = 'md' }: { region: string; size?: 's
 
 export function FormDots({ form }: { form?: string[] }) {
   const recent = (form ?? []).slice(-5)
-  if (recent.length === 0) return <span className="text-muted-foreground">—</span>
+  if (recent.length === 0) return <span className="text-muted">—</span>
   return (
     <span className="inline-flex gap-1" aria-label={`Recent form, oldest to latest: ${recent.join(', ')}. Latest: ${recent.at(-1)}.`} title="Oldest to latest. Underlined result is the latest.">
       {recent.map((result, index) => {
@@ -67,10 +55,10 @@ export function FormDots({ form }: { form?: string[] }) {
           <i
             key={`${result}-${index}`}
             className={cn(
-              'grid size-[17px] place-items-center rounded-sm text-2xs font-bold not-italic',
-              tone === 'w' && 'bg-[var(--win-soft)] text-[var(--win)]',
-              tone === 'l' && 'bg-[var(--loss-soft)] text-[var(--loss)]',
-              tone === 't' && 'bg-[var(--surface-3)] text-muted-foreground',
+              'grid size-[17px] place-items-center text-xs font-bold not-italic',
+              tone === 'w' && 'bg-[var(--up-wash)] text-up',
+              tone === 'l' && 'bg-[var(--down-wash)] text-down',
+              tone === 't' && 'bg-line text-muted',
               index === recent.length - 1 && 'underline decoration-2 underline-offset-2',
             )}
             aria-hidden="true"
@@ -113,7 +101,7 @@ export function Segmented<T extends string>({
       role="group"
       aria-label={ariaLabel}
       className={cn(
-        'inline-flex h-[var(--control-h)] max-w-full items-stretch overflow-hidden rounded-md border border-[var(--line-strong)] bg-[var(--surface-2)] max-sm:w-full',
+        'inline-flex h-[var(--control-h)] max-w-full items-stretch overflow-hidden rounded-md border border-line bg-raised max-sm:w-full',
         className,
       )}
     >
@@ -130,8 +118,8 @@ export function Segmented<T extends string>({
           onPointerEnter={onIntent ? () => onIntent(option.value) : undefined}
           onFocus={onIntent ? () => onIntent(option.value) : undefined}
           className={cn(
-            'h-auto min-h-0 flex-1 gap-1.5 rounded-none border-y-0 border-r-0 border-l border-l-border px-3 whitespace-nowrap max-sm:min-w-0 max-sm:px-2',
-            'aria-pressed:font-semibold aria-pressed:shadow-[inset_0_-2px_0_var(--accent)] disabled:opacity-60',
+            'h-auto min-h-0 flex-1 gap-1.5 rounded-none border-y-0 border-r-0 border-l border-l-line px-3 text-sm whitespace-nowrap max-sm:min-w-0 max-sm:px-2',
+            'aria-pressed:border-l-line aria-pressed:shadow-[inset_0_-2px_0_var(--focus)] disabled:opacity-60',
             index === 0 && 'border-l-0',
           )}
         >
@@ -155,8 +143,8 @@ export function DataState({
   children?: ReactNode
 }) {
   return (
-    <div className="grid place-items-center gap-2 px-6 py-8 text-center text-muted-foreground sm:py-10 [&>h3]:text-base [&>h3]:font-semibold [&>h3]:text-[var(--text-strong)] [&>p]:max-w-[46ch] [&>p]:text-sm [&>p]:leading-relaxed">
-      <span className="mb-1 grid size-10 place-items-center rounded-lg border border-border bg-[var(--surface-2)] text-muted-foreground" aria-hidden="true">{icon}</span>
+    <div className="grid place-items-center gap-2 px-6 py-8 text-center text-muted sm:py-10 [&>h3]:text-base [&>h3]:font-semibold [&>h3]:text-text [&>p]:max-w-[46ch] [&>p]:text-sm [&>p]:leading-relaxed">
+      <span className="mb-1 grid size-10 place-items-center border border-line bg-raised text-muted" aria-hidden="true">{icon}</span>
       <h3>{title}</h3>
       {children ? <p>{children}</p> : null}
       {action ? <div className="mt-1 flex flex-wrap justify-center gap-2">{action}</div> : null}
@@ -166,7 +154,7 @@ export function DataState({
 
 export function CountBadge({ children, variant = 'secondary' }: { children: ReactNode; variant?: 'secondary' | 'warning' }) {
   return (
-    <Badge variant={variant} className="w-fit justify-self-start text-xs text-muted-foreground tabular-nums">
+    <Badge variant={variant} className="w-fit justify-self-start text-xs text-muted tabular-nums">
       {children}
     </Badge>
   )
@@ -200,7 +188,7 @@ export function SortHeader({
       className={cn(
         tableHeadClassName,
         'select-none p-0!',
-        active && 'text-[var(--accent-strong)]',
+        active && 'text-focus',
         align === 'right' && 'text-right',
         align === 'center' && 'text-center',
         className,
@@ -212,7 +200,7 @@ export function SortHeader({
         variant="ghost"
         size="sm"
         className={cn(
-          'min-h-10 w-full cursor-pointer justify-start gap-1 border-0 bg-transparent px-3.5 py-3 text-xs font-[number:var(--w-label)] text-[inherit] hover:bg-transparent hover:text-foreground focus-visible:rounded-none focus-visible:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-3 focus-visible:outline-[var(--focus)] max-sm:px-1 max-sm:leading-[1.15] max-sm:whitespace-normal',
+          'min-h-10 w-full cursor-pointer justify-start gap-1 border-0 bg-transparent px-3.5 py-3 text-xs font-[number:600] text-[inherit] hover:bg-transparent hover:text-text focus-visible:rounded-none focus-visible:text-text focus-visible:outline-2 focus-visible:-outline-offset-3 focus-visible:outline-focus max-sm:px-1 max-sm:leading-[1.15] max-sm:whitespace-normal',
           align === 'right' && 'justify-end',
           align === 'center' && 'justify-center',
         )}

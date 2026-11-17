@@ -29,8 +29,8 @@ export function TeamFieldPosition({
   return (
     <Card className="gap-0 overflow-visible py-0" role="region" aria-label={`${team.name} compared with the field`}>
       <CardContent className="grid min-w-0 gap-3 py-4">
-        <h4 className="text-base font-semibold text-[var(--text-strong)]">Compared with the field</h4>
-        <ol className="grid min-w-0 divide-y divide-border">
+        <h4 className="text-base font-semibold text-text">Compared with the field</h4>
+        <ol className="grid min-w-0 divide-y divide-line">
           {positions.map((position) => {
             const metric = REPORT_TEAM_METRICS[position.metric]
             return (
@@ -80,12 +80,12 @@ export function TeamGameSwings({
       <CardContent className="grid min-w-0 gap-3 py-4">
         <div>
           <h4 className="text-sm font-bold">Game by game</h4>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted">
             Team gold lead at 15 minutes (ring) and at the end (dot). The line
             shows how the lead changed after 15.
           </p>
         </div>
-        <div aria-hidden="true" className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)_7rem] gap-2 text-2xs text-muted-foreground">
+        <div aria-hidden="true" className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)_7rem] gap-2 text-xs text-muted">
           <span />
           <span className="flex justify-between">
             <span>{signedGold(-extent)}</span>
@@ -107,14 +107,14 @@ export function TeamGameSwings({
                   <span
                     className={cn(
                       'mr-1 font-bold',
-                      row.result === 'W' ? 'text-[var(--win)]' : 'text-[var(--loss)]',
+                      row.result === 'W' ? 'text-up' : 'text-down',
                     )}
                   >
                     {row.result}
                   </span>
                   vs {codes.get(row.opponentId)}
                   {row.side ? (
-                    <span className="text-muted-foreground"> · {row.side}</span>
+                    <span className="text-muted"> · {row.side}</span>
                   ) : null}
                 </span>
                 <span
@@ -122,19 +122,19 @@ export function TeamGameSwings({
                   role="img"
                   aria-label={`${row.result === 'W' ? 'Win' : 'Loss'} against ${codes.get(row.opponentId)}: ${start === null ? 'gold at 15 unavailable' : `${signedGold(start)} gold at 15`}, ${signedGold(end)} at the end`}
                 >
-                  <span className="absolute inset-x-0 top-1/2 border-t border-border" />
-                  <span className="absolute inset-y-0 left-1/2 border-l border-[var(--line-strong)]" />
+                  <span className="absolute inset-x-0 top-1/2 border-t border-line" />
+                  <span className="absolute inset-y-0 left-1/2 border-l border-line" />
                   {start !== null ? (
                     <>
                       <span
-                        className="absolute top-1/2 h-0.5 -translate-y-1/2 bg-[var(--line-strong)]"
+                        className="absolute top-1/2 h-0.5 -translate-y-1/2 bg-muted"
                         style={{
                           left: `${Math.min(at(start), at(end))}%`,
                           width: `${Math.abs(at(end) - at(start))}%`,
                         }}
                       />
                       <span
-                        className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-muted-foreground bg-card"
+                        className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-muted bg-surface"
                         style={{ left: `${at(start)}%` }}
                       />
                     </>
@@ -142,12 +142,12 @@ export function TeamGameSwings({
                   <span
                     className={cn(
                       'absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full',
-                      row.result === 'W' ? 'bg-[var(--win)]' : 'bg-[var(--loss)]',
+                      row.result === 'W' ? 'bg-up' : 'bg-down',
                     )}
                     style={{ left: `${at(end)}%` }}
                   />
                 </span>
-                <span className="text-right text-2xs whitespace-nowrap tabular-nums text-muted-foreground">
+                <span className="text-right text-xs whitespace-nowrap tabular-nums text-muted">
                   {start === null ? '—' : signedGold(start)} → {signedGold(end)}
                 </span>
               </li>

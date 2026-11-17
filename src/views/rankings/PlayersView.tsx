@@ -75,7 +75,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
   const methodDisclosure = (
     <details className="players-method">
       <summary>Method</summary>
-      <div className="grid gap-1.5 text-xs leading-relaxed text-muted-foreground">
+      <div className="grid gap-1.5 text-xs leading-relaxed text-muted">
         {statsFamily ? (
           <>
             <p>Stats Power compares selected stats within each role. It does not measure overall player ability. Its ordering across roles is not validated as a measure of player ability or role importance. Newer games get more weight, with a 90-day half-life. Inactivity alone does not lower Stats Power.</p>
@@ -93,10 +93,10 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
   return (
     <section className="players-view flex min-w-0 flex-col gap-4 px-[var(--page-x)] pt-5" aria-label="Player leaderboard">
       <div className="players-filters flex flex-wrap items-end gap-3">
-        <label className="flex min-w-0 flex-1 basis-56 flex-col gap-1.5 text-xs text-muted-foreground">
+        <label className="flex min-w-0 flex-1 basis-56 flex-col gap-1.5 text-xs text-muted">
           Find a player or team
           <span className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[var(--faint)]" aria-hidden="true" />
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
             <Input
               ref={searchRef}
               type="search"
@@ -108,7 +108,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
             />
           </span>
         </label>
-        <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+        <label className="flex flex-col gap-1.5 text-xs text-muted">
           Role
           <Select aria-label="Role" value={filters.role} onChange={(event) => setFilters({ ...filters, role: event.target.value as typeof filters.role })}>
             {ROLE_FILTERS.map((role) => <option key={role} value={role}>{role === 'All' ? 'All roles' : role}</option>)}
@@ -116,7 +116,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
         </label>
       </div>
 
-      <p className="players-source break-words text-xs leading-relaxed text-muted-foreground" role="status" aria-label="Player-stat freshness">
+      <p className="players-source break-words text-xs leading-relaxed text-muted" role="status" aria-label="Player-stat freshness">
         {seeded ? 'Seeded sample data. Player-stat freshness is unavailable.' : (
           <>
             {statSource?.publishedThrough
@@ -151,7 +151,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
         </Card>
       ) : (
         <>
-          <p className="players-count flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-muted-foreground" role="status">
+          <p className="players-count flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-muted" role="status">
             <span>{formatNumber(visible.length)} of {formatNumber(selectedPlayers.length)} {filters.role === 'All' ? 'players' : `${filters.role} players`} in {scopeLabel}.{filters.role === 'All' ? ' Ranks across roles are rough. Pick a role to compare fairly.' : ''}</span>
             {unrankedCount > 0 ? <span>{formatNumber(rankedCount)} ranked by {scoreLabel}. {formatNumber(unrankedCount)} unranked without a usable {scoreLabel} score.</span> : null}
             {scoreRange && visible.length > 0 ? (
@@ -176,7 +176,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
             </Card>
           ) : (
             <Card className="players-board min-w-0 overflow-hidden p-0">
-              <Table role="table" data-stat-games={statsFamily} aria-label="Player rankings" tabIndex={0} className="players-table focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--focus)]">
+              <Table role="table" data-stat-games={statsFamily} aria-label="Player rankings" tabIndex={0} className="players-table focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus">
                 <caption className="sr-only">Player rankings for {scopeLabel}, {filters.role === 'All' ? 'all roles' : `${filters.role} players`}, ordered by {scoreLabel}, highest first. {unrankedNote ? `${unrankedNote} ` : ''}Ranks use full precision. Equal full-precision scores share a rank. Displayed scores are rounded. {teamAttribution}{statsFamily ? ' Stat games count games with usable role stats in this scope, including previous teams.' : ''} Games count games credited to the displayed team where available, otherwise all rated games.</caption>
                 <TableHeader role="rowgroup">
                   <TableRow role="row">
@@ -207,42 +207,42 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                       : scoreRange.max === scoreRange.min ? 50 : 100 * (scoreValue - scoreRange.min) / (scoreRange.max - scoreRange.min)
                     return (
                       <TableRow role="row" key={player.id}>
-                        <TableCell role="cell" className="player-col-rank pl-4 font-mono text-muted-foreground tabular-nums">
+                        <TableCell role="cell" className="player-col-rank pl-4 text-muted tabular-nums">
                           {player.leaderboardRank ?? <><span aria-hidden="true">—</span><span className="sr-only">Unranked</span></>}
                         </TableCell>
-                        <TableCell role="cell" className="player-col-name text-md font-semibold text-[var(--text-strong)]"><span className="player-identity">
+                        <TableCell role="cell" className="player-col-name text-sm font-semibold text-text"><span className="player-identity">
                           {logo ? <img src={`${logo}?v=icon-128`} className={branding?.logoTreatment === 'invert' ? 'player-identity-mark invert' : 'player-identity-mark'} alt="" aria-hidden="true" width={20} height={20} loading="lazy" decoding="async" /> : null}
                           <a
                             href={scoutingHref(player)}
                             aria-label={`Scouting report for ${player.name}`}
                             title="Scouting report"
-                            className="player-scouting-link inline-flex min-h-6 min-w-0 items-center gap-2 rounded-sm text-inherit no-underline hover:text-[var(--accent-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
-                          ><span className="min-w-0 [overflow-wrap:anywhere]">{player.name}</span><ClipboardList className="size-4 shrink-0 text-[var(--faint)]" aria-hidden="true" /></a>
+                            className="player-scouting-link inline-flex min-h-6 min-w-0 items-center gap-2 rounded-md text-inherit no-underline hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                          ><span className="min-w-0 [overflow-wrap:anywhere]">{player.name}</span><ClipboardList className="size-4 shrink-0 text-muted" aria-hidden="true" /></a>
                         </span></TableCell>
                         <TableCell role="cell" className="player-col-team max-w-44 whitespace-normal"><span className="player-team">
                           {logo ? <img src={`${logo}?v=icon-128`} className={branding?.logoTreatment === 'invert' ? 'invert' : undefined} alt="" aria-hidden="true" width={24} height={24} loading="lazy" decoding="async" /> : null}
                           <span>{player.team}</span>
                         </span></TableCell>
-                        <TableCell role="cell" className="player-col-role text-muted-foreground"><span className="player-role">{player.role}</span></TableCell>
-                        <TableCell role="cell" className="player-col-score text-right font-mono font-semibold text-[var(--text-strong)] tabular-nums">
+                        <TableCell role="cell" className="player-col-role text-muted"><span className="player-role">{player.role}</span></TableCell>
+                        <TableCell role="cell" className="player-col-score text-right font-semibold text-text tabular-nums">
                           {scorePosition === undefined
                             ? <span className="player-score-position invisible" aria-hidden="true" />
                             : <span className="player-score-position" aria-hidden="true"><i style={{ left: `${scorePosition}%` }} /></span>}
                           <span className="player-score-figure"><span>{decimalIndex < 0 ? scoreText : scoreText.slice(0, decimalIndex)}</span><span>{decimalIndex < 0 ? '' : scoreText.slice(decimalIndex)}</span></span>
-                          {evidenceThrough ? <span className="player-score-evidence block text-2xs font-normal text-muted-foreground">Through {formatDate(evidenceThrough)}</span> : null}
+                          {evidenceThrough ? <span className="player-score-evidence block text-xs font-normal text-muted">Through {formatDate(evidenceThrough)}</span> : null}
                           {score.status === 'unranked' ? (
-                            <span className="player-score-unranked block text-2xs font-normal whitespace-normal text-muted-foreground">
+                            <span className="player-score-unranked block text-xs font-normal whitespace-normal text-muted">
                               Unranked. {score.reason === 'no-stat-games' ? 'No stat games.' : `No ${scoreLabel}.`}
                             </span>
                           ) : null}
                         </TableCell>
                         {statsFamily ? (
                           <>
-                            <TableCell role="cell" className="player-col-stat-games text-right font-mono text-muted-foreground tabular-nums">{formatNumber(player.statsPower?.sampleGames)}</TableCell>
-                            <TableCell role="cell" className="player-col-role-power text-right font-mono text-muted-foreground tabular-nums">{formatRating(player.rating)}</TableCell>
+                            <TableCell role="cell" className="player-col-stat-games text-right text-muted tabular-nums">{formatNumber(player.statsPower?.sampleGames)}</TableCell>
+                            <TableCell role="cell" className="player-col-role-power text-right text-muted tabular-nums">{formatRating(player.rating)}</TableCell>
                           </>
                         ) : null}
-                        <TableCell role="cell" className="player-col-games pr-4 text-right font-mono text-muted-foreground tabular-nums">{formatNumber(player.teamGames ?? player.games)}</TableCell>
+                        <TableCell role="cell" className="player-col-games pr-4 text-right text-muted tabular-nums">{formatNumber(player.teamGames ?? player.games)}</TableCell>
                       </TableRow>
                     )
                   })}
@@ -254,7 +254,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
       )}
       {visible.length === 0 ? methodDisclosure : null}
       {directory ? (
-        <p className="players-source break-words text-xs leading-relaxed text-muted-foreground">
+        <p className="players-source break-words text-xs leading-relaxed text-muted">
           Source {directory.sourceProvider}.{' '}
           {statsPowerVersion
             ? `Stats Power ${statsPowerVersion} scores lane leads at 15 minutes, kill participation and ward activity against each role's average. It weights each game by event and home-league strength, then gives a game half the weight of a game 90 days later in the supplied history. It pulls small samples to the league anchor and excludes wins, KDA and gold share. For each player, newer games get more weight than older games. Inactivity alone does not lower the score. Stat games count raw games with usable role stats in this scope, including previous teams. `

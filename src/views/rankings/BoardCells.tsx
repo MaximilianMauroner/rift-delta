@@ -46,7 +46,7 @@ export function NearTieMark({ position }: { position: NearTiePosition }) {
   return (
     <span
       className={cn(
-        'absolute left-1 w-0.5 bg-muted-foreground',
+        'absolute left-1 w-0.5 bg-muted',
         position === 'start' && 'top-1/2 bottom-0 rounded-t-full',
         position === 'middle' && 'inset-y-0',
         position === 'end' && 'top-0 bottom-1/2 rounded-b-full',
@@ -70,14 +70,14 @@ export function TeamScoreCell({
 }) {
   const score = teamScoreFor(team)
   if (typeof score !== 'number') {
-    return <span className="score-unavailable font-mono text-sm font-semibold text-[var(--faint)]" aria-hidden="true">—</span>
+    return <span className="score-unavailable text-sm font-semibold text-muted" aria-hidden="true">—</span>
   }
   const share = max > min ? clampNumber(((score - min) / (max - min)) * 100, 4, 100) : 100
   return (
     <span className="team-score-stack flex min-w-0 items-center gap-2.5" title={exactTournament ? `Tournament endpoint Power ${formatRating(score)}` : teamScoreTitle(team)}>
-      <span className="team-score-value min-w-[3.4em] text-right font-mono text-base font-extrabold text-[var(--text-strong)] tabular-nums">{formatRating(score)}</span>
-      <span className="score-track relative h-1.5 min-w-10 flex-1 overflow-hidden rounded-full bg-[var(--surface-3)]" aria-hidden="true">
-        <span className="absolute inset-y-0 left-0 rounded-full bg-[var(--faint)]" style={{ width: `${share}%` }} />
+      <span className="team-score-value min-w-[3.4em] text-right text-base font-bold text-text tabular-nums">{formatRating(score)}</span>
+      <span className="score-track relative h-1.5 min-w-10 flex-1 overflow-hidden rounded-full bg-line" aria-hidden="true">
+        <span className="absolute inset-y-0 left-0 rounded-full bg-muted" style={{ width: `${share}%` }} />
       </span>
     </span>
   )
@@ -95,16 +95,16 @@ export function TeamBoardRank({
   if (team.eligibility?.eligible === false) {
     return (
       <span className="board-rank-stack inline-flex min-w-0 flex-col items-start gap-1">
-        <span className="board-rank board-rank--excluded min-w-0 text-xs font-semibold text-muted-foreground tabular-nums">Unranked</span>
+        <span className="board-rank board-rank--excluded min-w-0 text-xs font-semibold text-muted tabular-nums">Unranked</span>
         {typeof rawScoreRank === 'number' ? (
-          <span className="text-2xs text-[var(--faint)]" title="Where the score would place if eligibility checks were ignored.">score #{formatNumber(rawScoreRank)}</span>
+          <span className="text-xs text-muted" title="Where the score would place if eligibility checks were ignored.">score #{formatNumber(rawScoreRank)}</span>
         ) : null}
       </span>
     )
   }
 
   return (
-    <span className={cn('board-rank min-w-[1.4em] text-base font-semibold text-[var(--text-strong)] tabular-nums', typeof rank === 'number' && rank <= 3 && 'podium text-[var(--rank-gold)]')}>
+    <span className={cn('board-rank min-w-[1.4em] text-base font-semibold text-text tabular-nums', typeof rank === 'number' && rank <= 3 && 'podium text-text')}>
       {rank ?? '—'}
     </span>
   )
@@ -121,7 +121,7 @@ export function TierBadge({ tier }: { tier: RankingTierLabel }) {
   return (
     <span
       className={cn(
-        'tier-badge inline-flex h-6 min-w-[26px] items-center justify-center rounded-sm border border-[color-mix(in_oklch,var(--tier-color)_40%,var(--line))] bg-[color-mix(in_oklch,var(--tier-color)_11%,transparent)] px-2 font-mono text-sm font-bold leading-none text-[var(--tier-color)]',
+        'tier-badge inline-flex h-6 min-w-[26px] items-center justify-center rounded-md border border-[color-mix(in_srgb,var(--tier-color)_40%,var(--line))] bg-[color-mix(in_srgb,var(--tier-color)_11%,transparent)] px-2 text-sm font-bold leading-none text-[var(--tier-color)]',
         TIER_BADGE_COLOR[tier],
       )}
       role="img"
@@ -140,18 +140,18 @@ export function RegionalStrengthTeaser({ regions, href }: { regions: RegionStren
     <Panel aria-label="Region power scores">
       <PanelHeader
         title="Region power"
-        actions={href ? <a className="inline-flex min-h-6 min-w-6 shrink-0 items-center text-xs font-semibold text-[var(--accent-strong)] no-underline hover:underline hover:underline-offset-[3px]" href={href}>Details</a> : undefined}
+        actions={href ? <a className="inline-flex min-h-6 min-w-6 shrink-0 items-center text-xs font-semibold underline" href={href}>Details</a> : undefined}
       />
-      <div className="grid grid-cols-1 gap-px bg-border">
+      <div className="grid grid-cols-1 gap-px bg-line">
         {ranked.map((region) => (
-          <div className="flex min-w-0 items-center gap-2.5 bg-card px-4 py-2 [&_.region-badge]:h-5 [&_.region-badge]:w-[22px]" key={region.region}>
+          <div className="flex min-w-0 items-center gap-2.5 bg-surface px-4 py-2 [&_.region-badge]:h-5 [&_.region-badge]:w-[22px]" key={region.region}>
             <RegionBadge region={region.region} size="sm" />
-            <span className="mr-auto min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold text-foreground">{region.region}</span>
-            <strong className="shrink-0 text-sm font-bold text-[var(--text-strong)] tabular-nums">{formatRating(displayRegionPowerScore(region))}</strong>
+            <span className="mr-auto min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold text-text">{region.region}</span>
+            <strong className="shrink-0 text-sm font-bold text-text tabular-nums">{formatRating(displayRegionPowerScore(region))}</strong>
           </div>
         ))}
       </div>
-      <PanelFooter className="text-xs leading-[1.35] text-[var(--faint)]">
+      <PanelFooter className="text-xs leading-[1.35] text-muted">
         Average of each region’s top three eligible flagship teams.
       </PanelFooter>
     </Panel>
