@@ -136,7 +136,7 @@ export function TeamDetailDrawer({
     return [{
       id: teamKey(team),
       label: team.code ?? team.team,
-      color: 'var(--identity-1)',
+      color: 'var(--league-lck)',
       points: tournament ? tournamentChartPoints(series.points, 'rating') : dailyChartPointsFromHistoryPoints(series.points),
     }]
   }, [series, team, tournament])
@@ -263,7 +263,7 @@ export function TeamDetailDrawer({
                   <li className="grid grid-cols-[56px_minmax(0,1fr)_44px] items-center gap-3 text-sm" key={teamKey(opponent)} title={`${team.team} vs ${opponent.team}: ${chance}% to win a best of three`}>
                     <b className="truncate font-bold text-text">{opponent.code ?? opponent.team}</b>
                     <span className="relative h-2.5 overflow-hidden rounded-full bg-line" aria-hidden="true">
-                      <span className="absolute inset-y-0 left-0 rounded-full bg-[var(--identity-1)]" style={{ width: `${chance}%` }} />
+                      <span className="absolute inset-y-0 left-0 rounded-full bg-[var(--league-lck)]" style={{ width: `${chance}%` }} />
                       <span className="absolute inset-y-[-2px] left-1/2 w-px bg-muted" />
                     </span>
                     <b className="text-right font-semibold text-text tabular-nums">{chance}%</b>

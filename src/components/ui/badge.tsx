@@ -14,7 +14,7 @@ const badgeVariants = cva(
     variants: {
       variant: {
         secondary: 'border-line bg-raised text-muted',
-        warning: 'border-line bg-raised text-text',
+        warning: 'border-[var(--warn)] bg-surface text-[var(--warn)]',
         rank: 'border-line bg-raised font-bold text-text',
         /* Competition and event labels. */
         event: 'border-line text-muted',
@@ -22,9 +22,9 @@ const badgeVariants = cva(
         win: 'border-transparent bg-[var(--up-wash)] text-up',
         loss: 'border-transparent bg-[var(--down-wash)] text-down',
         /* A series in progress. Always carries the word Live. */
-        live: 'border-text text-text',
+        live: 'border-[var(--live)] bg-[var(--live)] text-ground',
         /* Hypothetical scenario content, never a live result. */
-        preview: 'border-dashed border-muted text-muted',
+        preview: 'border-dashed border-[var(--forecast)] bg-transparent text-[var(--forecast)]',
       },
       size: {
         default: '',

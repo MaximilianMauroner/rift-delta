@@ -13,7 +13,7 @@ const buttonVariants = cva(
         secondary: "bg-raised text-text hover:bg-line aria-expanded:bg-line",
         ghost: "text-muted hover:bg-raised hover:text-text aria-expanded:bg-raised aria-expanded:text-text",
         // The one selected treatment, shared by nav, scope rows and filter strips.
-        tab: "border-line text-muted hover:text-text aria-pressed:border-focus aria-pressed:bg-[var(--focus-wash)] aria-pressed:font-semibold aria-pressed:text-text aria-[current=page]:border-focus aria-[current=page]:bg-[var(--focus-wash)] aria-[current=page]:font-semibold aria-[current=page]:text-text",
+        tab: "border-line text-muted hover:text-text aria-pressed:border-focus aria-pressed:bg-raised aria-pressed:font-semibold aria-pressed:text-text aria-[current=page]:border-focus aria-[current=page]:bg-raised aria-[current=page]:font-semibold aria-[current=page]:text-text",
         link: "text-text underline underline-offset-2",
       },
       size: {

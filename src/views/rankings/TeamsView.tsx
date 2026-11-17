@@ -59,7 +59,7 @@ const LADDER_TEAM_LIMIT = 16
 
 const DEFAULT_FOCUS_TEAMS = 5
 
-const SERIES_COLORS = ['var(--identity-1)', 'var(--identity-2)', 'var(--identity-3)', 'var(--identity-4)', 'var(--identity-5)', 'var(--identity-6)']
+const SERIES_COLORS = ['var(--league-lck)', 'var(--league-lpl)', 'var(--league-lec)', 'var(--league-lcs)', 'var(--league-lcp)', 'var(--league-cblol)']
 
 /**
  * The board filters this view keeps in the hash, read on mount and on every

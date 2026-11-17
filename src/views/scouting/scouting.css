@@ -120,7 +120,7 @@ i[data-part="ahead"] { background: var(--up); }
 .sc-track-empty::before { content: none; }
 .sc-band { position: absolute; top: 5px; height: 12px; border-radius: 3px; background: var(--line); }
 .sc-med { position: absolute; top: 2px; bottom: 2px; border-left: 2px solid var(--muted); margin-left: -1px; }
-.sc-dot { position: absolute; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%; background: var(--identity-4); box-shadow: 0 0 0 3px var(--surface); }
+.sc-dot { position: absolute; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%; background: var(--league-lcs); box-shadow: 0 0 0 3px var(--surface); }
 .sc-rr { text-align: right; white-space: nowrap; }
 .sc-of { color: var(--muted); font-size: var(--type-xs); }
 .sc-rk { color: var(--muted); font: 700 var(--type-sm) var(--sans); }

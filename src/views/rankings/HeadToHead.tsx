@@ -46,8 +46,8 @@ export function HeadToHead({ home, away, model }: { home: RankingSummaryStanding
       </div>
       <div className="grid gap-1">
         <span className="flex h-3 gap-0.5 overflow-hidden rounded-full" aria-hidden="true">
-          <span className="rounded-l-full bg-[var(--identity-1)]" style={{ width: `${homeChance}%` }} />
-          <span className="rounded-r-full bg-[var(--identity-2)]" style={{ width: `${100 - homeChance}%` }} />
+          <span className="rounded-l-full bg-[var(--league-lck)]" style={{ width: `${homeChance}%` }} />
+          <span className="rounded-r-full bg-[var(--league-lpl)]" style={{ width: `${100 - homeChance}%` }} />
         </span>
         {low !== undefined && high !== undefined ? (
           <span className="relative h-2" aria-hidden="true">

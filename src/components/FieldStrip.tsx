@@ -1,15 +1,7 @@
 import { useId, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
-import { fieldPlace, type FieldPosition, type FieldStanding } from '../domains/rankings/field-statistics'
+import { fieldPlace, type FieldPosition } from '../domains/rankings/field-statistics'
 import { cn } from '../shared/utils'
 import { ordinal, standingLabel } from './fieldFormat'
-
-/** The colour of a place, so the place itself says how good it is. */
-const STANDING_TONE: Record<FieldStanding, string> = {
-  top: 'text-text',
-  above: 'text-up',
-  close: 'text-muted',
-  below: 'text-down',
-}
 
 /**
  * One measure of one subject against its field. The place leads, coloured by how
@@ -45,7 +37,6 @@ export function FieldStrip({
   /** A caveat next to the value, such as games the average skips. */
   note?: string
 }) {
-  const [explained, setExplained] = useState(false)
   const hintId = useId()
   const { value, field, mean, place, better, standing } = position
   const values = field.map((entry) => entry.value)
@@ -85,7 +76,7 @@ export function FieldStrip({
   return (
     <li className="grid min-w-0 grid-cols-[4rem_minmax(0,1fr)] gap-x-3 py-3">
       <span className="grid content-start justify-items-center pt-0.5 text-center leading-none" title={verdict}>
-        <span className={cn('text-2xl font-bold tabular-nums', shown && standing ? STANDING_TONE[standing] : 'text-muted')}>
+        <span className={cn('text-2xl font-bold tabular-nums', shown ? 'text-text' : 'text-muted')}>
           {shown ? ordinal(shown) : '–'}
         </span>
         <span className="mt-1 text-xs text-muted">
@@ -94,20 +85,7 @@ export function FieldStrip({
       </span>
       <span className="grid min-w-0 gap-1">
         <span className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3">
-          {hint ? (
-            <button
-              type="button"
-              className="min-w-0 cursor-help rounded-md text-left text-sm font-semibold text-text underline decoration-muted decoration-dotted underline-offset-4 outline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
-              title={hint}
-              aria-expanded={explained}
-              aria-controls={hintId}
-              onClick={() => setExplained(!explained)}
-            >
-              {label}
-            </button>
-          ) : (
-            <span className="min-w-0 text-sm font-semibold text-text">{label}</span>
-          )}
+          <span className="min-w-0 text-sm font-semibold text-text">{label}</span>
           <span className="ml-auto grid justify-items-end gap-0.5 text-right">
             <span className="text-base leading-none font-bold text-text tabular-nums">
               {value === null ? '—' : show(value)}
@@ -116,7 +94,7 @@ export function FieldStrip({
           </span>
         </span>
         {hint ? (
-          <span id={hintId} className={explained ? 'text-xs text-muted' : 'sr-only'}>
+          <span id={hintId} className="text-xs text-muted">
             {hint}
           </span>
         ) : null}

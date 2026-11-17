@@ -92,8 +92,8 @@ export function CompareDock({
             <span className="max-md:hidden"> · <b className="font-semibold text-text">{odds.bo5}%</b> in a Bo5</span>
           </p>
           <span className="flex h-2 min-w-[80px] max-w-[240px] flex-1 gap-0.5 overflow-hidden rounded-full" aria-hidden="true">
-            <span className="rounded-l-full bg-[var(--identity-1)]" style={{ width: `${odds.game}%` }} />
-            <span className="rounded-r-full bg-[var(--identity-2)]" style={{ width: `${100 - odds.game}%` }} />
+            <span className="rounded-l-full bg-[var(--league-lck)]" style={{ width: `${odds.game}%` }} />
+            <span className="rounded-r-full bg-[var(--league-lpl)]" style={{ width: `${100 - odds.game}%` }} />
           </span>
           <span className="sr-only">{odds.awayCode} {100 - odds.game}% per game.</span>
         </div>
