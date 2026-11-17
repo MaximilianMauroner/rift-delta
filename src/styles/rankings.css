@@ -50,6 +50,7 @@ table.ranking-table.board-grid col.board-col-action { width: 104px; }
   font-weight: 400;
 }
 .board-tier-name { margin-right: 8px; color: var(--tier-color); font-size: var(--type-sm); font-weight: 700; }
+.board-tier-name.text-text { color: var(--text); }
 .board-tier-row small { color: var(--muted); font-size: var(--type-xs); }
 
 /* The gap to the team above sits on the boundary between the two rows. */
