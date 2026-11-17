@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { RankingSummaryStanding } from '../../domains/rankings/types'
 import { estimatePublicMatchup, type PublicMatchupModel } from '../../domains/rankings/read'
 import { Button } from '../../components/ui/button'
+import { leagueColor } from '../../shared/teamColor'
 import { cn } from '../../shared/utils'
 
 export type CompareDockEntity = {
@@ -91,9 +92,9 @@ export function CompareDock({
             <b className="font-semibold text-text">{odds.homeCode} {odds.game}%</b> per game
             <span className="max-md:hidden"> · <b className="font-semibold text-text">{odds.bo5}%</b> in a Bo5</span>
           </p>
-          <span className="flex h-2 min-w-[80px] max-w-[240px] flex-1 gap-0.5 overflow-hidden rounded-full" aria-hidden="true">
-            <span className="rounded-l-full bg-[var(--league-lck)]" style={{ width: `${odds.game}%` }} />
-            <span className="rounded-r-full bg-[var(--league-lpl)]" style={{ width: `${100 - odds.game}%` }} />
+          <span className="flex h-2 min-w-[80px] max-w-[240px] flex-1 gap-1" aria-hidden="true">
+            <span className="rounded-l-full" style={{ width: `${odds.game}%`, background: leagueColor(odds.homeLeague) }} />
+            <span className="rounded-r-full" style={{ width: `${100 - odds.game}%`, background: leagueColor(odds.awayLeague) }} />
           </span>
           <span className="sr-only">{odds.awayCode} {100 - odds.game}% per game.</span>
         </div>
@@ -143,6 +144,8 @@ function matchupOdds({
   return {
     homeCode: home.code ?? home.team.slice(0, 3).toUpperCase(),
     awayCode: away.code ?? away.team.slice(0, 3).toUpperCase(),
+    homeLeague: home.league,
+    awayLeague: away.league,
     game: Math.round(estimate.homeGameWinProbability * 100),
     bo5: Math.round(estimate.homeSeriesWinProbability * 100),
   }

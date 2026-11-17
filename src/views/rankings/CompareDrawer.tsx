@@ -2,10 +2,8 @@ import type { ReactNode } from 'react'
 import { Plus, X } from 'lucide-react'
 import { DataState } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { Badge } from '../../components/ui/badge'
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from '../../components/ui/sheet'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
-import type { PublicTeamStanding as RankingSummaryStanding } from '../../domains/rankings/types'
 import type { RegionStrength } from '../../domains/rankings/read'
 
 export type CompareColumn = {
@@ -13,6 +11,8 @@ export type CompareColumn = {
   name: string
   sub?: string
   badge?: ReactNode
+  /** Chart colour for this entity, from its league. */
+  color?: string
 }
 
 export type CompareRow<E> = {
@@ -72,61 +72,7 @@ export function CompareDrawer<E>({
             <>
               {before}
               <div className="px-5 py-4 max-sm:px-3.5">
-                <Table
-                  containerClassName="max-w-full rounded-md border border-line [contain:paint] [overscroll-behavior-x:contain]"
-                  className="compare-table w-full border-collapse"
-                  data-compare-count={columns.length}
-                >
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead aria-label="Metric" />
-                      {columns.map((column) => (
-                        <TableHead key={column.id}>
-                          <div className="compare-entity-heading">
-                            <span className="inline-flex min-w-0 items-center gap-2 font-semibold text-text">
-                              {column.badge}
-                              <b>{column.name}</b>
-                            </span>
-                            <div className="flex min-w-0 items-center justify-between gap-1">
-                              {column.sub ? <small className="text-xs text-muted">{column.sub}</small> : null}
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-sm"
-                                className="ml-auto rounded-md"
-                                onClick={() => onRemove(column.id)}
-                                aria-label={`Remove ${column.name} from comparison`}
-                                title={`Remove ${column.name}`}
-                              >
-                                <X size={14} aria-hidden="true" />
-                              </Button>
-                            </div>
-                          </div>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row) => {
-                      const best = bestIds(entities, columns, row)
-                      return (
-                        <TableRow key={row.key}>
-                          <TableHead scope="row">{row.label}</TableHead>
-                          {entities.map((entity, index) => (
-                            <TableCell key={columns[index].id} className={best.has(columns[index].id) ? 'best' : ''}>
-                              {row.cell(entity)}
-                              {best.has(columns[index].id) ? (
-                                <Badge variant="secondary" className="ml-2 px-1.5 text-xs leading-[1.2]" aria-label={`Best ${row.label.toLowerCase()} value`}>
-                                  Best
-                                </Badge>
-                              ) : null}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+                <CompareTable entities={entities} columns={columns} rows={rows} onRemove={onRemove} />
               </div>
               {after ? <div className="grid min-w-0 gap-4 px-5 pt-4 pb-6 max-sm:p-3.5">{after}</div> : null}
             </>
@@ -141,8 +87,75 @@ export function RegionCompareDrawer(props: CompareDrawerProps<RegionStrength>) {
   return <CompareDrawer {...props} />
 }
 
-export function TeamCompareDrawer(props: CompareDrawerProps<RankingSummaryStanding>) {
-  return <CompareDrawer {...props} />
+/** One column per entity and one row per measure. A unique best value carries a Best mark. */
+export function CompareTable<E>({
+  entities,
+  columns,
+  rows,
+  onRemove,
+}: {
+  entities: E[]
+  columns: CompareColumn[]
+  rows: CompareRow<E>[]
+  onRemove: (id: string) => void
+}) {
+  return (
+    <Table
+      containerClassName="max-w-full rounded-md border border-line [contain:paint] [overscroll-behavior-x:contain]"
+      className="compare-table w-full border-collapse"
+      data-compare-count={columns.length}
+    >
+      <TableHeader>
+        <TableRow>
+          <TableHead aria-label="Metric" />
+          {columns.map((column) => (
+            <TableHead key={column.id}>
+              <div className="compare-entity-heading">
+                <span className="inline-flex min-w-0 items-center gap-2 font-semibold text-text">
+                  {column.badge}
+                  <b>{column.name}</b>
+                </span>
+                <div className="flex min-w-0 items-center justify-between gap-1">
+                  {column.sub ? <small className="text-xs text-muted">{column.sub}</small> : null}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="ml-auto rounded-md"
+                    onClick={() => onRemove(column.id)}
+                    aria-label={`Remove ${column.name} from comparison`}
+                    title={`Remove ${column.name}`}
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row) => {
+          const best = bestIds(entities, columns, row)
+          return (
+            <TableRow key={row.key}>
+              <TableHead scope="row">{row.label}</TableHead>
+              {entities.map((entity, index) => (
+                <TableCell key={columns[index].id} className={best.has(columns[index].id) ? 'best' : ''}>
+                  {row.cell(entity)}
+                  {best.has(columns[index].id) ? (
+                    <span className="ml-2 text-xs font-semibold text-up">
+                      Best<span className="sr-only"> {row.label.toLowerCase()} value</span>
+                    </span>
+                  ) : null}
+                </TableCell>
+              ))}
+            </TableRow>
+          )
+        })}
+      </TableBody>
+    </Table>
+  )
 }
 
 function bestIds<E>(entities: E[], columns: CompareColumn[], row: CompareRow<E>) {
