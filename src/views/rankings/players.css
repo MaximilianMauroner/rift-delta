@@ -1,0 +1,85 @@
+.r8-players {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  padding: 16px var(--page-x) 0;
+}
+.r8-player-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.r8-player-filters label, .r8-player-profile-picker { display: grid; min-width: 0; gap: 6px; color: var(--muted); font-size: 12px; }
+.r8-player-search { flex: 1 1 220px; }
+.r8-player-filters [data-slot="select"] { width: 100%; }
+.r8-player-layout { display: grid; min-width: 0; align-items: start; gap: 16px; }
+.r8-player-list { min-width: 0; }
+.r8-player-table { width: 100%; table-layout: fixed; font-size: 14px; }
+.r8-player-table th { background: var(--surface); }
+.r8-player-table :is(th, td) { padding: 10px 8px; }
+.r8-player-table .player-col-rank { width: 44px; text-align: center; color: var(--text); }
+.r8-player-table .player-col-name { width: auto; white-space: normal; }
+.r8-player-table .player-col-score { width: 164px; }
+.r8-player-identity { display: flex; align-items: center; gap: 10px; }
+.r8-player-identity > div { display: grid; min-width: 0; gap: 3px; }
+.r8-player-identity button { width: fit-content; min-height: 20px; text-align: left; font-weight: 600; color: var(--text); overflow-wrap: anywhere; cursor: pointer; }
+.r8-player-affiliation { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; color: var(--muted); font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
+.r8-player-row-details { margin: 0 0 0 38px; color: var(--muted); font-size: 12px; }
+.r8-player-row-details summary { min-height: 20px; cursor: pointer; }
+.r8-player-row-details dl { display: grid; gap: 5px; padding-block: 8px; }
+.r8-player-row-details dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; }
+.r8-player-row-details dd { color: var(--text); }
+.r8-player-row-details a { display: flex; align-items: center; gap: 5px; min-height: 32px; }
+.r8-player-table .power-lane { display: inline-block; width: 80px; margin-left: 12px; vertical-align: middle; }
+.r8-player-table .player-score-figure { font-size: 16px; grid-template-columns: auto; }
+.r8-player-table .player-score-figure > span { display: contents; }
+.r8-player-table .player-score-evidence { font-size: 12px; }
+.r8-player-table tr[data-selected="true"] [data-player-profile] { text-decoration: underline; text-underline-offset: 3px; }
+.r8-player-profile { min-width: 0; overflow: hidden; }
+.r8-player-profile-heading { display: flex; align-items: center; gap: 10px; padding: 14px; border-bottom: 1px solid var(--line); }
+.r8-player-profile-heading > div:first-of-type { flex: 1; min-width: 0; }
+.r8-player-profile-heading h2 { color: var(--text); font-size: 20px; font-weight: 600; overflow-wrap: anywhere; }
+.r8-player-profile-heading > div > span { display: flex; flex-wrap: wrap; gap: 4px 8px; color: var(--muted); font-size: 12px; }
+.r8-player-profile-score { display: grid; justify-items: end; gap: 2px; font-variant-numeric: tabular-nums; }
+.r8-player-profile-score b { color: var(--text); font-size: 24px; font-weight: 600; }
+.r8-player-profile-score small { color: var(--muted); font-size: 12px; }
+.r8-player-profile-nav { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.r8-player-profile-nav > :first-child { margin-right: auto; }
+.r8-player-profile-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; font-variant-numeric: tabular-nums; }
+.r8-player-profile-facts dt { color: var(--muted); font-size: 12px; }
+.r8-player-profile-facts dd { color: var(--text); font-size: 16px; font-weight: 600; }
+.r8-player-profile-links { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; }
+.r8-players a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.r8-players :is(button, a, summary):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: var(--radius); }
+.r8-players .players-count { margin: 0; }
+.r8-players .player-score-key { display: inline; color: var(--muted); }
+@media (min-width: 1280px) {
+  .r8-player-profile-back { display: none; }
+  .r8-player-layout { grid-template-columns: minmax(0, 1.35fr) minmax(340px, 1fr); }
+  .r8-player-profile { position: sticky; top: 16px; max-height: calc(100dvh - 32px); overflow-y: auto; scrollbar-gutter: stable; }
+}
+@media (max-width: 1279px) {
+  .r8-players:not([data-profile-open="true"]) .r8-player-profile { display: none; }
+  .r8-players[data-profile-open="true"] > :not(.r8-player-layout),
+  .r8-players[data-profile-open="true"] .r8-player-list { display: none; }
+}
+@media (max-width: 639px) {
+  .r8-players { padding-top: 12px; }
+  .r8-player-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  .r8-player-search { grid-column: 1 / -1; grid-row: 2; }
+  .r8-player-table, .r8-player-table :is(thead, tbody) { display: block; }
+  .r8-player-table thead tr { display: grid; grid-template-columns: 32px minmax(0, 1fr) 96px; }
+  .r8-player-table tbody tr { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: center; padding-block: 4px; }
+  .r8-player-table .player-col-rank { width: 32px; padding-inline: 4px; }
+  .r8-player-table .player-col-score { width: 96px; }
+  .r8-player-table tbody .player-col-score { display: flex; grid-column: 1 / -1; align-items: center; gap: 12px; width: auto; padding-top: 0; }
+  .r8-player-table .power-lane { flex: 1; width: auto; margin: 0; }
+  .r8-player-table .player-score-unranked { text-align: left; }
+  .r8-player-identity { gap: 6px; }
+  .r8-player-identity [data-slot="team-mark"] { width: 24px; height: 24px; }
+  .r8-player-row-details { margin-left: 0; }
+  .r8-player-profile-heading { flex-wrap: wrap; padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .r8-players * { animation: none; transition: none; }
+}
+
+.r8-player-profile ol > li { grid-template-columns: 44px minmax(0, 1fr); gap: 8px; }
+.r8-player-profile ol > li > span:first-child > span:first-child { font-size: 16px; }
+.r8-player-profile ol > li > span:first-child { padding-top: 2px; }

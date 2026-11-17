@@ -39,6 +39,7 @@ import { CompareDock, type CompareDockEntity } from './CompareDock'
 import { RegionCompareDrawer } from './CompareDrawer'
 import { ComparePage } from './ComparePage'
 import { MatchesView, PlayersView, preloadComparison, preloadView, RegionCompareAnalysis, RegionsView } from './routeLoading'
+import { playerLeague } from './playerData'
 import { ScopeBar } from './ScopeBar'
 import { TeamsView } from './TeamsView'
 import type { PlayerLoadState } from './types'
@@ -404,7 +405,7 @@ export function RankingRoute() {
         searchRef={searchRef}
         onIntent={prepareMode}
         leagues={mode === 'players'
-          ? activePlayers.flatMap((player) => player.region ? [player.region] : [])
+          ? activePlayers.map(playerLeague)
           : universe.regionOptions}
         leagueEvents={mode === 'matches' && matchHistoryState.status === 'ready' ? matchHistoryState.data.catalog.series : undefined}
       />
