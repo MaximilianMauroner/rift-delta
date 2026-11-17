@@ -204,9 +204,9 @@ export function BoardList({
                     title={`Open ${team.team}`}
                   >
                     <TeamMark team={team.team} code={team.code} className="team-mark size-8 border-0 bg-transparent" />
-                    <span className="ent grid min-w-0 gap-px">
+                    <span className="ent grid min-w-0 grid-cols-[minmax(0,1fr)] gap-px">
                       <b className="truncate font-semibold text-text">{team.team}</b>
-                      <span className="league-label">
+                      <span className="league-label whitespace-normal!">
                         <span className="league-dot" aria-hidden="true" />
                         {excluded ? `${team.league}, ${eligibilitySummary(team)}` : team.league}
                       </span>
