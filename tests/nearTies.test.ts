@@ -30,9 +30,9 @@ test('headline calls a coin-flip lead close to level', () => {
   assert.match(headline ?? '', /^Hanwha Life Esports lead, but Bilibili Gaming are close to level: 5\d% per game\.$/)
 })
 
-test('headline states a clear lead as a points gap and game edge', () => {
+test('headline states a clear lead as a Power gap and game edge', () => {
   const headline = boardHeadline([standing('Alpha', 2400), standing('Beta', 2200)], model)
-  assert.match(headline ?? '', /^Alpha lead Beta by 200 points, a \d\d% game edge\.$/)
+  assert.match(headline ?? '', /^Alpha lead Beta by 200 Power, a \d\d% game edge\.$/)
 })
 
 test('headline handles scopes with one or no ranked team', () => {

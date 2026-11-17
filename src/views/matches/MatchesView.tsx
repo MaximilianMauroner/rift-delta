@@ -11,16 +11,17 @@ import { Input } from '../../components/ui/input'
 import { PageShell, StatCell, StatRibbon } from '../../components/ui/page-shell'
 import { Pager } from '../../components/ui/pager'
 import { canUseBackgroundPrefetch, scheduleIdleWork } from '../../browser/rankings/prefetch'
-import { Panel, PanelBody, PanelFooter, PanelHeader } from '../../components/ui/panel'
+import { Panel, PanelFooter } from '../../components/ui/panel'
 import { Select } from '../../components/ui/select'
 import { LoadingState } from '../../components/ui/loading'
 import { currentHashQuery, hashInt, hashParam, useHashSync } from '../../browser/navigation'
 import { compatibleMatchEvents, matchEventFilterLabels } from '../../domains/rankings/read'
 import { groupedMatchEvents } from '../../domains/rankings/read'
 import { SeriesCards, SeriesTable, type MatchSeries } from './SeriesLedger'
+import './matches.css'
 
 const PAGE_SIZES = [25, 50] as const
-const DESKTOP_LEDGER_QUERY = '(min-width: 48rem)'
+const DESKTOP_LEDGER_QUERY = '(min-width: 64rem)'
 
 function subscribeToLedgerLayout(onChange: () => void) {
   const media = window.matchMedia(DESKTOP_LEDGER_QUERY)
@@ -188,41 +189,47 @@ export function MatchesView({ hashQuery, state, onRequestPages, searchRef, archi
   return (
     <PageShell
       aria-label="Match history results"
+      className="matches-view"
       ribbon={
-        <StatRibbon label="Match ledger summary" className="stat-ribbon-compact">
+        <StatRibbon label="Match ledger summary" className="matches-summary">
           <StatCell icon={<History aria-hidden="true" />} label="Series" value={formatNumber(filtered.length)} detail={`${formatNumber(filteredGameCount)} games`} />
           <StatCell icon={<Globe2 aria-hidden="true" />} label="Leagues" value={formatNumber(filteredLeagueCount)} />
           <StatCell icon={<Trophy aria-hidden="true" />} label="Events" value={formatNumber(filteredEventCount)} />
         </StatRibbon>
       }
     >
-      <Panel className="[&_h2]:scroll-mt-[calc(var(--app-nav-h)+12px)]">
-        <PanelHeader
-          title="Series ledger"
-          titleId={headingId}
-          description={archiveYears.length > 1 && onYearChange ? 'The season and period above set the scope. Archive year shows complete series played in that calendar year.' : undefined}
-        />
-        <PanelBody className="match-filter-grid grid grid-cols-2 items-end gap-2 lg:grid-cols-[minmax(220px,1fr)_180px_220px_auto]">
-          {archiveYears.length > 1 && onYearChange ? <label className="grid min-w-0 gap-1"><span className="text-xs text-muted">Archive year</span><Select aria-label="Match history year" className="w-full max-w-none" value={archiveYear ?? 'All'} onChange={(event) => onYearChange(event.target.value)}><option value="All">All years</option>{archiveYears.map((year) => <option key={year} value={year}>{year}</option>)}</Select></label> : null}
-          <label className="relative min-w-0">
-            <span className="sr-only">Find a team</span><Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+      <h2 id={headingId} className="matches-heading">Series ledger</h2>
+      <div className="matches-filters">
+        {archiveYears.length > 1 && onYearChange ? <label className="grid min-w-0 gap-1"><span className="text-xs text-muted">Archive year</span><Select aria-label="Match history year" className="w-full max-w-none" value={archiveYear ?? 'All'} onChange={(event) => onYearChange(event.target.value)}><option value="All">All years</option>{archiveYears.map((year) => <option key={year} value={year}>{year}</option>)}</Select></label> : null}
+        <label className="matches-search grid min-w-0 gap-1">
+          <span className="text-xs text-muted">Find a team</span>
+          <span className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
             <Input ref={searchRef} type="search" aria-keyshortcuts="/" className="w-full pl-9" value={view.search} onChange={(event) => update({ search: event.target.value })} placeholder="Find a team" />
-          </label>
-          <label data-league-filter className="grid min-w-0 gap-1"><span className="text-xs text-muted">League</span><Select className="w-full max-w-none" value={view.league} onChange={(event) => { const league = event.target.value; update({ league, event: compatibleMatchEvents(refs, league).includes(view.event) ? view.event : 'All' }) }}><option>All</option>{leagues.map((league) => <option key={league}>{league}</option>)}</Select></label>
-          <label className="grid min-w-0 gap-1">
-            <span className="text-xs text-muted">Event</span>
-            <Select data-wrap className="w-full min-w-0 max-w-none" value={view.event} onChange={(event) => update({ event: event.target.value })}>
-              <option value="All">All</option>
-              {eventGroups.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.events.map((event) => <option key={event} value={event}>{eventLabels.get(event)}</option>)}
-                </optgroup>
-              ))}
-            </Select>
-          </label>
-          {filtersActive ? <Button variant="ghost" onClick={clearFilters}>Clear filters</Button> : null}
-        </PanelBody>
+          </span>
+        </label>
+        <label data-league-filter className="grid min-w-0 gap-1"><span className="text-xs text-muted">League</span><Select className="w-full max-w-none" value={view.league} onChange={(event) => { const league = event.target.value; update({ league, event: compatibleMatchEvents(refs, league).includes(view.event) ? view.event : 'All' }) }}><option>All</option>{leagues.map((league) => <option key={league}>{league}</option>)}</Select></label>
+        <label className="matches-event-filter grid min-w-0 gap-1">
+          <span className="text-xs text-muted">Event</span>
+          <Select data-wrap className="w-full min-w-0 max-w-none" value={view.event} onChange={(event) => update({ event: event.target.value })}>
+            <option value="All">All</option>
+            {eventGroups.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.events.map((event) => <option key={event} value={event}>{eventLabels.get(event)}</option>)}
+              </optgroup>
+            ))}
+          </Select>
+        </label>
+        {filtersActive ? <Button className="matches-clear" variant="ghost" onClick={clearFilters}>Clear filters</Button> : null}
+        {archiveYears.length > 1 && onYearChange ? (
+          <details className="matches-archive-note">
+            <summary>Archive year and season</summary>
+            <p>The season and period above set the scope. Archive year shows complete series played in that calendar year.</p>
+          </details>
+        ) : null}
+      </div>
 
+      <Panel className="matches-ledger" aria-labelledby={headingId}>
         <div ref={resultsRef} style={pageLoading && resultsHeight ? { minHeight: resultsHeight } : undefined}>
         {visibleRefs.length === 0 ? (
           filtersActive ? (

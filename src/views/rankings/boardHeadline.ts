@@ -18,5 +18,5 @@ export function boardHeadline(ranked: readonly RankingSummaryStanding[], model?:
   const gap = Math.round(leader.rating - runnerUp.rating)
   return leaderChance / 100 < NEAR_TIE_WIN_PROBABILITY
     ? `${leader.team} lead, but ${runnerUp.team} are close to level: ${leaderChance}% per game.`
-    : `${leader.team} lead ${runnerUp.team} by ${gap} points, a ${leaderChance}% game edge.`
+    : `${leader.team} lead ${runnerUp.team} by ${gap} Power, a ${leaderChance}% game edge.`
 }

@@ -55,6 +55,21 @@ export function useTeamDetailAddress(
     setModel((current) => ({ ...current, detail: { kind: 'closed' } }))
   }
 
+  /** Shows another team in the same history entry, as Previous and Next do. */
+  function replace(value: string) {
+    if (detail.kind !== 'open') return
+    const { origin } = detail
+    writeNavigationHash(hashWithParam('teamDetail', value), 'replace')
+    setModel((current) => ({ ...current, detail: { kind: 'open', value, origin } }))
+  }
+
+  /** Closes the team in the same history entry, for a search that must show the board. */
+  function dismiss() {
+    if (detail.kind !== 'open') return
+    writeNavigationHash(hashWithParam('teamDetail', null), 'replace')
+    setModel((current) => ({ ...current, detail: { kind: 'closed' } }))
+  }
+
   function dismissMissing() {
     setModel((current) => ({ ...current, detail: { kind: 'closed' } }))
   }
@@ -63,7 +78,9 @@ export function useTeamDetailAddress(
     item: detail.kind === 'open' ? scope.get(detail.value) : undefined,
     missing: detail.kind === 'missing',
     open,
+    replace,
     close,
+    dismiss,
     dismissMissing,
   }
 }

@@ -1,13 +1,10 @@
 import { useMemo } from 'react'
 import { RegionBadge } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { Panel, PanelFooter, PanelHeader } from '../../components/ui/panel'
-import type { RankingTierLabel } from '../../domains/rankings/read'
 import { displayRegionPowerScore, NEAR_TIE_WIN_PROBABILITY, type NearTiePosition, type RegionStrength } from '../../domains/rankings/read'
 import type { RankingSummaryStanding } from '../../domains/rankings/types'
 import { formatNumber, formatRating } from '../../shared/display'
 import { cn } from '../../shared/utils'
-import { clampNumber, teamScoreFor, teamScoreTitle } from './boardFormat'
 
 export function ChipGroup<T extends string>({
   label,
@@ -57,32 +54,6 @@ export function NearTieMark({ position }: { position: NearTiePosition }) {
   )
 }
 
-export function TeamScoreCell({
-  team,
-  min,
-  max,
-  exactTournament = false,
-}: {
-  team: RankingSummaryStanding
-  min: number
-  max: number
-  exactTournament?: boolean
-}) {
-  const score = teamScoreFor(team)
-  if (typeof score !== 'number') {
-    return <span className="score-unavailable text-sm font-semibold text-muted" aria-hidden="true">—</span>
-  }
-  const share = max > min ? clampNumber(((score - min) / (max - min)) * 100, 4, 100) : 100
-  return (
-    <span className="team-score-stack flex min-w-0 items-center gap-2.5" title={exactTournament ? `Tournament endpoint Power ${formatRating(score)}` : teamScoreTitle(team)}>
-      <span className="team-score-value min-w-[3.4em] text-right text-base font-bold text-text tabular-nums">{formatRating(score)}</span>
-      <span className="score-track relative h-1.5 min-w-10 flex-1 overflow-hidden rounded-full bg-line" aria-hidden="true">
-        <span className="absolute inset-y-0 left-0 rounded-full bg-muted" style={{ width: `${share}%` }} />
-      </span>
-    </span>
-  )
-}
-
 export function TeamBoardRank({
   team,
   rank,
@@ -110,38 +81,15 @@ export function TeamBoardRank({
   )
 }
 
-const TIER_BADGE_COLOR: Record<RankingTierLabel, string> = {
-  S: '[--tier-color:var(--tier-s)]',
-  A: '[--tier-color:var(--tier-a)]',
-  B: '[--tier-color:var(--tier-b)]',
-  C: '[--tier-color:var(--tier-c)]',
-}
-
-export function TierBadge({ tier }: { tier: RankingTierLabel }) {
-  return (
-    <span
-      className={cn(
-        'tier-badge inline-flex h-6 min-w-[26px] items-center justify-center rounded-md border border-[color-mix(in_srgb,var(--tier-color)_40%,var(--line))] bg-[color-mix(in_srgb,var(--tier-color)_11%,transparent)] px-2 text-sm font-bold leading-none text-[var(--tier-color)]',
-        TIER_BADGE_COLOR[tier],
-      )}
-      role="img"
-      title={`${tier}-tier`}
-      aria-label={`${tier}-tier`}
-    >
-      {tier}
-    </span>
-  )
-}
-
 export function RegionalStrengthTeaser({ regions, href }: { regions: RegionStrength[]; href?: string }) {
   const ranked = useMemo(() => [...regions].sort((a, b) => displayRegionPowerScore(b) - displayRegionPowerScore(a)), [regions])
   if (ranked.length === 0) return null
   return (
-    <Panel aria-label="Region power scores">
-      <PanelHeader
-        title="Region power"
-        actions={href ? <a className="inline-flex min-h-6 min-w-6 shrink-0 items-center text-xs font-semibold underline" href={href}>Details</a> : undefined}
-      />
+    <details className="board-disclosure" aria-label="Region power scores">
+      <summary>
+        <span className="text-base font-semibold">Region power</span>
+        <span className="text-xs text-muted">{ranked[0].region} leads at {formatRating(displayRegionPowerScore(ranked[0]))}</span>
+      </summary>
       <div className="grid grid-cols-1 gap-px bg-line">
         {ranked.map((region) => (
           <div className="flex min-w-0 items-center gap-2.5 bg-surface px-4 py-2 [&_.region-badge]:h-5 [&_.region-badge]:w-[22px]" key={region.region}>
@@ -151,10 +99,11 @@ export function RegionalStrengthTeaser({ regions, href }: { regions: RegionStren
           </div>
         ))}
       </div>
-      <PanelFooter className="text-xs leading-[1.35] text-muted">
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line px-4 py-3 text-xs leading-[1.35] text-muted">
         Average of each region’s top three eligible flagship teams.
-      </PanelFooter>
-    </Panel>
+        {href ? <a className="inline-flex min-h-6 items-center font-semibold text-focus underline" href={href}>Open Regions</a> : null}
+      </p>
+    </details>
   )
 }
 

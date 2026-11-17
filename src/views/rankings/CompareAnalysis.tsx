@@ -8,6 +8,7 @@ import {
   TEAM_PROFILE_METRICS,
   type CompareProfileMetric,
   regionKey,
+  compareSeriesColors,
 } from './compareAnalysisData'
 import { LineChart, type ChartSeries } from '../../components/LineChart'
 import { TeamHistoryLineChart } from './TeamHistoryLineChart'
@@ -22,7 +23,6 @@ const compareChartClassName = 'max-w-full min-w-0 min-h-[360px] overflow-hidden 
 const compareChartHeadClassName = 'flex flex-wrap items-baseline justify-between gap-x-3.5 gap-y-2 px-4 pt-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-text'
 const compareChartMetaClassName = 'text-xs text-muted tabular-nums'
 const compareChartEmptyClassName = 'px-4 py-5 text-muted'
-const COMPARE_SERIES_COLORS = ['var(--league-lck)', 'var(--league-lpl)', 'var(--league-lec)', 'var(--league-lcs)']
 type TeamHistoryLike = TeamHistoryDirectory | PublicTeamHistoryShard
 
 type RegionTrendEvent = {
@@ -124,7 +124,7 @@ export function CompareProfileChart<E>({
               <div className="grid min-w-0 gap-2">
                 {entities.map((entity, index) => {
                   const value = metric.value(entity)
-                  const color = COMPARE_SERIES_COLORS[index % COMPARE_SERIES_COLORS.length]
+                  const color = columns[index].color ?? 'var(--league-other)'
                   const percent = profilePercent(value, values, metric.better)
                   const isBest = best.has(columns[index].id)
                   return (
@@ -190,9 +190,10 @@ function RegionTrendChart({
   const trend = useMemo(() => {
     if (regionHistory) return regionHistoryTrend(regions, regionHistory)
     if (!history) return []
+    const colors = compareSeriesColors(regions.map((region) => region.region))
     return regions
       .map((region, index): { series: ChartSeries; events: RegionTrendEvent[] } | null => {
-        const color = COMPARE_SERIES_COLORS[index % COMPARE_SERIES_COLORS.length]
+        const color = colors[index]
         const teams = selectRegionTrendTeams(region, standings, history)
         const points = aggregateRegionTrend(teams, history)
         if (points.length < 2) return null
@@ -264,11 +265,12 @@ function regionHistoryFallbackNote(state: RegionHistoryScopeState) {
 }
 
 function regionHistoryTrend(regions: RegionStrength[], history: PublicRegionHistoryScope) {
+  const colors = compareSeriesColors(regions.map((region) => region.region))
   return regions
     .map((region, index): { series: ChartSeries; events: RegionTrendEvent[] } | null => {
       const regionSeries = history.regionPowerSeries[region.region]
       if (!regionSeries || regionSeries.points.length < 2) return null
-      const color = COMPARE_SERIES_COLORS[index % COMPARE_SERIES_COLORS.length]
+      const color = colors[index]
       return {
         series: {
           id: regionKey(region),
@@ -452,6 +454,7 @@ function TeamCompareChart({
   const history = historyState.status === 'ready' ? historyState.data : undefined
   const series = useMemo<ChartSeries[]>(() => {
     if (!history) return []
+    const colors = compareSeriesColors(teams.map((team) => team.league))
     return teams
       .map((team, index): ChartSeries | null => {
         const teamSeries = history.series[teamKey(team)]
@@ -461,7 +464,7 @@ function TeamCompareChart({
         return {
           id: teamKey(team),
           label: team.code ?? team.team,
-          color: COMPARE_SERIES_COLORS[index % COMPARE_SERIES_COLORS.length],
+          color: colors[index],
           points,
         }
       })

@@ -36,13 +36,13 @@ const msi: MatchRecord = { id: 'MSI-Euro 01-Amer 01', sourceProvider: 'oracles-e
 const board = (params: string) => `#rankings?scope=all&eligibility=all${params ? `&${params}` : ''}`
 
 async function boardRows(page: Page) {
-  return page.locator('table tbody tr').evaluateAll((rows) => rows.map((row) => row.querySelector('td:nth-child(2)')?.textContent ?? ''))
+  return page.locator('table tbody tr[data-team-key]').evaluateAll((rows) => rows.map((row) => row.querySelector('td:nth-child(2)')?.textContent ?? ''))
 }
 
 /** Waits until the board shows `count` rows whose team cell contains `prefix`, then reports what it shows. */
 async function expectBoard(page: Page, count: number, prefix: string, step: string) {
   await page.waitForFunction(({ count, prefix }) => {
-    const rows = [...document.querySelectorAll('table tbody tr td:nth-child(2)')].map((cell) => cell.textContent ?? '')
+    const rows = [...document.querySelectorAll('table tbody tr[data-team-key] td:nth-child(2)')].map((cell) => cell.textContent ?? '')
     return rows.length === count && rows.every((row) => row.includes(prefix))
   }, { count, prefix }, { timeout: 5_000 }).catch(() => undefined)
   const rows = await boardRows(page)
@@ -130,6 +130,14 @@ test('the Rankings board follows its address after load: typed and linked hashes
     await expectBoard(page, 15, '', 'size changed in the hash')
     await setHash(board('size=15&page=2'))
     await expectBoard(page, 5, '', 'page changed in the hash')
+    // The field holds every page, so a team opened there can be off this page.
+    // Closing it returns focus to its field mark, not to the page body.
+    const strongest = page.locator('.power-field button[tabindex="0"]')
+    const strongestKey = await strongest.getAttribute('data-field-key')
+    assert.equal(await page.locator(`table tbody tr[data-team-key="${strongestKey}"]`).count(), 0, 'the strongest team is on page 1')
+    await strongest.click()
+    await page.getByRole('region', { name: 'Team details', exact: true }).getByRole('button', { name: 'Close', exact: true }).click()
+    await page.waitForFunction((key) => document.activeElement?.getAttribute('data-field-key') === key, strongestKey, { timeout: 2_000 })
     // App owns the search and the board owns the region: both come from the same address.
     await setHash(board('team=Amer+0&region=LCS'))
     await expectBoard(page, 9, 'Amer 0', 'search and region changed together')
@@ -194,12 +202,12 @@ test('the Rankings board follows its address after load: typed and linked hashes
     holdManifest = true
     await page.reload({ waitUntil: 'domcontentloaded' })
     await page.getByRole('heading', { name: 'Team Power Index', exact: true }).waitFor()
-    assert.equal(await page.locator('table tbody tr').count(), 0)
+    assert.equal(await page.locator('table tbody tr[data-team-key]').count(), 0)
     holdManifest = false
     pendingManifest.splice(0).forEach((respond) => respond())
     await expectBoard(page, 20, '', 'board after the delayed manifest')
 
-    const rows = page.locator('table tbody tr')
+    const rows = page.locator('table tbody tr[data-team-key]')
     const compare = rows.locator('input[type="checkbox"]')
     const comparisonNames = await rows.locator('td:nth-child(2) b').allTextContents()
     const comparisonCodes = comparisonNames.map((name) => teams[name].code ?? name)
@@ -207,19 +215,35 @@ test('the Rankings board follows its address after load: typed and linked hashes
     await compare.nth(5).check()
     await compare.nth(6).check()
     await compare.nth(7).check()
+    const beforeComparison = await page.evaluate(() => ({ hash: location.hash, entries: history.length }))
     await page.getByRole('button', { name: 'Open comparison', exact: true }).click()
-    const comparison = page.getByRole('dialog', { name: 'Team comparison', exact: true })
-    assert.equal(await comparison.count(), 1, 'Comparison opens its shell without a full-screen module loader')
+    const comparison = page.getByRole('region', { name: 'Team comparison', exact: true })
+    assert.equal(await comparison.count(), 1, 'Comparison opens its page without a full-screen module loader')
     const trend = comparison.getByRole('region', { name: 'Compared team power score trend', exact: true })
     await trend.getByRole('application', { name: `Power score over time for ${comparisonCodes.slice(5, 8).join(', ')}`, exact: true }).waitFor()
+    const comparedKeys = () => page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).getAll('compare'))
+    const pickedKeys = await comparedKeys()
+    assert.equal(pickedKeys.length, 3, 'The comparison address holds every picked team')
+    assert.equal(await page.evaluate(() => history.length), beforeComparison.entries + 1, 'Opening the comparison adds one history entry')
+    await page.reload()
+    await trend.getByRole('application', { name: `Power score over time for ${comparisonCodes.slice(5, 8).join(', ')}`, exact: true }).waitFor()
+    assert.deepEqual(await comparedKeys(), pickedKeys, 'Reload restores the same comparison')
     await comparison.getByRole('button', { name: `Remove ${comparisonNames[5]} from comparison`, exact: true }).click()
     await trend.getByRole('application', { name: `Power score over time for ${comparisonCodes.slice(6, 8).join(', ')}`, exact: true }).waitFor()
-    await comparison.getByRole('button', { name: 'Close', exact: true }).click()
+    assert.deepEqual(await comparedKeys(), pickedKeys.slice(1), 'Removing a team updates the address in place')
+    await page.goBack()
+    await expectBoard(page, 20, '', 'Back from the comparison returns to the board')
+    assert.equal(await page.evaluate(() => location.hash), beforeComparison.hash)
+    assert.equal(await comparison.count(), 0)
+    await page.goForward()
+    await comparison.waitFor()
+    await comparison.getByRole('button', { name: 'Back to rankings', exact: true }).click()
+    await expectBoard(page, 20, '', 'Back to rankings closes the comparison')
     await page.getByRole('region', { name: 'Compare teams: 2 selected', exact: true }).getByRole('button', { name: 'Clear', exact: true }).click()
 
     // The closed Players panel must not compete with the selected team's chart.
     await rows.first().getByRole('button').first().click()
-    const detail = page.getByRole('dialog')
+    const detail = page.getByRole('region', { name: 'Team details', exact: true })
     await detail.locator('.recharts-surface').first().waitFor()
     assert.equal(dataRequests.includes('/data/entities/players.json'), false)
     const playerResponse = page.waitForResponse((response) => new URL(response.url()).pathname === '/data/entities/players.json')
@@ -232,7 +256,7 @@ test('the Rankings board follows its address after load: typed and linked hashes
     await compare.nth(9).check()
     await page.getByRole('button', { name: 'Open comparison', exact: true }).click()
     await trend.getByRole('application', { name: `Power score over time for ${comparisonCodes.slice(8, 10).join(', ')}`, exact: true }).waitFor()
-    await comparison.getByRole('button', { name: 'Close', exact: true }).click()
+    await comparison.getByRole('button', { name: 'Back to rankings', exact: true }).click()
     await setHash(board('region=LEC'))
     await expectBoard(page, 10, 'Euro', 'sidebar starts with the addressed region')
     const sidebar = page.getByRole('complementary', { name: 'Site sidebar' })
@@ -254,7 +278,7 @@ test('the Rankings board follows its address after load: typed and linked hashes
     await page.setViewportSize({ width: 1280, height: 900 })
     await leagues.locator('a[aria-current="true"]').waitFor()
     assert.equal(await leagues.getByRole('link', { name: 'LEC', exact: true }).getAttribute('aria-current'), 'true')
-    assert.ok(await page.locator('table tbody tr td:nth-child(2) b').first().evaluate((name) => name.getBoundingClientRect().width > 40), 'team names stay visible beside the desktop sidebar')
+    assert.ok(await page.locator('table tbody tr[data-team-key] td:nth-child(2) b').first().evaluate((name) => name.getBoundingClientRect().width > 40), 'team names stay visible beside the desktop sidebar')
 
     await page.setViewportSize({ width: 390, height: 740 })
     assert.equal(await sidebar.isVisible(), false)

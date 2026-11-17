@@ -4,6 +4,7 @@ import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { WhatChanged } from '../src/views/rankings/WhatChanged.tsx'
+import { TeamDossier } from '../src/views/rankings/TeamDossier.tsx'
 import { createRankingBoard, type RankingBoardSelection, type RankingEvidence } from '../src/domains/rankings/internal/queries/rankingBoard.ts'
 import type { RankingSummaryStanding } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import type { PublicTournamentMovementIndexEntry, PublicTournamentMovementShard, PublicTournamentMovementTeam } from '../src/domains/rankings/internal/published/schema.ts'
@@ -18,6 +19,21 @@ test('What changed names the upset event like the match ledger, not by its sourc
 
   assert.match(html, /LPL · 2026 · Regional Finals/)
   assert.doesNotMatch(html, /LPL\/2026 Season/)
+})
+
+test('the dossier explains the neighbour that qualifies as a near tie', () => {
+  const standings = [
+    standing('Alpha', { rank: 1, rating: 2200, form: [] }),
+    standing('Beta', { rank: 2, rating: 2000, form: [] }),
+    standing('Gamma', { rank: 3, rating: 1990, form: [] }),
+  ]
+  const html = renderToStaticMarkup(createElement(TeamDossier, {
+    team: standings[1], standings, rankedStandings: standings,
+    historyState: { status: 'idle' }, players: [], playerLoadState: { status: 'idle' },
+    seeded: true, events: [], matchesHref: '#matches', onClose: () => {}, onShow: () => {},
+  }))
+
+  assert.match(html, /<dt>Near tie<\/dt><dd><b>With Gamma<\/b><small>10 ahead of Gamma, under 53% per game<\/small>/)
 })
 
 test('record order breaks equal wins by losses, and the reverse order mirrors it', () => {

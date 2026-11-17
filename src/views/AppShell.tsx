@@ -146,7 +146,7 @@ export function AppNavigation({
     const target = filtersLeague ? mode : 'rankings'
     const next = filtersLeague ? new URLSearchParams(query) : new URLSearchParams({ scope })
     const key = target === 'matches' ? 'league' : 'region'
-    next.delete('page')
+    for (const key of ['page', 'teamDetail', 'compare', 'profile']) next.delete(key)
     const event = next.get('event')
     if (target === 'matches' && event && leagueEvents && !compatibleMatchEvents(leagueEvents, league).includes(event)) next.delete('event')
     if (league === 'All') next.delete(key)
