@@ -390,7 +390,8 @@ function nearTieFact(team: RankingSummaryStanding, ranked: readonly RankingSumma
   const tied = [ties(above, team) ? above : undefined, ties(team, below) ? below : undefined].filter((entry): entry is RankingSummaryStanding => Boolean(entry))
   const name = (entry: RankingSummaryStanding) => entry.code ?? entry.team
   const gap = (higher: RankingSummaryStanding, lower: RankingSummaryStanding) => formatRating(Math.abs(higher.rating - lower.rating))
-  const detail = above ? `${gap(above, team)} behind ${name(above)}` : below ? `${gap(team, below)} ahead of ${name(below)}` : 'no ranked neighbour'
+  const neighbour = tied[0] ?? above ?? below
+  const detail = neighbour ? `${gap(team, neighbour)} ${neighbour === above ? 'behind' : 'ahead of'} ${name(neighbour)}` : 'no ranked neighbour'
   return {
     label: tied.length > 0 ? `With ${tied.map(name).join(' and ')}` : 'None',
     detail: tied.length > 0 ? `${detail}, under ${Math.round(NEAR_TIE_WIN_PROBABILITY * 100)}% per game` : detail,
