@@ -784,7 +784,7 @@ table.ranking-table.board-grid tbody td {
 .power-field__axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; padding-top: 5px; }
 .power-field__caption { margin-top: 6px; color: var(--muted); font-size: 12px; }
 .power-field__inspection { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 36px; margin-top: 6px; color: var(--muted); font-size: 12px; }
-.team-dossier { --detail-surface: var(--surface); --detail-surface-2: var(--surface); --detail-surface-3: var(--raised); position: sticky; top: 16px; min-width: 0; max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--line); border-top: 3px solid var(--league-color); border-radius: 12px; background: var(--surface); }
+.team-dossier { --detail-surface: var(--surface); --detail-surface-2: var(--surface); --detail-surface-3: var(--raised); position: sticky; top: 13px; min-width: 0; max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--line); border-top: 3px solid var(--league-color); border-radius: 12px; background: var(--surface); }
 .team-dossier__navigation { display: flex; align-items: center; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
 .team-dossier__page-link { margin-left: auto; font-size: 12px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
 .team-dossier__matches { font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
