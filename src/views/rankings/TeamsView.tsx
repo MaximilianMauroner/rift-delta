@@ -1,5 +1,4 @@
-import { shouldIgnoreTeamRowClick } from './boardEvents'
-import { ChevronRight, SlidersHorizontal, Users, X } from 'lucide-react'
+import { SlidersHorizontal, Users, X } from 'lucide-react'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { currentHashQuery, hashEnum, hashInt, hashParam, useHashSync } from '../../browser/navigation'
 import type {
@@ -8,8 +7,7 @@ import type {
   TournamentMovementState,
 } from '../../browser/rankings/usePublicArtifacts'
 import type { ChartSeries } from '../../components/LineChart'
-import { TeamMark } from '../../components/TeamMark'
-import { DataState, FormDots, Segmented, SortHeader } from '../../components/ui'
+import { DataState, Segmented } from '../../components/ui'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { LoadingState } from '../../components/ui/loading'
@@ -23,9 +21,9 @@ import {
   tournamentIdFromFilter, type TournamentFilterValue, type TournamentInstanceId
 } from '../../domains/rankings/evidence'
 import {
-  ELIGIBILITY_FILTERS, gameWinChanceForGap, NEAR_TIE_WIN_PROBABILITY, nearTieGroups, nearTiePositions, SORT_DIRECTIONS,
+  ELIGIBILITY_FILTERS, gameWinChanceForGap, NEAR_TIE_WIN_PROBABILITY, nearTieGroups, SORT_DIRECTIONS,
   SORT_KEYS,
-  TIER_FILTERS, type EligibilityFilter, type NearTiePosition, type PublicMatchupModel, type RankingUniverse, type RegionStrength, type SortDirection,
+  TIER_FILTERS, type EligibilityFilter, type PublicMatchupModel, type RankingUniverse, type RegionStrength, type SortDirection,
   type SortKey,
   type TierFilter
 } from '../../domains/rankings/read'
@@ -33,13 +31,13 @@ import type { CompactPlayer, PublicCurrentLineup, RankingSummaryStanding, TeamHi
 import { useTeamDetailAddress } from '../../hooks/useTeamDetailAddress'
 import type { ChartPoint } from '../../shared/chartPoints'
 import { assignColorSlots, sameColorSlots } from '../../shared/colorSlots'
-import { extent, formatDate, formatDateRange, formatModelVersion, formatNumber, formatRating, formatRatio, formatRecord, formatSigned, teamKey } from '../../shared/display'
+import { formatDate, formatDateRange, formatModelVersion, formatNumber, formatRating, formatSigned, teamKey } from '../../shared/display'
 import { cn } from '../../shared/utils'
-import { ChipGroup, NearTieMark, RegionalStrengthTeaser, TeamBoardRank, TeamScoreCell, TierBadge, TournamentMoveChip } from './BoardCells'
-import { activeMovement, eligibilityReasonsTitle, eligibilitySummary, rankAxisForSeries, rollingMovementTitle, teamRankFor, teamScoreFor } from './boardFormat'
+import { ChipGroup, RegionalStrengthTeaser } from './BoardCells'
+import { rankAxisForSeries } from './boardFormat'
 import { boardHeadline } from './boardHeadline'
 import { boardChanges, tournamentTrajectoryInsight } from './boardHistory'
-import { CompareToggle } from './CompareToggle'
+import { BoardList } from './BoardList'
 import { DataSourcesDisclosure } from './DataSourcesDisclosure'
 import { LazyTeamHistoryLineChart, loadTeamHistoryLineChart } from './historyChart'
 import { playersForTeam } from './playerData'
@@ -48,7 +46,7 @@ import { TeamDossier } from './TeamDossier'
 import { dailyChartPointsFromHistoryPoints, deriveDailyRankSeries, internationalChartEvents, tournamentChartPoints } from './teamHistoryChart'
 import { type TrajectoryInsight } from './trajectory'
 import { type PlayerLoadState, type TeamDataSummary, type TrajectoryMetric } from './types'
-import { MovementChip, WhatChanged } from './WhatChanged'
+import { WhatChanged } from './WhatChanged'
 
 const TEAM_PAGE_SIZES = [15, 25, 50, 80] as const
 
@@ -230,21 +228,12 @@ export function TeamsView({
     [board.disclosure, dataSummary],
   )
   const changes = useMemo(() => boardChanges(board.movement), [board.movement])
-  const [ratingMin, ratingMax] = useMemo(
-    () => extent(rows.map((team) => teamScoreFor(team) ?? Number.NaN)),
-    [rows],
-  )
-
   // Near ties only mean something when neighbours on screen are neighbours in
   // the ranking, so they follow the ranked order and not a Power or record sort.
   const rankedOrder = sortKey === 'rank' && sortDirection === 'ascending'
   const ladderGroups = useMemo(
     () => nearTieGroups(board.rankedRows.slice(0, LADDER_TEAM_LIMIT), model),
     [board.rankedRows, model],
-  )
-  const tiePositions = useMemo(
-    () => rankedOrder ? nearTiePositions(nearTieGroups(visibleRows.filter((team) => team.eligibility?.eligible), model), teamKey) : new Map<string, NearTiePosition>(),
-    [model, rankedOrder, visibleRows],
   )
   const headline = useMemo(
     () => activeTournament ? undefined : boardHeadline(universe.rankedStandings, model),
@@ -541,7 +530,7 @@ export function TeamsView({
               </div>
               <p className="board-legend flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" title={`Model ${formatModelVersion(model?.version)}${model?.configHash ? ` · config ${model.configHash}` : ''}`}>
                 <span><b className="font-semibold">100 points</b> ≈ {gapExample}% game win</span>
-                {rankedOrder ? <span><b className="font-semibold">Bracket</b> marks a near tie, under {Math.round(NEAR_TIE_WIN_PROBABILITY * 100)}% per game</span> : null}
+                {rankedOrder ? <span><b className="font-semibold">Δ</b> is the gap to the team above. <b className="font-semibold">Tie</b> marks a near tie, under {Math.round(NEAR_TIE_WIN_PROBABILITY * 100)}% per game</span> : null}
                 <span><b className="font-semibold">{activeTournament ? 'Event move' : '30 days'}</b> rank change {movementPeriod}</span>
                 <span><b className="font-semibold">Form</b> oldest → latest · latest underlined</span>
               </p>
@@ -580,106 +569,25 @@ export function TeamsView({
                 Try another team name, or select all regions and tiers.
               </DataState>
             ) : (
-                <Table containerClassName="@container/board max-w-full [contain:paint] [overscroll-behavior-x:contain]" className="ranking-table board-grid w-full min-w-[640px] border-collapse text-sm max-sm:min-w-full">
-                  <colgroup>
-                    <col className="board-col-rank" />
-                    <col className="board-col-team" />
-                    <col className="board-col-score" />
-                    <col className="board-col-move" />
-                    <col className="board-col-form" />
-                    <col className="board-col-record" />
-                    <col className="board-col-action" />
-                  </colgroup>
-                  <TableHeader>
-                    <TableRow>
-                      <SortHeader label="Rank" columnKey="rank" sortKey={sortKey} descending={sortDirection === 'descending'} onSort={onSort} />
-                      <TableHead>Team</TableHead>
-                      <SortHeader label="Power" columnKey="rating" sortKey={sortKey} descending={sortDirection === 'descending'} onSort={onSort} className="board-col-score" />
-                      <TableHead className="board-col-move" title={activeTournament ? 'Rank change from the tournament start to its endpoint.' : `Rank change on match history, ${movementPeriod}.`}>{activeTournament ? 'Event' : '30 days'}</TableHead>
-                      <TableHead className="board-col-form" title="Last five results, oldest to latest. Latest result is underlined.">Form</TableHead>
-                      <SortHeader label="Record" columnKey="wins" sortKey={sortKey} descending={sortDirection === 'descending'} onSort={onSort} align="right" className="board-col-record" />
-                      <TableHead className="board-col-action"><span className="sr-only">Compare and open</span></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {visibleRows.map((team) => {
-                      const key = teamKey(team)
-                      const total = team.wins + team.losses
-                      const rank = teamRankFor(team)
-                      const tier = tierFor(team)
-                      const excludedFromRankedBoard = team.eligibility?.eligible === false
-                      const tie = tiePositions.get(key)
-                      return (
-                        <TableRow
-                          data-first-answer="rankings"
-                          data-team-key={key}
-                          key={key}
-                          aria-current={key === detailKey ? 'true' : undefined}
-                          className={cn(
-                            'board-row group/board cursor-pointer outline-offset-[-2px] hover:bg-raised focus-visible:outline-2 focus-visible:outline-focus',
-                            pickedKeys.has(key) && 'is-picked',
-                            key === detailKey && 'is-selected',
-                            excludedFromRankedBoard && 'is-excluded bg-[color-mix(in_srgb,var(--raised)_58%,transparent)] text-[color-mix(in_srgb,var(--text)_76%,var(--muted))] hover:bg-[color-mix(in_srgb,var(--line)_70%,transparent)]',
-                          )}
-                          title={excludedFromRankedBoard ? eligibilityReasonsTitle(team) : undefined}
-                          onPointerEnter={prepareTeamDetails}
-                          onTouchStart={prepareTeamDetails}
-                          onClick={(event) => {
-                            if (shouldIgnoreTeamRowClick(event)) return
-                            openTeam(team)
-                          }}
-                        >
-                          <TableCell className="board-col-rank relative" aria-label={excludedFromRankedBoard ? 'Unranked' : `Rank ${rank}`}>
-                            {tie ? <NearTieMark position={tie} /> : null}
-                            <span className="board-rankcell flex items-center gap-2 whitespace-nowrap">
-                              <TeamBoardRank team={team} rank={rank} rawScoreRank={board.scopeScoreRanks.get(key)} />
-                              {tier ? <TierBadge tier={tier} /> : null}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              className="team-cell team-cell__button h-auto min-h-9 w-full cursor-pointer justify-start gap-3 whitespace-normal rounded-md border-0 bg-transparent p-0 text-left font-[inherit] text-[inherit] hover:bg-transparent hover:text-[inherit] focus-visible:rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
-                              onClick={() => openTeam(team)}
-                              onFocus={prepareTeamDetails}
-                              title={`Open ${team.team}`}
-                            >
-                              <TeamMark team={team.team} code={team.code} className="team-mark sm h-8 w-10" />
-                              <div className="ent flex min-w-0 flex-col gap-px overflow-hidden [&_b]:block [&_b]:overflow-hidden [&_b]:text-ellipsis [&_b]:whitespace-nowrap [&_b]:font-semibold [&_b]:text-text [&_small]:block [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap [&_small]:text-xs [&_small]:text-muted">
-                                <b>{team.team}</b>
-                                <small>{excludedFromRankedBoard ? `${team.league} · ${eligibilitySummary(team)}` : team.league}</small>
-                              </div>
-                            </Button>
-                          </TableCell>
-                          <TableCell className="board-col-score" aria-label={`Power ${formatRating(teamScoreFor(team))}`}>
-                            <TeamScoreCell team={team} min={ratingMin} max={ratingMax} exactTournament={Boolean(activeTournament)} />
-                          </TableCell>
-                          <TableCell className="board-col-move">
-                            {activeTournament ? (
-                              <TournamentMoveChip movement={movementByTeamId.get(team.teamId)} endpointLabel={tournamentBoundaryLabel(activeTournament.status)} />
-                            ) : (
-                              <MovementChip places={activeMovement(team)?.rankMovement ?? undefined} title={rollingMovementTitle(team, movementPeriod)} />
-                            )}
-                          </TableCell>
-                          <TableCell className="board-col-form">
-                            <FormDots form={team.form} />
-                          </TableCell>
-                          <TableCell className="right num board-col-record" aria-label={`Match wins ${formatNumber(team.wins)}, losses ${formatNumber(team.losses)}; win rate ${formatRatio(total > 0 ? team.wins / total : undefined)}`}>
-                            <b className="font-semibold text-text">{formatRecord(team.wins, team.losses)}</b>{' '}
-                            <span className="text-sm text-muted">{formatRatio(total > 0 ? team.wins / total : undefined)}</span>
-                          </TableCell>
-                          <TableCell className="board-col-action">
-                            <span className="flex items-center justify-end gap-2">
-                              <CompareToggle picked={pickedKeys.has(key)} onToggle={() => onToggle(team)} label={team.team} />
-                              <ChevronRight className="board-open-hint size-4 shrink-0 text-muted group-hover/board:text-text" aria-hidden="true" />
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+              <BoardList
+                rows={rows}
+                visibleRows={visibleRows}
+                pageStart={page.start}
+                tierFor={tierFor}
+                model={model}
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={onSort}
+                tournament={activeTournament}
+                movementByTeamId={movementByTeamId}
+                movementPeriod={movementPeriod}
+                scopeScoreRanks={board.scopeScoreRanks}
+                selectedKey={detailKey}
+                pickedKeys={pickedKeys}
+                onOpen={openTeam}
+                onToggle={onToggle}
+                onPrepare={prepareTeamDetails}
+              />
             )}
 
             {rows.length > 0 ? (

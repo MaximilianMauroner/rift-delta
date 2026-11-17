@@ -54,7 +54,7 @@ for (const width of [1280, 390]) {
     await withFixture(async (page, base, fixture) => {
       fixture.held.add('/data/scopes/season-2025.json')
       await page.goto(`${base}${invalid}`)
-      await page.locator('table tbody tr').first().waitFor()
+      await page.locator('table tbody tr[data-team-key]').first().waitFor()
       const entries = await page.evaluate(() => Reflect.get(window, 'initialHistoryLength'))
       await notice(page).waitFor()
       assert.equal(await drawer(page).count(), 0)

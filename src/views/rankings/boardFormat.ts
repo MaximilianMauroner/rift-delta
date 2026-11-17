@@ -1,6 +1,6 @@
 import type { ChartSeries } from '../../components/LineChart'
 import type { RankingSummaryStanding } from '../../domains/rankings/types'
-import { formatNumber, formatRating, formatRatio, formatSigned } from '../../shared/display'
+import { formatNumber, formatRating, formatSigned } from '../../shared/display'
 
 export function activeMovement(team: RankingSummaryStanding) {
   return team.rollingMovement?.status === 'active' ? team.rollingMovement : undefined
@@ -33,26 +33,6 @@ export function formatUncertaintyBand(value: number) {
   return `±${formatRating(value)}`
 }
 
-export function teamScoreTitle(team: RankingSummaryStanding) {
-  const dss = team.deservedStanding
-  const base = [
-    `Power score ${formatRating(team.rating)}`,
-    'Published Power score; trend movement uses match history.',
-    team.scoreFamily ? `score family ${scoreFamilyLabel(team.scoreFamily)}` : undefined,
-    team.recordBasis ? `record basis ${recordBasisLabel(team.recordBasis)}` : undefined,
-    typeof team.uncertainty === 'number' ? `uncertainty ${formatUncertaintyBand(team.uncertainty)}` : undefined,
-    team.eligibility?.eligible === false ? eligibilityReasonsTitle(team) : undefined,
-  ].filter(Boolean)
-  if (!dss) return base.join(' · ')
-  return [
-    ...base,
-    `deserved check #${dss.rank} (${formatRating(dss.score)})`,
-    `WAE ${formatSigned(dss.winsAboveExpectation)}`,
-    `roster validity ${formatRatio(dss.rosterValidity)}`,
-    dss.eligibility,
-  ].join(' · ')
-}
-
 type PowerResumeGapSummary = {
   label: string
   detail: string
@@ -81,7 +61,7 @@ export function powerResumeGapSummary(team: RankingSummaryStanding): PowerResume
   }
 }
 
-function scoreFamilyLabel(scoreFamily: RankingSummaryStanding['scoreFamily']) {
+export function scoreFamilyLabel(scoreFamily: RankingSummaryStanding['scoreFamily']) {
   if (scoreFamily === 'deserved-standing') return 'Deserved Standing'
   return 'Power Index'
 }

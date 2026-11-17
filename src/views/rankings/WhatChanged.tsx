@@ -49,7 +49,7 @@ export function WhatChanged({
         {faller ? <MovementRow movement={faller} /> : null}
         {upset ? (
           <li className="flex min-w-0 items-center gap-2.5 bg-surface px-4 py-2.5 text-sm">
-            <Badge variant="warning" className="shrink-0">Upset</Badge>
+            <Badge variant="secondary" className="shrink-0">Upset</Badge>
             <span className="min-w-0 text-muted">
               <b className="font-semibold text-text">{upset.winner}</b> beat {upset.loser} with a {Math.round(upset.chance * 100)}% chance
               {upset.event ? <span className="block truncate text-xs text-muted">{matchEventLabel(upset.event)}</span> : null}
@@ -77,24 +77,24 @@ function MovementRow({ movement }: { movement: MovementSpotlight }) {
   )
 }
 
-/** Rank change as a small signed chip, shared by the board and this panel. */
+/** Rank change as a signed arrow and count, shared by the board and this panel. */
 export function MovementChip({ places, title }: { places?: number; title?: string }) {
   if (places === undefined) {
-    return <span className="inline-flex min-w-9 justify-center rounded-md bg-raised px-1.5 py-0.5 text-xs font-bold text-muted" title={title}>—</span>
+    return <span className="inline-flex min-w-7 text-xs font-semibold text-muted" title={title}>—<span className="sr-only">no rank change recorded</span></span>
   }
   const tone = places > 0 ? 'up' : places < 0 ? 'down' : 'flat'
   return (
     <span
       className={cn(
-        'inline-flex min-w-9 justify-center rounded-md px-1.5 py-0.5 text-xs font-bold tabular-nums',
-        tone === 'up' && 'bg-[color-mix(in_srgb,var(--up)_12%,transparent)] text-up',
-        tone === 'down' && 'bg-[color-mix(in_srgb,var(--down)_12%,transparent)] text-down',
-        tone === 'flat' && 'bg-raised text-muted',
+        'inline-flex min-w-7 items-baseline gap-px text-xs font-bold tabular-nums',
+        tone === 'up' && 'text-up',
+        tone === 'down' && 'text-down',
+        tone === 'flat' && 'text-muted',
       )}
       title={title}
     >
-      <span aria-hidden="true">{tone === 'up' ? '▲' : tone === 'down' ? '▼' : '='}</span>
-      {places === 0 ? null : Math.abs(places)}
+      <span aria-hidden="true">{tone === 'up' ? '↑' : tone === 'down' ? '↓' : '='}</span>
+      <span aria-hidden="true">{places === 0 ? null : Math.abs(places)}</span>
       <span className="sr-only">{places === 0 ? 'no rank change' : `${places > 0 ? 'up' : 'down'} ${Math.abs(places)}`}</span>
     </span>
   )

@@ -36,13 +36,13 @@ const msi: MatchRecord = { id: 'MSI-Euro 01-Amer 01', sourceProvider: 'oracles-e
 const board = (params: string) => `#rankings?scope=all&eligibility=all${params ? `&${params}` : ''}`
 
 async function boardRows(page: Page) {
-  return page.locator('table tbody tr').evaluateAll((rows) => rows.map((row) => row.querySelector('td:nth-child(2)')?.textContent ?? ''))
+  return page.locator('table tbody tr[data-team-key]').evaluateAll((rows) => rows.map((row) => row.querySelector('td:nth-child(2)')?.textContent ?? ''))
 }
 
 /** Waits until the board shows `count` rows whose team cell contains `prefix`, then reports what it shows. */
 async function expectBoard(page: Page, count: number, prefix: string, step: string) {
   await page.waitForFunction(({ count, prefix }) => {
-    const rows = [...document.querySelectorAll('table tbody tr td:nth-child(2)')].map((cell) => cell.textContent ?? '')
+    const rows = [...document.querySelectorAll('table tbody tr[data-team-key] td:nth-child(2)')].map((cell) => cell.textContent ?? '')
     return rows.length === count && rows.every((row) => row.includes(prefix))
   }, { count, prefix }, { timeout: 5_000 }).catch(() => undefined)
   const rows = await boardRows(page)
@@ -194,12 +194,12 @@ test('the Rankings board follows its address after load: typed and linked hashes
     holdManifest = true
     await page.reload({ waitUntil: 'domcontentloaded' })
     await page.getByRole('heading', { name: 'Team Power Index', exact: true }).waitFor()
-    assert.equal(await page.locator('table tbody tr').count(), 0)
+    assert.equal(await page.locator('table tbody tr[data-team-key]').count(), 0)
     holdManifest = false
     pendingManifest.splice(0).forEach((respond) => respond())
     await expectBoard(page, 20, '', 'board after the delayed manifest')
 
-    const rows = page.locator('table tbody tr')
+    const rows = page.locator('table tbody tr[data-team-key]')
     const compare = rows.locator('input[type="checkbox"]')
     const comparisonNames = await rows.locator('td:nth-child(2) b').allTextContents()
     const comparisonCodes = comparisonNames.map((name) => teams[name].code ?? name)
@@ -270,7 +270,7 @@ test('the Rankings board follows its address after load: typed and linked hashes
     await page.setViewportSize({ width: 1280, height: 900 })
     await leagues.locator('a[aria-current="true"]').waitFor()
     assert.equal(await leagues.getByRole('link', { name: 'LEC', exact: true }).getAttribute('aria-current'), 'true')
-    assert.ok(await page.locator('table tbody tr td:nth-child(2) b').first().evaluate((name) => name.getBoundingClientRect().width > 40), 'team names stay visible beside the desktop sidebar')
+    assert.ok(await page.locator('table tbody tr[data-team-key] td:nth-child(2) b').first().evaluate((name) => name.getBoundingClientRect().width > 40), 'team names stay visible beside the desktop sidebar')
 
     await page.setViewportSize({ width: 390, height: 740 })
     assert.equal(await sidebar.isVisible(), false)

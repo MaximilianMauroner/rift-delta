@@ -2,12 +2,10 @@ import { useMemo } from 'react'
 import { RegionBadge } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Panel, PanelFooter, PanelHeader } from '../../components/ui/panel'
-import type { RankingTierLabel } from '../../domains/rankings/read'
 import { displayRegionPowerScore, NEAR_TIE_WIN_PROBABILITY, type NearTiePosition, type RegionStrength } from '../../domains/rankings/read'
 import type { RankingSummaryStanding } from '../../domains/rankings/types'
 import { formatNumber, formatRating } from '../../shared/display'
 import { cn } from '../../shared/utils'
-import { clampNumber, teamScoreFor, teamScoreTitle } from './boardFormat'
 
 export function ChipGroup<T extends string>({
   label,
@@ -57,32 +55,6 @@ export function NearTieMark({ position }: { position: NearTiePosition }) {
   )
 }
 
-export function TeamScoreCell({
-  team,
-  min,
-  max,
-  exactTournament = false,
-}: {
-  team: RankingSummaryStanding
-  min: number
-  max: number
-  exactTournament?: boolean
-}) {
-  const score = teamScoreFor(team)
-  if (typeof score !== 'number') {
-    return <span className="score-unavailable text-sm font-semibold text-muted" aria-hidden="true">—</span>
-  }
-  const share = max > min ? clampNumber(((score - min) / (max - min)) * 100, 4, 100) : 100
-  return (
-    <span className="team-score-stack flex min-w-0 items-center gap-2.5" title={exactTournament ? `Tournament endpoint Power ${formatRating(score)}` : teamScoreTitle(team)}>
-      <span className="team-score-value min-w-[3.4em] text-right text-base font-bold text-text tabular-nums">{formatRating(score)}</span>
-      <span className="score-track relative h-1.5 min-w-10 flex-1 overflow-hidden rounded-full bg-line" aria-hidden="true">
-        <span className="absolute inset-y-0 left-0 rounded-full bg-muted" style={{ width: `${share}%` }} />
-      </span>
-    </span>
-  )
-}
-
 export function TeamBoardRank({
   team,
   rank,
@@ -106,29 +78,6 @@ export function TeamBoardRank({
   return (
     <span className={cn('board-rank min-w-[1.4em] text-base font-semibold text-text tabular-nums', typeof rank === 'number' && rank <= 3 && 'podium text-text')}>
       {rank ?? '—'}
-    </span>
-  )
-}
-
-const TIER_BADGE_COLOR: Record<RankingTierLabel, string> = {
-  S: '[--tier-color:var(--tier-s)]',
-  A: '[--tier-color:var(--tier-a)]',
-  B: '[--tier-color:var(--tier-b)]',
-  C: '[--tier-color:var(--tier-c)]',
-}
-
-export function TierBadge({ tier }: { tier: RankingTierLabel }) {
-  return (
-    <span
-      className={cn(
-        'tier-badge inline-flex h-6 min-w-[26px] items-center justify-center rounded-md border border-[color-mix(in_srgb,var(--tier-color)_40%,var(--line))] bg-[color-mix(in_srgb,var(--tier-color)_11%,transparent)] px-2 text-sm font-bold leading-none text-[var(--tier-color)]',
-        TIER_BADGE_COLOR[tier],
-      )}
-      role="img"
-      title={`${tier}-tier`}
-      aria-label={`${tier}-tier`}
-    >
-      {tier}
     </span>
   )
 }

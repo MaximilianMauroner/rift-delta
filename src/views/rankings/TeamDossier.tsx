@@ -5,7 +5,7 @@ import type {
 } from '../../browser/rankings/usePublicArtifacts'
 import type { ChartEvent, ChartSeries } from '../../components/LineChart'
 import { TeamMark } from '../../components/TeamMark'
-import { FormDots, RegionBadge } from '../../components/ui'
+import { FormDots, RegionBadge, TierChip } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { LoadingState } from '../../components/ui/loading'
@@ -19,8 +19,7 @@ import type { CompactPlayer, EventTier, PublicCurrentLineup, PublicTournamentMov
 import { formatDate, formatModelVersion, formatNumber, formatRating, formatRatio, formatRecord, teamKey } from '../../shared/display'
 import { leagueColor } from '../../shared/teamColor'
 import { cn } from '../../shared/utils'
-import { TierBadge } from './BoardCells'
-import { activeMovement, formatEventWeight, formatRankMovementLabel, formatRankValue, formatRatingMovement, formatUncertaintyBand, isEventTier, powerResumeGapSummary, rankMovementTone, recordBasisLabel, teamRankFor, teamScoreFor } from './boardFormat'
+import { activeMovement, formatEventWeight, formatRankMovementLabel, formatRankValue, formatRatingMovement, formatUncertaintyBand, isEventTier, powerResumeGapSummary, rankMovementTone, recordBasisLabel, scoreFamilyLabel, teamRankFor, teamScoreFor } from './boardFormat'
 import { LazyTeamHistoryLineChart } from './historyChart'
 import { TeamLeagueProfile } from './TeamLeagueProfile'
 import { ComponentBreakdown, PlayerRankingCard } from './PlayerDisclosure'
@@ -231,7 +230,7 @@ export function TeamDossier({
             <h2 ref={headingRef} tabIndex={-1} data-first-answer="team-detail" className="text-xl leading-tight font-semibold text-text outline-none">{team.team}</h2>
             <span className="flex flex-wrap items-center gap-2 text-sm text-muted">
               <RegionBadge region={team.league} />
-              {tier ? <TierBadge tier={tier} /> : null}
+              {tier ? <TierChip tier={tier} /> : null}
               <span className="tabular-nums">{team.eligibility?.eligible === false ? 'Unranked' : `Rank ${typeof rank === 'number' ? formatNumber(rank) : '—'}`}</span>
               {seeded ? <Badge variant="warning">Sample data</Badge> : null}
             </span>
@@ -255,7 +254,7 @@ export function TeamDossier({
               <div><dt>Likely rank</dt><dd><b>{rankEvidence?.label ?? 'Unavailable'}</b><small>{rankEvidence?.range ?? 'range its results support'}</small></dd></div>
               <div><dt>Last 30 days</dt><dd><b className={cn(movement && (movement.rankMovement ?? 0) > 0 && 'text-up!', movement && (movement.rankMovement ?? 0) < 0 && 'text-down!')}>{movement ? formatRankMovementLabel(movement.rankMovement) : 'No series'}</b><small>{movement ? `${formatRatingMovement(movement.ratingDelta ?? 0)} Power, #${movement.baselineRank} to #${movement.currentRank} over ${formatNumber(movement.scoredSeries)} series` : 'no scored matches'}</small></dd></div>
               <div><dt>Record</dt><dd><b>{formatRecord(team.wins, team.losses)}</b><small>{formatRatio(totalGames > 0 ? team.wins / totalGames : undefined)} of series won</small></dd></div>
-              <div><dt>Rank on results alone</dt><dd><b>{team.deservedStanding?.rank ? `#${team.deservedStanding.rank}` : 'Unavailable'}</b><small>{powerResumeGap?.rankDetail ?? 'results rank unavailable'}</small></dd></div>
+              <div><dt>Rank on results alone</dt><dd><b>{team.deservedStanding?.rank ? `#${team.deservedStanding.rank}` : 'Unavailable'}</b><small>{powerResumeGap?.rankDetail ?? 'results rank unavailable'}{team.deservedStanding ? `, results score ${formatRating(team.deservedStanding.score)}` : ''}</small></dd></div>
               {nearTie ? <div><dt>Near tie</dt><dd><b>{nearTie.label}</b><small>{nearTie.detail}</small></dd></div> : null}
             </>
           )}
@@ -330,7 +329,7 @@ export function TeamDossier({
 
         <details className={disclosureClassName}>
           <summary>How the score is built</summary>
-          <p className="mt-3 text-sm text-muted">League strength plus this team's results, roster and form. Evidence band {formatUncertaintyBand(uncertainty ?? 0)}{rankEvidence ? `, so its likely rank is ${rankEvidence.label}` : ''}. The record counts the {recordBasisLabel(team.recordBasis)}.</p>
+          <p className="mt-3 text-sm text-muted">League strength plus this team's results, roster and form. Evidence band {formatUncertaintyBand(uncertainty ?? 0)}{rankEvidence ? `, so its likely rank is ${rankEvidence.label}` : ''}. Score family {scoreFamilyLabel(team.scoreFamily)}. The record counts the {recordBasisLabel(team.recordBasis)}.</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 [&_small]:block [&_small]:text-xs [&_small]:text-muted [&_b]:block [&_em]:block [&_em]:text-xs [&_em]:not-italic [&_em]:text-muted">
             {!tournament ? (
               <span>
