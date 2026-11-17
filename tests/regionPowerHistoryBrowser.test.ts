@@ -69,6 +69,7 @@ test('the Regions page charts region power over time for the compared regions', 
       const paths = await page.locator('.recharts-line-curve').evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).stroke))
       assert.ok(paths.includes('rgb(183, 148, 255)'))
       assert.ok(paths.includes('rgb(47, 212, 207)'))
+      assert.equal(await page.getByText(/Best international record/).count(), 0, 'no international games, so no region is named best')
     })
     await t.test('the details show each region on the last day with the three teams behind its value', async () => {
       const text = await details.innerText()

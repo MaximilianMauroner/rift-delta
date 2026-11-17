@@ -76,7 +76,9 @@ export function RegionsView({
     [regions],
   )
   const bestRecord = useMemo(
-    () => [...regions].sort((a, b) => (b.winsOverExpected ?? -Infinity) - (a.winsOverExpected ?? -Infinity))[0],
+    () => regions
+      .filter((region) => Number.isFinite(region.winsOverExpected))
+      .sort((a, b) => (b.winsOverExpected ?? 0) - (a.winsOverExpected ?? 0))[0],
     [regions],
   )
   const selectedRegion = useMemo(
@@ -119,7 +121,7 @@ export function RegionsView({
         <details className="regions-scope-summary">
           <summary>{regions.length} regions in this scope</summary>
           <p>{regions.map((region) => region.region).join(', ')}.</p>
-          <p>Best international record by wins vs expected, {bestRecord?.region} with {formatSignedDecimal(bestRecord?.winsOverExpected)}.</p>
+          {bestRecord && <p>Best international record by wins vs expected, {bestRecord.region} with {formatSignedDecimal(bestRecord.winsOverExpected)}.</p>}
         </details>
         <Panel>
           <PanelHeader title="Regional standings" />
