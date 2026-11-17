@@ -158,7 +158,7 @@ test('the Rankings board follows its address after load: typed and linked hashes
     // The logo opens the same clean board as the Rankings tab. It is ranked
     // only, and no fixture team is ranked, so the address and chips show it.
     const hash = () => page.evaluate(() => location.hash)
-    const home = page.getByTitle('Go to Rankings home')
+    const home = page.getByRole('banner').getByRole('link', { name: 'rift-delta', exact: true })
     const selectedRegion = page.getByRole('group', { name: 'Region' }).getByRole('button', { pressed: true })
     await setHash(board('region=LEC&size=15'))
     await expectBoard(page, 10, 'Euro', 'filters before the logo')

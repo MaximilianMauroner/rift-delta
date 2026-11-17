@@ -1,12 +1,12 @@
-import { AlertTriangle, RefreshCw, Search } from 'lucide-react'
-import { type MouseEvent, type RefObject } from 'react'
+import { AlertTriangle, RefreshCw, Search, X } from 'lucide-react'
+import { type MouseEvent, type RefObject, useEffect, useRef, useState } from 'react'
 import { hashForModeAndScope } from '../browser/navigation'
 import type { PublicSnapshotState } from '../browser/rankings/usePublicArtifacts'
 import {
   scopeLabel
 } from '../browser/rankings/usePublicArtifacts'
 import { DataState } from '../components/ui'
-import { Button, buttonVariants } from '../components/ui/button'
+import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import { Input } from '../components/ui/input'
 import { LoadingState, type PageLayout } from '../components/ui/loading'
@@ -27,12 +27,12 @@ export function ManifestRouteShell({
 }) {
   return (
     <div className="flex min-h-full flex-col">
-      <a className="fixed top-[-56px] left-3 z-80 rounded-md border border-[var(--accent-line)] bg-[var(--surface-2)] px-3 py-2 text-sm font-semibold text-[var(--text-strong)] no-underline shadow-[var(--shadow-2)] focus-visible:top-3" href="#main-content" onClick={(event) => { event.preventDefault(); document.getElementById('main-content')?.focus(); document.getElementById('main-content')?.scrollIntoView({ block: 'start' }) }}>Skip to content</a>
+      <a className="fixed top-[-56px] left-3 z-80 rounded-md border border-focus bg-raised px-3 py-2 text-sm font-semibold text-text no-underline focus-visible:top-3" href="#main-content" onClick={(event) => { event.preventDefault(); document.getElementById('main-content')?.focus(); document.getElementById('main-content')?.scrollIntoView({ block: 'start' }) }}>Skip to content</a>
       <AppNavigation mode={mode} scope={scope} onGoHome={onGoHome} />
       <main id="main-content" className="flex min-w-0 flex-col" tabIndex={-1}>
         <ModeHeader mode={mode} />
-        {mode !== 'tournaments' && mode !== 'profiles' && mode !== 'scouting' ? <div className="flex min-h-[57px] items-center border-b border-border bg-[color-mix(in_oklch,var(--surface)_76%,var(--bg))] px-[var(--page-x)] py-2 text-sm text-muted-foreground max-sm:min-h-[141px]">
-          Requested scope: <b className="ml-2 text-foreground">{scopeLabel(scope)}</b>
+        {mode !== 'tournaments' && mode !== 'profiles' && mode !== 'scouting' ? <div className="flex min-h-[53px] items-center border-b border-line px-[var(--page-x)] pb-2 text-sm text-muted max-sm:min-h-[86px]">
+          Requested scope: <b className="ml-2 text-text">{scopeLabel(scope)}</b>
         </div> : null}
         {error ? (
           <section className="px-[var(--page-x)] pt-6">
@@ -65,9 +65,9 @@ export function ManifestRouteShell({
  */
 export function ModeHeader({ mode }: { mode: Mode }) {
   return (
-    <div className="mode-header flex flex-wrap items-baseline gap-x-4 gap-y-1 px-[var(--page-x)] pt-4 pb-3">
-      <h1 className="text-xl font-semibold tracking-normal text-[var(--text-strong)]">{MODE_TITLES[mode].title}</h1>
-      <p className="max-w-[80ch] text-sm leading-[1.5] text-muted-foreground">{MODE_TITLES[mode].intro}</p>
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-[var(--page-x)] pt-4 pb-2 max-sm:pt-3 max-sm:pb-1.5">
+      <h1 className="text-xl font-bold text-text max-sm:text-lg">{MODE_TITLES[mode].title}</h1>
+      <p className="text-sm leading-snug text-muted">{MODE_TITLES[mode].intro}</p>
     </div>
   )
 }
@@ -89,61 +89,75 @@ export function AppNavigation({
   searchRef?: RefObject<HTMLInputElement | null>
   onIntent?: (mode: Mode) => void
 }) {
-  const tabs = MODES.map((entry) => {
+  const ownRef = useRef<HTMLInputElement | null>(null)
+  const inputRef = searchRef ?? ownRef
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searching = Boolean(onSearch) && (searchOpen || Boolean(search))
+  useEffect(() => {
+    if (searchOpen) inputRef.current?.focus()
+  }, [inputRef, searchOpen])
+  function closeSearch() {
+    if (search) onSearch?.('')
+    setSearchOpen(false)
+  }
+  const link = (entry: (typeof MODES)[number], className: string, icon?: boolean) => {
     const Icon = entry.icon
     return (
       <a
         key={entry.id}
         href={hashForModeAndScope(entry.id, scope)}
-        className={cn(
-          buttonVariants({ variant: 'tab', size: 'tab' }),
-          'min-w-0 shrink-0 gap-2 font-semibold no-underline max-sm:h-full max-sm:flex-1 max-sm:flex-col max-sm:gap-0.5 max-sm:rounded-none max-sm:border-0 max-sm:text-2xs',
-        )}
+        className={className}
         aria-current={mode === entry.id ? 'page' : undefined}
         onPointerEnter={() => (onIntent ?? preloadView)(entry.id)}
         onFocus={() => (onIntent ?? preloadView)(entry.id)}
         onTouchStart={() => (onIntent ?? preloadView)(entry.id)}
       >
-        <Icon size={17} className="sm:max-lg:hidden" aria-hidden="true" />
+        {icon ? <Icon size={18} aria-hidden="true" /> : null}
         {entry.label}
       </a>
     )
-  })
+  }
 
   return (
     <>
-      {/* On phones the views live in the bottom tab bar, so a header without
-          search would pin only the logo over the content. */}
-      <header className={cn('app-header sticky top-0 z-50 flex min-h-[var(--app-nav-h)] items-center gap-x-4 border-b border-border bg-[var(--rail)]/98 px-[var(--page-x)] py-2.5 max-[900px]:px-3', !onSearch && 'max-sm:static')}>
-        <a className="app-wordmark flex min-w-0 shrink-0 items-center gap-2.5 rounded-md py-1 pr-2 text-left text-inherit no-underline transition-colors hover:bg-[color-mix(in_oklab,var(--surface-2)_46%,transparent)]" href={hashForModeAndScope('rankings', scope)} onClick={onGoHome} title="Go to Rankings home">
-          <img className="block size-9 shrink-0 rounded-md" src="/logo.svg" alt="" aria-hidden="true" width={36} height={36} />
-          <b className="block overflow-hidden text-ellipsis whitespace-nowrap text-md font-semibold text-[var(--text-strong)] max-[420px]:sr-only sm:max-lg:sr-only">rift-delta</b>
+      <header className={cn('sticky top-0 z-50 flex h-[var(--app-nav-h)] items-stretch gap-6 border-b border-line bg-ground px-[var(--page-x)] max-lg:gap-3', !onSearch && 'max-sm:static')}>
+        <a className={cn('flex shrink-0 items-center text-lg font-bold text-text no-underline', searching && 'max-sm:hidden')} href={hashForModeAndScope('rankings', scope)} onClick={onGoHome}>
+          rift-delta
         </a>
-        <nav className="app-nav-desktop flex shrink-0 items-center gap-1.5 max-sm:hidden" aria-label="Primary">{tabs}</nav>
-        {onSearch ? (
-          <label className="app-header-search relative ml-auto w-[min(280px,100%)] min-w-0 max-sm:flex-1">
-            <span className="sr-only">Find a team</span>
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[var(--faint)]" aria-hidden="true" />
-            <Input
-              ref={searchRef}
-              type="search"
-              className="pl-9 lg:pr-9"
-              value={search ?? ''}
-              placeholder="Find a team"
-              aria-keyshortcuts="/"
-              onChange={(event) => onSearch(event.target.value)}
-            />
-            <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded-sm border border-[var(--line-strong)] px-1.5 font-mono text-2xs text-[var(--faint)] max-lg:hidden" aria-hidden="true">/</kbd>
-          </label>
-        ) : null}
+        <nav className={cn('flex min-w-0 items-stretch overflow-x-auto max-sm:hidden', searching && 'max-lg:hidden')} aria-label="Primary">
+          {MODES.map((entry) => link(entry, 'flex shrink-0 items-center border-b-2 border-transparent px-3 text-sm text-muted no-underline transition-colors duration-150 hover:text-text aria-[current=page]:border-focus aria-[current=page]:font-semibold aria-[current=page]:text-text max-lg:px-2'))}
+        </nav>
+        <div className={cn('ml-auto flex min-w-0 items-center gap-4', searching && 'max-lg:flex-1')}>
+          {onSearch ? (
+            <label className={cn('relative w-[280px] min-w-0', searching ? 'max-lg:w-full' : 'max-lg:hidden')}>
+              <span className="sr-only">Find a team</span>
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+              <Input
+                ref={inputRef}
+                type="search"
+                className="pl-9 lg:pr-9"
+                value={search ?? ''}
+                placeholder="Find a team"
+                aria-keyshortcuts="/"
+                onChange={(event) => onSearch(event.target.value)}
+                onKeyDown={(event) => { if (event.key === 'Escape' && !search) setSearchOpen(false) }}
+              />
+              <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded-md border border-line px-1.5 text-xs text-muted max-lg:hidden" aria-hidden="true">/</kbd>
+            </label>
+          ) : null}
+          {onSearch ? (
+            searching
+              ? <Button type="button" variant="ghost" size="icon" className="lg:hidden" aria-label="Close search" onClick={closeSearch}><X aria-hidden="true" /></Button>
+              : <Button type="button" variant="ghost" size="icon" className="lg:hidden" aria-label="Find a team" onClick={() => setSearchOpen(true)}><Search aria-hidden="true" /></Button>
+          ) : null}
+          <a className={cn('shrink-0 text-sm text-muted no-underline transition-colors duration-150 hover:text-text', searching && 'max-lg:hidden')} href="/lab">DPS lab</a>
+        </div>
       </header>
-      {/* Phones get the views as a bottom tab bar, so the top of the screen
-          holds data instead of three full-width buttons. */}
       <nav
-        className="app-nav-mobile fixed inset-x-0 bottom-0 z-50 flex h-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] items-stretch border-t border-border bg-[var(--rail)] pb-[env(safe-area-inset-bottom)] sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 grid h-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] grid-cols-[repeat(4,minmax(0,1fr))_minmax(76px,1.25fr)] border-t border-line bg-ground pb-[env(safe-area-inset-bottom)] sm:hidden"
         aria-label="Primary"
       >
-        {tabs}
+        {MODES.map((entry) => link(entry, 'flex min-w-0 flex-col items-center justify-center gap-0.5 border-t-2 border-transparent text-xs text-muted no-underline aria-[current=page]:border-focus aria-[current=page]:font-semibold aria-[current=page]:text-text', true))}
       </nav>
     </>
   )
@@ -167,7 +181,7 @@ export function ScopedSnapshotState({ state, scope, layout }: { state: Exclude<P
 export function ErrorScreen({ message }: { message: string }) {
   return (
     <main className="grid min-h-screen place-items-center p-6">
-      <Card className="w-[min(460px,92vw)] shadow-[var(--shadow-2)]">
+      <Card className="w-[min(460px,92vw)]">
         <DataState
           icon={<AlertTriangle size={26} aria-hidden="true" />}
           title="Snapshot unavailable"

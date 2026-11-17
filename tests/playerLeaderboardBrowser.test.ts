@@ -283,7 +283,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.getByRole('heading', { name: 'No players match these filters', exact: true }).waitFor()
     await page.getByRole('button', { name: 'Clear filters', exact: true }).click()
     await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
-    await page.getByRole('combobox', { name: 'Season', exact: true }).selectOption('2025')
+    await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2025', exact: true }).click()
     await expectPlayers(page, ['Echo', 'Foxtrot', 'Delta'])
     assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '2', '3'], 'Different full-precision scores have different ranks even when the displayed scores match')
     assert.deepEqual(await rows.locator('td:nth-child(5) .player-score-figure').allTextContents(), ['104.5', '104.5', '101.2'])
@@ -313,7 +313,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.reload()
     await expectPlayers(page, ['Echo', 'Foxtrot', 'Delta'])
     assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '1', '3'], 'Equal full-precision Stats Power scores share a rank')
-    await page.getByRole('combobox', { name: 'Season', exact: true }).selectOption('2024')
+    await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2024', exact: true }).click()
     await page.getByRole('heading', { name: 'No ranked players in this scope', exact: true }).waitFor()
     assert.equal(await rows.count(), 0, 'An empty exact season must not borrow all-season players')
 

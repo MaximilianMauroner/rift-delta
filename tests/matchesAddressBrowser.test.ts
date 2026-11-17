@@ -332,10 +332,10 @@ test('Matches event choices and addressed pages survive catalog loading and real
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
       await page.getByRole('button', { name: 'Next page', exact: true }).click()
       await pager.getByText('Page 2 of 2', { exact: true }).waitFor()
-      await page.getByLabel('Season', { exact: true }).selectOption('2025')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2025', exact: true }).click()
       await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('scope') === 'season:2025')
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
-      await page.getByLabel('Season', { exact: true }).selectOption('All')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: 'All seasons', exact: true }).click()
       await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('scope') === 'all')
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
       await page.waitForFunction(() => !new URLSearchParams(location.hash.split('?')[1]).has('page'))
@@ -352,7 +352,7 @@ test('Matches event choices and addressed pages survive catalog loading and real
       await pager.getByText('Page 2 of 3', { exact: true }).waitFor()
       await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('page') === '2')
       const requestedSnapshot = page.waitForRequest((request) => new URL(request.url()).pathname === snapshotPath)
-      await page.getByLabel('Season', { exact: true }).selectOption('2026')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2026', exact: true }).click()
       await requestedSnapshot
       await page.getByText('Loading 2026 source season', { exact: true }).waitFor()
       await page.waitForFunction(() => !document.querySelector('[aria-label="Match history results"]'))
@@ -369,7 +369,7 @@ test('Matches event choices and addressed pages survive catalog loading and real
 
       await page.getByRole('button', { name: 'Next page', exact: true }).click()
       await pager.getByText('Page 2 of 2', { exact: true }).waitFor()
-      await page.getByLabel('Season', { exact: true }).selectOption('2026')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2026', exact: true }).click()
       await pager.getByText('Page 2 of 2', { exact: true }).waitFor()
       assert.equal(new URLSearchParams(new URL(page.url()).hash.split('?')[1]).get('page'), '2', 'selecting the current scope is a no-op')
 
@@ -395,12 +395,12 @@ test('Matches event choices and addressed pages survive catalog loading and real
       await page.getByRole('button', { name: 'Split 1', exact: true }).click()
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
 
-      await page.getByLabel('Season', { exact: true }).selectOption('All')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: 'All seasons', exact: true }).click()
       await pager.getByText('Page 1 of 3', { exact: true }).waitFor()
       await rows.nth(24).waitFor()
       await page.getByRole('button', { name: 'Next page', exact: true }).click()
       await pager.getByText('Page 2 of 3', { exact: true }).waitFor()
-      await page.getByLabel('Season', { exact: true }).selectOption('2026')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2026', exact: true }).click()
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
 
       await navigate('#matches?scope=all')
@@ -414,10 +414,10 @@ test('Matches event choices and addressed pages survive catalog loading and real
     await t.test('a hash change keeps page two when both scope snapshots are cached', async () => {
       await navigate('#matches?scope=all')
       await pager.getByText('Page 1 of 3', { exact: true }).waitFor()
-      await page.getByLabel('Season', { exact: true }).selectOption('2026')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2026', exact: true }).click()
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
       await rows.nth(24).waitFor()
-      await page.getByLabel('Season', { exact: true }).selectOption('All')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: 'All seasons', exact: true }).click()
       await pager.getByText('Page 1 of 3', { exact: true }).waitFor()
       await rows.nth(24).waitFor()
       const documentTime = await page.evaluate(() => performance.timeOrigin)
