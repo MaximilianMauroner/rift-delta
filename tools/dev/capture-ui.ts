@@ -18,7 +18,6 @@ const password = randomUUID()
 
 type Route = {
   id: string
-  answer: string
   open: (page: Page, base: string) => Promise<void>
   fixedClock?: boolean
 }
@@ -27,20 +26,20 @@ const visit = (address: string) => async (page: Page, base: string) => { await p
 
 async function openBoard(page: Page, base: string) {
   await page.goto(`${base}/#rankings?scope=all`)
-  await page.locator('table tbody tr').first().waitFor()
+  await page.locator('[data-first-answer="rankings"]').first().waitFor()
 }
 
 const routes: Route[] = [
-  { id: 'rankings', answer: 'table tbody tr', open: visit('/#rankings?scope=all') },
+  { id: 'rankings', open: visit('/#rankings?scope=all') },
   {
-    id: 'team-detail', answer: '[role="dialog"] h2',
+    id: 'team-detail',
     open: async (page, base) => {
       await openBoard(page, base)
       await page.getByTitle('Open Bilibili Gaming', { exact: true }).click()
     },
   },
   {
-    id: 'comparison', answer: '[role="dialog"] section[aria-label*=" against "]',
+    id: 'comparison',
     open: async (page, base) => {
       await openBoard(page, base)
       await page.getByRole('checkbox', { name: 'Compare Bilibili Gaming', exact: true }).check()
@@ -48,26 +47,26 @@ const routes: Route[] = [
       await page.getByRole('button', { name: 'Open comparison', exact: true }).click()
     },
   },
-  { id: 'players', answer: 'table tbody tr', open: visit('/#players?scope=all') },
-  { id: 'regions', answer: '[title$=" region detail"]', open: visit('/#regions?scope=all') },
-  { id: 'matches', answer: 'table tbody tr, div.md\\:hidden > div', open: visit('/#matches?scope=all') },
-  { id: 'tournaments', answer: '[aria-label="Bracket, scrolls sideways"] article', open: visit('/#tournaments?scope=all'), fixedClock: true },
+  { id: 'players', open: visit('/#players?scope=all') },
+  { id: 'regions', open: visit('/#regions?scope=all') },
+  { id: 'matches', open: visit('/#matches?scope=all') },
+  { id: 'tournaments', open: visit('/#tournaments?scope=all'), fixedClock: true },
   {
-    id: 'tournament-reports', answer: '[aria-label^="Evidence for"]', fixedClock: true,
+    id: 'tournament-reports', fixedClock: true,
     open: async (page, base) => {
       await page.goto(`${base}/#tournaments?scope=all`)
       await page.getByRole('link', { name: 'Team reports', exact: true }).click()
     },
   },
   {
-    id: 'lab-login', answer: 'form.login-card',
+    id: 'lab-login',
     open: async (page, base) => {
       await page.context().clearCookies()
       await page.goto(`${base}/lab/login`)
     },
   },
   {
-    id: 'lab', answer: '.band:not(.band-flat) .question',
+    id: 'lab',
     open: async (page, base) => {
       await page.goto(`${base}/lab/login`)
       await page.locator('input[type="password"]').fill(password)
@@ -155,6 +154,7 @@ async function settle(page: Page) {
 }
 
 async function capture(context: BrowserContext, base: string, route: Route, size: { width: number; height: number }) {
+  const answer = `[data-first-answer="${route.id}"]`
   const page = await context.newPage()
   const consoleErrors: string[] = []
   page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()) })
@@ -163,23 +163,22 @@ async function capture(context: BrowserContext, base: string, route: Route, size
   let failure: string | null = null
   try {
     await route.open(page, base)
-    await page.locator(route.answer).filter({ visible: true }).first().waitFor({ timeout: 20_000 })
-    // The lab keeps requests open, so network idle is best effort.
-    await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => undefined)
-    await page.evaluate('document.fonts.ready')
+    await page.locator(answer).filter({ visible: true }).first().waitFor({ timeout: 20_000 })
+    await page.waitForFunction('document.fonts.status === "loaded"', undefined, { timeout: 20_000 })
     await settle(page)
   } catch (error) {
     failure = error instanceof Error ? error.message.split('\n')[0]! : String(error)
   }
   await page.evaluate('window.scrollTo(0, 0)')
-  const metrics = await page.evaluate(`(${measure})(${JSON.stringify(route.answer)})`) as {
+  const metrics = await page.evaluate(`(${measure})(${JSON.stringify(answer)})`) as {
     firstAnswerY: number | null; scrollWidth: number; layoutWidth: number; titleOnlyCount: number; titleOnlySamples: string[]
   }
+  if (metrics.firstAnswerY === null && !failure) failure = 'The first answer disappeared before capture'
   const file = `${route.id}-${size.width}.png`
   await page.screenshot({ path: join(out, file), fullPage: true })
   await page.close()
   return {
-    route: route.id, width: size.width, height: size.height, file, answerSelector: route.answer,
+    route: route.id, width: size.width, height: size.height, file, answerSelector: answer,
     ...metrics, overflow: metrics.scrollWidth > size.width, consoleErrors, failure,
   }
 }
@@ -229,6 +228,9 @@ try {
     tournamentFeed: 'synthetic-fixture served by the capture harness',
     captures,
   }, null, 2)}\n`)
+  if (captures.some((capture) => capture.failure || capture.overflow || capture.firstAnswerY === null || capture.consoleErrors.length > 0)) {
+    process.exitCode = 1
+  }
 } finally {
   await browser?.close()
   await server.close()
