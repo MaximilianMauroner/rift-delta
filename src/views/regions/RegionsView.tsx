@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, ChevronLeft, ChevronRight, Globe2, Swords, Trophy, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowRight, ChevronLeft, ChevronRight, Globe2, X } from 'lucide-react'
 import {
   displayRegionPowerScore,
   displayRegionTotalTeamRating,
@@ -22,12 +22,13 @@ import { DataState, RegionBadge } from '../../components/ui'
 import { FieldStrip, FieldStripKey } from '../../components/FieldStrip'
 import { fieldPosition, type Better } from '../../domains/rankings/field-statistics'
 import { LoadingState } from '../../components/ui/loading'
-import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { PageShell, StatCell, StatRibbon } from '../../components/ui/page-shell'
+import { PageShell } from '../../components/ui/page-shell'
 import { Panel, PanelBody, PanelHeader } from '../../components/ui/panel'
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from '../../components/ui/sheet'
+import { Lane } from '../../components/ui/lane'
+import { Table, TableBody, TableCell, TableRow } from '../../components/ui/table'
+import { leagueColor } from '../../shared/teamColor'
 import { cn } from '../../shared/utils'
 import { TeamMark } from '../../components/TeamMark'
 import { LineChart, type ChartSeries } from '../../components/LineChart'
@@ -35,6 +36,7 @@ import { RegionDepthChart } from '../../components/RegionDepthChart'
 import { RegionPowerHistory } from './RegionPowerHistory'
 import { CompareToggle } from '../rankings/CompareToggle'
 import { seriesWinner } from '../matches/seriesOutcome'
+import './regions.css'
 
 export function RegionsView({
   regions,
@@ -56,12 +58,25 @@ export function RegionsView({
   onRequestRegionHistory?: () => void
 }) {
   const { value: selectedRegionId, open: openRegionDetail, close: closeRegionDetail } = useHistoryDetail('regionDetail')
+  const boardRef = useRef<HTMLDivElement>(null)
+  const previousRegionId = useRef<string | null>(null)
+  const boardScroll = useRef(0)
+  useEffect(() => {
+    const previous = previousRegionId.current
+    previousRegionId.current = selectedRegionId
+    const ownPage = window.matchMedia('(max-width: 1279px)').matches
+    if (selectedRegionId && !previous && ownPage) window.scrollTo({ top: 0, behavior: 'auto' })
+    if (!selectedRegionId && previous) {
+      if (ownPage) window.scrollTo({ top: boardScroll.current, behavior: 'auto' })
+      boardRef.current?.querySelector<HTMLButtonElement>(`[data-region="${CSS.escape(previous)}"]`)?.focus({ preventScroll: true })
+    }
+  }, [selectedRegionId])
   const strongest = useMemo(
     () => [...regions].sort((a, b) => displayRegionPowerScore(b) - displayRegionPowerScore(a))[0],
     [regions],
   )
   const bestRecord = useMemo(
-    () => [...regions].sort((a, b) => (b.opponentAdjustedWinRate ?? 0) - (a.opponentAdjustedWinRate ?? 0))[0],
+    () => [...regions].sort((a, b) => (b.winsOverExpected ?? -Infinity) - (a.winsOverExpected ?? -Infinity))[0],
     [regions],
   )
   const selectedRegion = useMemo(
@@ -74,11 +89,14 @@ export function RegionsView({
   )
   const historyLines = useMemo(
     () => regions
-      .map((region, index) => ({ region: region.region, color: REGION_LINE_COLORS[index % REGION_LINE_COLORS.length] }))
+      .map((region) => ({ region: region.region, color: leagueColor(region.flagshipLeague ?? region.region) }))
       .filter((line) => pickedIds.size === 0 || pickedIds.has(line.region)),
     [pickedIds, regions],
   )
   const regionHistory = regionHistoryState.status === 'ready' ? regionHistoryState.data : undefined
+  const powers = regions.map(displayRegionPowerScore)
+  const laneMin = Math.floor(Math.min(...powers) / 100) * 100
+  const laneMax = Math.max(laneMin + 100, Math.ceil(Math.max(...powers) / 100) * 100)
 
   if (regions.length === 0) {
     return (
@@ -93,121 +111,89 @@ export function RegionsView({
   }
 
   return (
-    <PageShell
-      ribbon={
-        <StatRibbon label="Region summary" className="regions-summary">
-          <StatCell icon={<Trophy aria-hidden="true" />} label="Strongest region" value={strongest?.region ?? '—'} detail={`Region power ${formatRating(strongest ? displayRegionPowerScore(strongest) : undefined)}`} />
-          <StatCell
-            icon={<Globe2 aria-hidden="true" />}
-            label="Regions"
-            value={String(regions.length)}
-            detail={<span className="block whitespace-normal">{regions.map((region) => region.region).join(' · ')}</span>}
-          />
-          <StatCell
-            icon={<Swords aria-hidden="true" />}
-            label="Best international record"
-            value={bestRecord?.region ?? '—'}
-            detail={`${formatSignedDecimal(bestRecord?.winsOverExpected)} wins vs expected`}
-          />
-        </StatRibbon>
-      }
-    >
-      <Panel>
-        <PanelHeader
-          title="Region power over time"
-          description={`Each line shows the historical mean Power of up to three highest-rated teams from each region's eligible field, day by day. ${pickedIds.size > 0
-            ? 'The chart shows only the regions that you compare.'
-            : 'Select Compare on a region below to show only the regions that you compare.'}`}
-        />
-        <PanelBody className="px-0 pt-0 pb-1">
-          <RegionPowerHistory state={regionHistoryState} lines={historyLines} standings={standings} />
-        </PanelBody>
-      </Panel>
+    <PageShell className={cn('regions-view', selectedRegion && 'regions-view--selected')}>
+      <div ref={boardRef} className="regions-board">
+        <p className="regions-lead" data-first-answer="regions">
+          <strong>{strongest?.region}</strong> leads with {formatRating(strongest ? displayRegionPowerScore(strongest) : undefined)} Region power.
+        </p>
+        <details className="regions-scope-summary">
+          <summary>{regions.length} regions in this scope</summary>
+          <p>{regions.map((region) => region.region).join(', ')}.</p>
+          <p>Best international record by wins vs expected, {bestRecord?.region} with {formatSignedDecimal(bestRecord?.winsOverExpected)}.</p>
+        </details>
+        <Panel>
+          <PanelHeader title="Regional standings" />
+          <div className="regions-scale" aria-hidden="true">
+            <span>Rank / League</span><span>Power</span><span>{formatRating(laneMin)} to {formatRating(laneMax)}</span>
+          </div>
+          <Table className="regions-ladder" aria-label="League ladder">
+            <TableBody>
+              {regions.map((region) => {
+                const picked = pickedIds.has(region.region)
+                const power = displayRegionPowerScore(region)
+                const league = region.flagshipLeague ?? region.region
+                return (
+                  <TableRow key={region.region} league={league} className={cn(selectedRegionId === region.region && 'regions-row--selected')}>
+                    <TableCell className="regions-row-cell">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        data-row-open=""
+                        data-region={region.region}
+                        className="regions-row-open"
+                        title={`Open ${region.region} region detail`}
+                        aria-expanded={selectedRegionId === region.region}
+                        onClick={() => {
+                          boardScroll.current = window.scrollY
+                          onRequestRegionHistory?.()
+                          openRegionDetail(region.region)
+                        }}
+                        onFocus={onRequestRegionHistory}
+                        onPointerEnter={onRequestRegionHistory}
+                      >
+                        <span className="regions-rank">{region.rank}</span>
+                        <span className="regions-identity">
+                          {region.region !== league ? <strong>{region.region}</strong> : null}
+                          <RegionBadge region={league} />
+                        </span>
+                        <strong className="regions-power"><span className="sr-only">Region power </span>{formatRating(power)}</strong>
+                        <Lane league={league} value={power} low={power} high={power} min={laneMin} max={laneMax} label={`${region.region} Region power ${formatRating(power)} on a scale from ${formatRating(laneMin)} to ${formatRating(laneMax)}`} />
+                        <span className="regions-top-teams">
+                          {region.topTeams.slice(0, 3).map((team) => (
+                            <span className="regions-top-team" key={team.team}>
+                              <TeamMark team={team.team} code={team.code} className="size-5 border-0 bg-transparent" imageClassName="p-0" />
+                              <span>{team.code ?? team.team}</span>
+                              <span className="sr-only">{team.team}, Power {formatRating(team.rating)}</span>
+                            </span>
+                          ))}
+                        </span>
+                      </Button>
+                      <details className="regions-row-facts">
+                        <summary>{region.teamCount} flagship teams, record and depth</summary>
+                        <dl>
+                          <div><dt>International record</dt><dd>{formatRecord(region.internationalWins, region.internationalLosses)} · {formatRatio(region.internationalWinRate)}</dd></div>
+                          <div><dt>Wins vs expected</dt><dd>{formatSignedDecimal(region.winsOverExpected)}</dd></div>
+                          <div><dt>Opponent Power</dt><dd>{formatRating(region.averageOpponentRating)}</dd></div>
+                          <div><dt>Depth gap</dt><dd>{formatRating(power - displayRegionTotalTeamRating(region))}</dd></div>
+                          <div><dt>All-team average</dt><dd>{formatRating(displayRegionTotalTeamRating(region))}</dd></div>
+                        </dl>
+                        <ul>
+                          {region.topTeams.slice(0, 3).map((team) => <li key={team.team}>{team.team} · {team.code ?? team.team} · Power {formatRating(team.rating)}</li>)}
+                        </ul>
+                      </details>
+                    </TableCell>
+                    <TableCell className="regions-compare-cell">
+                      <CompareToggle picked={picked} onToggle={() => onToggle(region)} label={region.region} />
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </Panel>
+      </div>
 
-      <Panel>
-        <PanelHeader title="Region depth" />
-        <PanelBody className="grid gap-3">
-          <RegionDepthLegend />
-          <p className="max-w-[78ch] text-sm leading-relaxed text-muted">Each dot is a team. Dots with similar Power stack down so each team stays reachable. Only horizontal position shows Power.</p>
-          <RegionDepthChart regions={regions} />
-        </PanelBody>
-      </Panel>
-
-      <Panel>
-        <PanelHeader title="Regional standings" />
-
-        <div className="flex flex-col">
-          {regions.map((region) => {
-            const picked = pickedIds.has(region.region)
-
-            return (
-              <div
-                key={region.region}
-                className={cn(
-                  'group/row relative grid grid-cols-[minmax(0,1fr)_auto] items-center border-t border-line transition-[background] duration-150 first:border-t-0 hover:bg-raised has-[[data-row-open]:focus-visible]:bg-raised',
-                  picked && 'bg-[var(--focus-wash)] shadow-[var(--focus-bar)] hover:bg-[var(--focus-wash)]',
-                )}
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  data-first-answer="regions"
-                  data-row-open=""
-                  className="grid h-auto min-h-0 w-full min-w-0 grid-cols-[52px_minmax(150px,1.25fr)_minmax(150px,1fr)_minmax(150px,0.95fr)_minmax(160px,1.4fr)] items-center justify-stretch justify-items-stretch gap-4 rounded-none border-0 bg-transparent py-4 pr-0 pl-4 text-left font-[inherit] whitespace-normal text-[inherit] after:absolute after:inset-0 hover:bg-transparent focus-visible:border-transparent focus-visible:ring-0 focus-visible:outline-none! focus-visible:after:shadow-[inset_0_0_0_2px_var(--focus)] max-[1180px]:grid-cols-[44px_minmax(120px,1.3fr)_minmax(120px,1fr)_minmax(150px,1.4fr)] max-[900px]:grid-cols-[40px_minmax(120px,1fr)_minmax(98px,auto)] max-[900px]:gap-3 max-sm:grid-cols-[28px_minmax(0,1fr)] max-sm:gap-2 max-sm:py-3.5 max-sm:pr-0 max-sm:pl-3"
-                  title={`Open ${region.region} region detail`}
-                  onClick={() => {
-                    onRequestRegionHistory?.()
-                    openRegionDetail(region.region)
-                  }}
-                  onFocus={onRequestRegionHistory}
-                  onPointerEnter={onRequestRegionHistory}
-                >
-                  <span className="text-center text-lg font-bold text-text max-sm:row-span-2 max-sm:text-left">{region.rank}</span>
-                  <span className="flex min-w-0 items-center gap-3 [&>span]:min-w-0 [&_b]:text-base [&_b]:font-semibold [&_b]:tracking-normal [&_b]:text-text [&_small]:mt-px [&_small]:block [&_small]:text-sm [&_small]:text-muted max-sm:gap-2 max-sm:[&_b]:overflow-hidden max-sm:[&_b]:text-ellipsis max-sm:[&_b]:whitespace-nowrap">
-                    <RegionBadge region={region.region} />
-                    <span>
-                      <b>{region.region}</b>
-                      <small>
-                        {region.flagshipLeague ?? 'Multiple leagues'} · {region.teamCount} flagship teams
-                      </small>
-                    </span>
-                  </span>
-                  <span className="grid min-w-0 gap-0.5 text-sm leading-[1.3] text-muted tabular-nums max-sm:col-start-2">
-                    <strong className="text-sm font-semibold text-text">Region power {formatRating(displayRegionPowerScore(region))}</strong>
-                    <small className="text-sm text-muted" title={`All-team average ${formatRating(displayRegionTotalTeamRating(region))}`}>
-                      Depth gap {formatRating(displayRegionPowerScore(region) - displayRegionTotalTeamRating(region))}
-                    </small>
-                    <span className="hidden max-[1180px]:block">{formatSignedDecimal(region.winsOverExpected)} wins vs expected</span>
-                  </span>
-                  <span className="grid min-w-0 gap-0.5 text-sm text-muted tabular-nums [&_b]:font-semibold [&_b]:text-text [&_small]:block [&_small]:leading-[1.25] [&_small]:text-muted max-[1180px]:hidden">
-                    <span className="block">
-                      International record <span className="whitespace-nowrap"><b>{formatRecord(region.internationalWins, region.internationalLosses)}</b> · {formatRatio(region.internationalWinRate)}</span>
-                    </span>
-                    <small title={`Average opponent power ${formatRating(region.averageOpponentRating)}`}>
-                      {formatSignedDecimal(region.winsOverExpected)} wins vs expected
-                    </small>
-                  </span>
-                  <span className="flex flex-wrap gap-1 max-[900px]:hidden">
-                    {region.topTeams.slice(0, 3).map((team) => (
-                      <Badge className="gap-1.5" variant="secondary" key={team.team}>
-                        <TeamMark team={team.team} code={team.code} className="size-5 border-0 bg-transparent" imageClassName="p-0" />
-                        <b className="font-bold text-text">{team.code ?? team.team.slice(0, 3).toUpperCase()}</b>
-                        {formatRating(team.rating)}
-                      </Badge>
-                    ))}
-                  </span>
-                </Button>
-                <div className="flex items-center gap-2 py-4 pr-3 pl-0 max-sm:gap-1 max-sm:pr-2">
-                  <CompareToggle picked={picked} onToggle={() => onToggle(region)} label={region.region} className="relative z-10" />
-                  <ChevronRight className="size-4 text-muted transition-colors group-hover/row:text-text max-sm:hidden" aria-hidden="true" />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </Panel>
-
-      <RegionDetailDrawer
+      <RegionDossier
         region={selectedRegion}
         regions={regions}
         teams={selectedRegionTeams}
@@ -216,28 +202,48 @@ export function RegionsView({
         onRequestMatchHistoryPages={onRequestMatchHistoryPages}
         onClose={closeRegionDetail}
       />
+
+      <div className="regions-charts">
+        <Panel>
+          <PanelHeader
+            title="Region power over time"
+            description={`Each line shows the historical mean Power of up to three highest-rated teams from each region's eligible field, day by day. ${pickedIds.size > 0
+              ? 'The chart shows only the regions that you compare.'
+              : 'Select Compare on a region above to show only the regions that you compare.'}`}
+          />
+          <PanelBody className="px-0 pt-0 pb-1">
+            <RegionPowerHistory state={regionHistoryState} lines={historyLines} standings={standings} />
+          </PanelBody>
+        </Panel>
+        <Panel>
+          <PanelHeader title="Region depth" />
+          <PanelBody className="grid gap-3">
+            <RegionDepthLegend />
+            <p className="max-w-[78ch] text-sm leading-relaxed text-muted">Each dot is a team. Dots with similar Power stack down so each team stays reachable. Only horizontal position shows Power.</p>
+            <RegionDepthChart regions={regions} />
+          </PanelBody>
+        </Panel>
+      </div>
     </PageShell>
   )
 }
 
-const REGION_LINE_COLORS = ['var(--league-lck)', 'var(--league-lpl)', 'var(--league-lec)', 'var(--league-lcs)', 'var(--league-lcp)', 'var(--league-cblol)']
-
 type RegionStanding = Pick<PublicTeamStanding, 'team' | 'code' | 'region' | 'league' | 'rating' | 'rank' | 'eligibility'>
 
-type RegionDrawerTeam = {
+type RegionTeam = {
   team: string
   code?: string
   rating: number
   rank?: number
 }
 
-function RegionPowerTrend({ series, region }: { series?: PublicRegionHistorySeries; region: string }) {
+function RegionPowerTrend({ series, region, league }: { series?: PublicRegionHistorySeries; region: string; league: string }) {
   const chartSeries = useMemo<ChartSeries[]>(() => series && series.points.length >= 2 ? [{
     id: region,
     label: region,
-    color: 'var(--league-lck)',
+    color: leagueColor(league),
     points: series.points.map((point) => ({ t: Date.parse(point[0]), y: point[1] })),
-  }] : [], [region, series])
+  }] : [], [league, region, series])
   const first = series?.points[0]
   const last = series?.points.at(-1)
   const delta = first && last ? last[1] - first[1] : undefined
@@ -248,7 +254,7 @@ function RegionPowerTrend({ series, region }: { series?: PublicRegionHistorySeri
       : undefined
 
   return (
-    <section className="min-w-0 rounded-md border border-line bg-surface" aria-label={`${region} power trajectory`}>
+    <section className="min-w-0 border-t border-line" aria-label={`${region} power trajectory`}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-4 pt-3 max-[560px]:px-3">
         <h3 className="text-base font-semibold text-text">Power trajectory</h3>
         {first && last && chartSeries.length > 0 ? (
@@ -287,7 +293,7 @@ const REGION_STATS: Array<{
   { label: 'International sample', hint: 'How much the region score rests on its own international games. More games give a higher share.', better: null, value: (region) => region.connectivity, sample: internationalSeries, unit: 'international series', format: formatRatio },
 ]
 
-function RegionDetailDrawer({
+function RegionDossier({
   region,
   regions,
   teams,
@@ -298,113 +304,118 @@ function RegionDetailDrawer({
 }: {
   region: RegionStrength | null
   regions: RegionStrength[]
-  teams: RegionDrawerTeam[]
+  teams: RegionTeam[]
   series?: PublicRegionHistorySeries
   matchHistoryState: MatchHistoryState
   onRequestMatchHistoryPages: (pages: number[]) => void
   onClose: () => void
 }) {
-  const displayedTeams = teams.length > 0 ? teams : region?.topTeams ?? []
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const regionId = region?.region
+  useEffect(() => {
+    if (regionId) headingRef.current?.focus({ preventScroll: true })
+  }, [regionId])
+  if (!region) return null
+  const displayedTeams = teams.length > 0 ? teams : region.topTeams
 
   return (
-    <Sheet open={Boolean(region)} onOpenChange={(nextOpen) => {
-      if (!nextOpen) onClose()
-    }}>
-      {region ? (
-        <SheetContent
-          side="right"
-          showCloseButton={false}
-          className="data-[side=right]:w-[min(980px,100vw)] data-[side=right]:max-w-none gap-0 border-l border-line bg-surface p-0 text-text shadow-[var(--overlay-shadow)] data-[side=right]:sm:w-[min(980px,94vw)] data-[side=right]:sm:max-w-none"
-        >
-          <SheetHeader className="flex-row items-center gap-3 border-b border-line px-5 py-4 text-left">
-            <SheetTitle className="mr-auto text-base font-semibold text-text">{region.region}</SheetTitle>
-            <SheetClose asChild>
-              <Button type="button" variant="ghost">
-                <X size={16} aria-hidden="true" />
-                Close
-              </Button>
-            </SheetClose>
-          </SheetHeader>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-auto overscroll-contain bg-raised px-5 pt-4 pb-6 [&>*]:shrink-0 max-[560px]:p-3">
-            <section className="flex items-end justify-between gap-4 rounded-md border border-line bg-surface p-4 max-[820px]:flex-wrap max-[820px]:items-start max-[820px]:[&>div:first-child]:basis-full max-[560px]:p-3" aria-label={`${region.region} summary`}>
-              <div>
-                <h3 className="text-2xl leading-none font-semibold text-text">#{region.rank} {region.region}</h3>
-                <p className="mt-2 flex max-w-[72ch] flex-wrap gap-x-2.5 gap-y-1 text-sm text-muted [&>span]:inline-flex [&>span]:min-w-0 [&>span]:items-center [&>span:not(:last-child)::after]:ml-2.5 [&>span:not(:last-child)::after]:text-muted [&>span:not(:last-child)::after]:content-['·']">
-                  <span>{region.flagshipLeague ?? 'Multiple flagship leagues'}</span>
-                  <span>{formatTier(region.tier)}</span>
-                  <span>{formatCountWithUnit(region.teamCount, 'flagship team')}</span>
-                </p>
-              </div>
-              <strong className="grid justify-items-end gap-1 text-3xl leading-none text-text tabular-nums max-[560px]:justify-items-start">
-                {formatRating(displayRegionPowerScore(region))}
-                <span className="text-sm font-semibold text-muted">Region power</span>
-              </strong>
-            </section>
-
-            <RegionPowerTrend series={series} region={region.region} />
-
-            <div className="rounded-md border border-line bg-surface">
-              <DetailStat
-                label="International record"
-                value={formatRecord(region.internationalWins, region.internationalLosses)}
-                description={`Win rate ${formatRatio(region.internationalWinRate)}. Bo2 ties count as half.`}
-              />
-            </div>
-            <details className="rounded-md border border-line bg-surface p-3 max-[560px]:px-3">
-              <summary className="cursor-pointer text-sm font-semibold">Compared with other regions</summary>
-              <div className="mt-2 grid gap-2">
-                <ol className="grid min-w-0 divide-y divide-line" aria-label={`${region.region} compared with other regions`}>
-                  {REGION_STATS.map((stat) => (
-                    <FieldStrip
-                      key={stat.label}
-                      label={stat.label}
-                      hint={stat.hint}
-                      subject={region.region}
-                      subjectId={region.region}
-                      position={fieldPosition(
-                        regions.map((entry) => ({ id: entry.region, value: stat.value(entry) ?? null, n: stat.sample(entry) })),
-                        region.region,
-                        1,
-                        stat.better,
-                      )}
-                      format={stat.format}
-                      nameFor={(id) => id}
-                      within="of all regions"
-                      minSamples={1}
-                      sampleUnit={stat.unit}
-                    />
-                  ))}
-                </ol>
-                <FieldStripKey subject={region.region} others="Other regions" />
-              </div>
-            </details>
-
-            <RegionMatchHistory key={region.region} region={region} teams={displayedTeams} series={series} state={matchHistoryState} onRequestPages={onRequestMatchHistoryPages} />
-
-            <section className="grid gap-3 rounded-md border border-line bg-surface px-4 py-4 max-[560px]:p-3" aria-label={`${region.region} teams`}>
-              <h3 className="text-base font-semibold text-text">Teams</h3>
-              <div className="grid max-h-[min(420px,42vh)] overflow-y-auto pr-1.5 [scrollbar-gutter:stable]">
-                {displayedTeams.length > 0 ? (
-                  displayedTeams.map((team, index) => (
-                    <div className="grid grid-cols-[52px_36px_minmax(0,1fr)_auto] items-center gap-3 border-t border-line py-3 first:border-t-0 max-[560px]:grid-cols-[38px_32px_minmax(0,1fr)_auto] max-[560px]:gap-2" key={team.team}>
-                      <span className="text-sm text-muted">{team.rank ? `#${team.rank}` : `#${index + 1}`}</span>
-                      <TeamMark team={team.team} code={team.code} className="size-9 max-[560px]:size-8" />
-                      <div>
-                        <b className="block text-sm text-text [overflow-wrap:anywhere]">{team.team}</b>
-                        {team.code ? <small className="mt-0.5 block text-sm text-muted">{team.code}</small> : null}
-                      </div>
-                      <strong className="text-text tabular-nums">{formatRating(team.rating)}</strong>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-muted">No teams in this scope.</p>
-                )}
-              </div>
-            </section>
+    <Panel
+      className="region-dossier"
+      role="region"
+      aria-label={`${region.region} region detail`}
+      league={region.flagshipLeague ?? region.region}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || event.defaultPrevented) return
+        event.preventDefault()
+        onClose()
+      }}
+    >
+      <nav className="region-dossier-header" aria-label="Region pages">
+        <Button type="button" variant="ghost" className="region-dossier-back" onClick={onClose} aria-label="Back to regions"><ChevronLeft size={16} aria-hidden="true" />Regions</Button>
+        <Button type="button" variant="ghost" className="region-dossier-close" onClick={onClose}><X size={16} aria-hidden="true" />Close</Button>
+      </nav>
+      <div className="region-dossier-body">
+        <section className="flex flex-wrap items-start justify-between gap-4 p-1" aria-label={`${region.region} summary`}>
+          <div>
+            <h2 ref={headingRef} tabIndex={-1} className="region-dossier-heading text-xl leading-tight font-semibold text-text">{region.region}</h2>
+            <p className="mt-2 flex max-w-[72ch] flex-wrap gap-x-2.5 gap-y-1 text-sm text-muted [&>span]:inline-flex [&>span]:min-w-0 [&>span]:items-center [&>span:not(:last-child)::after]:ml-2.5 [&>span:not(:last-child)::after]:text-muted [&>span:not(:last-child)::after]:content-['·']">
+              <span>Rank {region.rank}</span>
+              <span>{region.flagshipLeague ?? 'Multiple flagship leagues'}</span>
+              <span>{formatTier(region.tier)}</span>
+              <span>{formatCountWithUnit(region.teamCount, 'flagship team')}</span>
+            </p>
           </div>
-        </SheetContent>
-      ) : null}
-    </Sheet>
+          <strong className="grid justify-items-end gap-1 text-3xl leading-none text-text tabular-nums max-[560px]:justify-items-start">
+            {formatRating(displayRegionPowerScore(region))}
+            <span className="text-sm font-semibold text-muted">Region power</span>
+          </strong>
+        </section>
+
+        <RegionPowerTrend series={series} region={region.region} league={region.flagshipLeague ?? region.region} />
+
+        <div className="border-t border-line">
+          <DetailStat
+            label="International record"
+            value={formatRecord(region.internationalWins, region.internationalLosses)}
+            description={`Win rate ${formatRatio(region.internationalWinRate)}. Bo2 ties count as half.`}
+          />
+        </div>
+        <details className="border-t border-line p-3">
+          <summary className="cursor-pointer text-sm font-semibold">Compared with other regions</summary>
+          <div className="mt-2 grid gap-2">
+            <ol className="grid min-w-0 divide-y divide-line" aria-label={`${region.region} compared with other regions`}>
+              {REGION_STATS.map((stat) => (
+                <FieldStrip
+                  key={stat.label}
+                  label={stat.label}
+                  hint={stat.hint}
+                  subject={region.region}
+                  subjectId={region.region}
+                  position={fieldPosition(
+                    regions.map((entry) => ({ id: entry.region, value: stat.value(entry) ?? null, n: stat.sample(entry) })),
+                    region.region,
+                    1,
+                    stat.better,
+                  )}
+                  format={stat.format}
+                  nameFor={(id) => id}
+                  within="of all regions"
+                  minSamples={1}
+                  sampleUnit={stat.unit}
+                />
+              ))}
+            </ol>
+            <FieldStripKey subject={region.region} others="Other regions" />
+          </div>
+        </details>
+
+        <details className="border-t border-line p-3">
+          <summary className="cursor-pointer text-sm font-semibold">Matches and score history</summary>
+          <RegionMatchHistory key={region.region} region={region} teams={displayedTeams} series={series} state={matchHistoryState} onRequestPages={onRequestMatchHistoryPages} />
+        </details>
+
+        <section className="grid gap-3 border-t border-line px-4 py-4 max-sm:px-3" aria-label={`${region.region} teams`}>
+          <h3 className="text-base font-semibold text-text">Teams</h3>
+          <div className="grid max-h-[min(420px,42vh)] overflow-y-auto pr-1.5 [scrollbar-gutter:stable]">
+            {displayedTeams.length > 0 ? (
+              displayedTeams.map((team, index) => (
+                <div className="grid grid-cols-[52px_36px_minmax(0,1fr)_auto] items-center gap-3 border-t border-line py-3 first:border-t-0 max-[560px]:grid-cols-[38px_32px_minmax(0,1fr)_auto] max-[560px]:gap-2" key={team.team}>
+                  <span className="text-sm text-muted">{team.rank ? `#${team.rank}` : `#${index + 1}`}</span>
+                  <TeamMark team={team.team} code={team.code} className="size-9 max-[560px]:size-8" />
+                  <div>
+                    <b className="block text-sm text-text [overflow-wrap:anywhere]">{team.team}</b>
+                    {team.code ? <small className="mt-0.5 block text-sm text-muted">{team.code}</small> : null}
+                  </div>
+                  <strong className="text-text tabular-nums">{formatRating(team.rating)}</strong>
+                </div>
+              ))
+            ) : (
+              <p className="text-muted">No teams in this scope.</p>
+            )}
+          </div>
+        </section>
+      </div>
+    </Panel>
   )
 }
 
@@ -424,7 +435,7 @@ function RegionMatchHistory({
   onRequestPages,
 }: {
   region: RegionStrength
-  teams: RegionDrawerTeam[]
+  teams: RegionTeam[]
   series?: PublicRegionHistorySeries
   state: MatchHistoryState
   onRequestPages: (pages: number[]) => void
@@ -545,17 +556,17 @@ function RegionMatchRow({
     : undefined
 
   return (
-    <article className="grid grid-cols-[108px_minmax(0,1.45fr)_minmax(150px,0.8fr)_minmax(170px,0.9fr)] items-center gap-4 border-t border-line px-4 py-3.5 first:border-t-0 max-[820px]:grid-cols-[90px_minmax(0,1fr)_minmax(140px,auto)] max-[820px]:[&>div:last-child]:col-start-2 max-[820px]:[&>div:last-child]:col-end-4 max-[560px]:grid-cols-1 max-[560px]:gap-2.5 max-[560px]:px-3 max-[560px]:[&>div:last-child]:col-start-1 max-[560px]:[&>div:last-child]:col-end-2">
+    <article className="grid gap-3 border-t border-line px-4 py-3.5 first:border-t-0 max-sm:px-3">
       <div className="text-sm text-muted">
         <span className="block">{formatDate(summary.datetimeUtc ?? summary.date)}</span>
         <span className="mt-1 block">Bo{summary.bestOf} · {match.games.length} {match.games.length === 1 ? 'game' : 'games'}</span>
       </div>
       <div className="min-w-0">
-        <p className="truncate text-sm text-muted" title={summary.event}>{summary.event}</p>
-        <div className="mt-1.5 flex min-w-0 items-center gap-2 text-sm">
-          <strong className={cn('truncate', teamAIsRegional && 'text-text')} title={summary.teamA.name}>{summary.teamA.name}</strong>
+        <p className="text-sm text-muted [overflow-wrap:anywhere]">{summary.event}</p>
+        <div className="mt-1.5 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-sm">
+          <strong className={cn('[overflow-wrap:anywhere]', teamAIsRegional && 'text-text')}>{summary.teamA.name}</strong>
           <span className="shrink-0 font-bold text-text tabular-nums">{summary.seriesWinsA}–{summary.seriesWinsB}</span>
-          <strong className={cn('truncate', teamBIsRegional && 'text-text')} title={summary.teamB.name}>{summary.teamB.name}</strong>
+          <strong className={cn('[overflow-wrap:anywhere]', teamBIsRegional && 'text-text')}>{summary.teamB.name}</strong>
         </div>
       </div>
       <div>
@@ -569,7 +580,7 @@ function RegionMatchRow({
           {impactParts.length > 0 ? `Team Power ${impactParts.join(' · ')}` : '—'}
         </p>
       </div>
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 border-l border-line pl-4 max-[820px]:border-l-0 max-[820px]:border-t max-[820px]:pt-2.5 max-[820px]:pl-0">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 border-t border-line pt-2.5">
         <ArrowRight className="size-4 text-muted" aria-hidden="true" />
         <div>
           <span className="block text-xs text-muted">Series</span>
@@ -625,7 +636,7 @@ function regionMatchSeries(matches: PublicMatchHistoryEntry[], teamNames: Set<st
     .sort((left, right) => (right.summary.datetimeUtc ?? right.summary.date).localeCompare(left.summary.datetimeUtc ?? left.summary.date) || right.id.localeCompare(left.id))
 }
 
-function flagshipTeamsForRegion(region: RegionStrength, standings: RegionStanding[]): RegionDrawerTeam[] {
+function flagshipTeamsForRegion(region: RegionStrength, standings: RegionStanding[]): RegionTeam[] {
   return standings
     .filter((team) => isRegionPowerTeam(region, team))
     .slice()
@@ -640,7 +651,7 @@ function flagshipTeamsForRegion(region: RegionStrength, standings: RegionStandin
 
 function DetailStat({ label, value, description }: { label: string; value: string; description?: string }) {
   return (
-    <div className="grid min-w-0 gap-1 border-r border-b border-line px-4 py-3.5">
+    <div className="grid min-w-0 gap-1 px-4 py-3.5">
       <span className="text-sm font-semibold text-muted">{label}</span>
       <strong className="text-base text-text tabular-nums [overflow-wrap:anywhere]">{value}</strong>
       {description ? <p className="text-sm leading-relaxed text-muted">{description}</p> : null}

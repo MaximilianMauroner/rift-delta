@@ -232,6 +232,7 @@ test('Regions drawer distinguishes unavailable series contributions from zero an
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
     await page.goto(`http://127.0.0.1:${address.port}/#regions?scope=all`)
     await page.getByTitle('Open LCK region detail', { exact: true }).click()
+    await page.getByText('Matches and score history', { exact: true }).click()
     const history = page.getByRole('region', { name: 'LCK match and score history', exact: true })
     for (const entry of cases) {
       const row = history.locator('article').filter({ has: page.getByText(entry.event, { exact: true }) })
