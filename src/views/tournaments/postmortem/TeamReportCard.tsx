@@ -1,3 +1,4 @@
+import { leagueColor } from '../../../shared/teamColor'
 import { TeamMark } from '../../../components/TeamMark'
 import { signedGold } from '../../../components/fieldFormat'
 import { Button } from '../../../components/ui/button'
@@ -29,7 +30,7 @@ export function TeamReportCard({
   )
   const extent = Math.max(1, ...allGold.map(Math.abs))
   return (
-    <Card className="gap-0 py-0">
+    <Card className="gap-0 border-l-[3px] py-0" style={{ borderLeftColor: leagueColor(team.league) }}>
       <CardHeader className="gap-3 border-b border-line bg-raised py-4">
         <div className="flex min-w-0 items-center gap-3">
           <TeamMark team={team.name} code={team.code} className="size-11" />

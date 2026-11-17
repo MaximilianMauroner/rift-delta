@@ -110,14 +110,16 @@ test('on-demand hypothetical stats load, cancel, retry, and replace changed scen
     assert.match(await details.innerText(), /sampling error, not model confidence/)
     assert.match(await details.innerText(), /uniform-legal-v1/)
     assert.match(await details.innerText(), /Snapshot .*Model .*Config /)
-    const odds = bracket.locator('[title^="Advances in"]')
-    const oddsTeams = () => odds.evaluateAll((chips) => chips.map((chip) => chip.parentElement!.closest('[title]')!.getAttribute('title')))
+    const odds = bracket.locator('[data-advance-odds]')
+    const oddsTeams = () => odds.evaluateAll((chips) => chips.map((chip) => chip.closest('[data-team-name]')!.getAttribute('data-team-name')))
     const assertOncePerTeam = async (count: number) => {
       const teams = await oddsTeams()
       assert.equal(teams.length, count)
       assert.equal(new Set(teams).size, count, `each team shows its chance once in the bracket: ${teams.join(', ')}`)
     }
     await assertOncePerTeam(16)
+    assert.equal(await bracket.locator('[title^="Advances in"]').count(), 0, 'Sampling details are available in the table without hover')
+    assert.match(await tables.innerText(), /Advances in [\d,]+ of 4,000 trials/)
     assert.ok((await odds.allTextContents()).every((text) => /^, [<>]?\d+(\.\d)?% to advance$/.test(text)), 'bracket chances are short percentages')
     assert.equal(await page.evaluate(() => (window as unknown as { swissStatsProgress: number[] }).swissStatsProgress.some((count) => count > 0 && count < 4000)), true, 'real trial completion reaches the DOM')
 
@@ -144,6 +146,8 @@ test('on-demand hypothetical stats load, cancel, retry, and replace changed scen
     await tables.waitFor()
     assert.match(await details.innerText(), /1 drawn rounds and 1 observed results or picks stay fixed/)
     await assertOncePerTeam(16)
+    assert.equal(await bracket.locator('[title^="Advances in"]').count(), 0, 'Sampling details are available in the table without hover')
+    assert.match(await tables.innerText(), /Advances in [\d,]+ of 4,000 trials/)
 
     for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 })

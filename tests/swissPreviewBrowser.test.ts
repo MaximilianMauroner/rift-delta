@@ -319,7 +319,7 @@ for (const ratingsAvailable of [true, false]) test(`Swiss manual preview preserv
         }
       })
       assert.ok(layout.content <= layout.viewport && layout.clipped === 0, `Horizontal overflow at ${width}px: ${JSON.stringify(layout)}`)
-      assert.equal(layout.bracketScrolls, width <= 1024, `The six bracket columns fit at 1440 px and wider and scroll at 1024 px and narrower: ${width}px`)
+      assert.equal(layout.bracketScrolls, width <= 1440, `The six bracket columns fit beside the standings at 1920 px and scroll within their frame at 1440 px and narrower: ${width}px`)
       const tableOverflow = await table.evaluate((element) => element.parentElement!.scrollWidth - element.parentElement!.clientWidth)
       assert.ok(tableOverflow <= 1, `The standings table fits its panel at ${width}px: ${tableOverflow}px too wide`)
     }

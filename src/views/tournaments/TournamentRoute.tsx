@@ -3,7 +3,7 @@ import { hashForModeAndScope, readScopeFromHash, writeNavigationHash } from '../
 import { RouteErrorBoundary } from '../../components/RouteErrorBoundary'
 import { LoadingState } from '../../components/ui/loading'
 import { currentSeasonScope } from '../../domains/rankings/read'
-import { AppNavigation, ModeHeader } from '../AppShell'
+import { AppNavigation } from '../AppShell'
 import { useTournamentReportAddress, type TournamentTab } from '../../browser/tournament-reports/navigation'
 import { TournamentsView } from './routeLoading'
 import { TournamentTabs } from './TournamentTabs'
@@ -26,8 +26,7 @@ export function TournamentRoute() {
     <a className="fixed top-[-56px] left-3 z-80 rounded-md border border-focus bg-raised px-3 py-2 focus-visible:top-3" href="#main-content" onClick={(event) => { event.preventDefault(); mainRef.current?.focus(); mainRef.current?.scrollIntoView({ block: 'start' }) }}>Skip to content</a>
     <AppNavigation mode="tournaments" scope={scope} onGoHome={goHome} />
     <main id="main-content" tabIndex={-1} ref={mainRef} className="min-w-0 flex-1 pb-6 max-sm:pb-[calc(var(--tabbar-h)+24px+env(safe-area-inset-bottom))]">
-      <ModeHeader mode="tournaments" />
-      {postmortem ? <TournamentTabs current="postmortem" tabs={['bracket', 'schedule', 'postmortem']} className="px-[var(--page-x)] pt-2" /> : null}
+      <h1 className="sr-only">Tournaments</h1>
       <RouteErrorBoundary key={postmortem ? 'postmortem' : 'tournaments'}>
         <Suspense fallback={<>
           {postmortem ? null : <TournamentTabs current={current} tabs={['bracket', 'schedule', 'postmortem']} className="px-[var(--page-x)] pt-2" />}

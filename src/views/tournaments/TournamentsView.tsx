@@ -1,3 +1,4 @@
+import { TriangleAlert } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { currentHashQuery, hashParam, writeNavigationHash } from '../../browser/navigation'
 import { eventAddress, resolveEventLink } from '../../browser/tournaments/eventAddress'
@@ -60,7 +61,7 @@ export function TournamentsView() {
 
   const loadingTabs = <TournamentTabs current={view === 'schedule' || view === 'swiss' ? view : 'bracket'} tabs={['bracket', 'schedule', 'postmortem']} />
   if (state.status === 'loading') return <div className="grid min-w-0 gap-3 px-[var(--page-x)] pt-2">{loadingTabs}<LoadingState presentation="page" layout="schedule" delay={false} label="Loading tournament schedule" /></div>
-  if (state.status === 'error') return <div className="grid min-w-0 gap-3 px-[var(--page-x)] pt-2 pb-6">{loadingTabs}<Alert variant="warning" role="alert" className="border-[var(--warn)]">Tournament schedule unavailable: {state.message} <Button className="ml-2" onClick={() => void refresh()}>Retry</Button></Alert></div>
+  if (state.status === 'error') return <div className="grid min-w-0 gap-3 px-[var(--page-x)] pt-2 pb-6">{loadingTabs}<Alert variant="warning" role="alert"><TriangleAlert aria-hidden="true" /><div className="min-w-0">Tournament schedule unavailable: {state.message} <Button className="ml-2" onClick={() => void refresh()}>Retry</Button></div></Alert></div>
   const sourceAge = now - Date.parse(state.health?.checkedAt ?? state.feed.fetchedAt)
   const stale = Boolean(state.error) || (state.health
     ? !state.health.complete || !Number.isFinite(sourceAge) || sourceAge > STALE_MS
@@ -68,34 +69,41 @@ export function TournamentsView() {
   const swissAvailable = selected !== undefined && selected === findSwissEvent(events)
   const shown: TournamentPanel = view === 'swiss' && swissAvailable ? 'swiss' : view === 'schedule' ? 'schedule' : 'bracket'
   const tabs: TournamentTab[] = selected ? ['bracket', 'schedule', ...(swissAvailable ? ['swiss' as const] : []), 'postmortem'] : ['postmortem']
+  const worldsPanel = selected?.competition === 'worlds' ? <WorldsTournamentPanel
+    key={JSON.stringify([state.feed.source, worldsFeedEventKey(selected), forecastArtifacts.basis?.snapshotId, forecastArtifacts.basis?.model.version,
+      forecastArtifacts.basis?.model.configHash, forecastArtifacts.basis?.ratingDataAsOf, forecastArtifacts.basis?.ratingPublishedAt, forecastArtifacts.basis?.identityMap.revision])}
+    event={selected} forecast={{ seriesSource: state.feed.source, basis: forecastArtifacts.basis }} fixtureFeed={state.feed.dataMode === 'synthetic-fixture'} /> : null
   return (
     <div className="grid min-w-0 gap-3 px-[var(--page-x)] pt-2 pb-5">
-      <TournamentTabs current={shown} tabs={tabs} />
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
         <label htmlFor="tournament-event" className="sr-only">Competition</label>
-        <Select id="tournament-event" className="max-w-full font-semibold text-text" value={selected?.id ?? ''} onChange={(event) => {
+        <Select id="tournament-event" className="h-auto max-w-full border-transparent bg-transparent py-1 pl-0 text-xl font-semibold text-text sm:text-2xl" value={selected?.id ?? ''} onChange={(event) => {
           const picked = events.find((candidate) => candidate.id === event.target.value)
           if (picked) selectEvent(picked, setRequestedEvent)
         }}>
           {!selected ? <option value="">{events.length === 0 ? 'No supported events' : 'Choose a competition'}</option> : null}
           {events.map((event) => <option key={event.id} value={event.id}>{event.label}{events.some((other) => other !== event && other.label === event.label) ? ` · ${event.sourceTournamentId}` : ''}</option>)}
         </Select>
-        {state.feed.dataMode === 'synthetic-fixture' ? <p role="status" className="min-w-[7.5rem] flex-1 text-xs leading-snug text-[var(--warn)]">Test fixture data. Not official LoL Esports results.</p> : null}
+        {state.feed.dataMode === 'synthetic-fixture' ? <p role="status" className="min-w-[7.5rem] flex-1 text-xs leading-snug text-[var(--warn)]"><TriangleAlert aria-hidden="true" className="mr-1 inline size-4 align-text-bottom" />Test fixture data. Not official LoL Esports results.</p> : null}
       </div>
-      {stale ? <Alert variant="warning" role="status" className="border-[var(--warn)]">
+      <TournamentTabs current={shown} tabs={tabs} />
+      {stale ? <Alert variant="warning" role="status"><TriangleAlert aria-hidden="true" /><div className="min-w-0">
         Schedule may be stale. Feed changed {formatFeedAge(state.feed.fetchedAt, now)}, last checked {state.health ? formatFeedAge(state.health.checkedAt, now) : 'unknown'}.
         {[state.error, ...(state.health?.warnings ?? [])].filter(Boolean).map((warning) => ` ${warning}`).join('')}
         <Button variant="outline" size="sm" className="ml-2" onClick={() => void refresh()}>Retry</Button>
-      </Alert> : null}
+      </div></Alert> : null}
       {!state.feed.coverage.complete || state.feed.coverage.warnings.length ? (
-        <Alert variant="warning" role="status" className="border-[var(--warn)]">Coverage {state.feed.coverage.complete ? 'has warnings' : 'is incomplete'} for {state.feed.coverage.start.slice(0, 10)} to {state.feed.coverage.end.slice(0, 10)}. {state.feed.coverage.warnings.join(' ')}</Alert>
+        <Alert variant="warning" role="status"><TriangleAlert aria-hidden="true" /><div className="min-w-0">Coverage {state.feed.coverage.complete ? 'has warnings' : 'is incomplete'} for {state.feed.coverage.start.slice(0, 10)} to {state.feed.coverage.end.slice(0, 10)}. {state.feed.coverage.warnings.join(' ')}</div></Alert>
       ) : null}
       {link.kind === 'missing' ? <Alert role="status">This competition link is not in the current schedule. Choose a competition.</Alert>
         : link.kind === 'ambiguous' ? <Alert role="status">This competition link matches more than one event.</Alert>
           : !selected ? <p className="text-sm text-muted">No tournaments in the schedule window.</p> : shown === 'bracket' ? (
         <>
           <h2 className="sr-only">{selected.label}</h2>
-          <TournamentBracket key={selected.id} series={selected.series} timezone={timezone} />
+          <div className={cn('grid min-w-0 items-start gap-4', selected.competition === 'worlds' && 'lg:grid-cols-[minmax(0,1fr)_20rem]')}>
+            <TournamentBracket key={selected.id} series={selected.series} timezone={timezone} />
+            {worldsPanel}
+          </div>
         </>
       ) : shown === 'swiss' ? (
         <>
@@ -107,13 +115,10 @@ export function TournamentsView() {
       ) : (
         <>
           <h2 className="sr-only">{selected.label}</h2>
-          {forecastArtifacts.ledgerWarning ? <p role="status" className="text-xs text-[var(--warn)]">{forecastArtifacts.ledgerWarning}</p> : null}
+          {forecastArtifacts.ledgerWarning ? <p role="status" className="text-xs text-[var(--warn)]"><TriangleAlert aria-hidden="true" className="mr-1 inline size-4 align-text-bottom" />{forecastArtifacts.ledgerWarning}</p> : null}
           {SECTION_ORDER.some((group) => grouped[group].length > 0) ? null : <p className="text-sm text-muted">No series in the schedule window.</p>}
           {(['live', 'upcoming'] as const).map((group) => <ScheduleSection key={group} group={group} series={grouped[group]} timezone={timezone} now={now} seriesSource={state.feed.source} forecasts={forecastArtifacts} />)}
-          {selected.competition === 'worlds' ? <WorldsTournamentPanel
-            key={JSON.stringify([state.feed.source, worldsFeedEventKey(selected), forecastArtifacts.basis?.snapshotId, forecastArtifacts.basis?.model.version,
-              forecastArtifacts.basis?.model.configHash, forecastArtifacts.basis?.ratingDataAsOf, forecastArtifacts.basis?.ratingPublishedAt, forecastArtifacts.basis?.identityMap.revision])}
-            event={selected} forecast={{ seriesSource: state.feed.source, basis: forecastArtifacts.basis }} fixtureFeed={state.feed.dataMode === 'synthetic-fixture'} /> : null}
+          {worldsPanel}
           {(['results', 'unresolved'] as const).map((group) => <ScheduleSection key={group} group={group} series={group === 'results' ? [...grouped.results].reverse() : grouped[group]} timezone={timezone} now={now} seriesSource={state.feed.source} forecasts={forecastArtifacts} />)}
         </>
       )}
@@ -207,7 +212,7 @@ function SeriesRow({ series, timezone, now, seriesSource, forecasts }: ScheduleP
       </p>
     </div>
     <p className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted sm:col-start-2 lg:col-start-auto lg:justify-end">
-      {live ? <Badge variant="live" className="border-[var(--live)] text-[var(--live)]">Live</Badge> : <span>{series.status === 'unknown' ? `Source state: ${series.sourceState || 'unknown'}` : STATUS_LABELS[series.status]}</span>}
+      {live ? <Badge variant="live">Live</Badge> : <span>{series.status === 'unknown' ? `Source state: ${series.sourceState || 'unknown'}` : STATUS_LABELS[series.status]}</span>}
       {winningTeam?.name ? <span className="min-w-0 font-semibold text-text">Winner: {winningTeam.name}</span> : null}
       {series.vodUrls.map((url) => <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="underline">Watch VOD</a>)}
     </p>
@@ -224,12 +229,9 @@ function SeriesForecast({ series, forecast, timezone, seriesSource }: { series: 
   const [first, second] = series.teams
   const receipt = 'receiptKey' in forecast ? forecast : null
   const conditional = receipt && (series.status === 'live' || series.status === 'completed') ? scoreConditionedSeriesOdds(receipt, series, seriesSource) : null
-  return <div className="grid min-w-0 gap-1.5 border-l-2 border-dashed border-[var(--preview)] bg-[var(--preview-wash)] py-2 pr-2 pl-3 text-sm text-muted">
-    <strong className="text-xs font-semibold text-[var(--preview)]">{receipt ? 'Published pre-match forecast' : 'Current model estimate · not archived'}</strong>
+  return <div className="grid min-w-0 gap-1.5 border-l-2 border-dashed border-[var(--forecast)] py-2 pr-2 pl-3 text-sm text-muted">
+    <strong className="text-xs font-semibold text-[var(--forecast)]">{receipt ? 'Published pre-match forecast' : 'Forecast · Current model estimate · not archived'}</strong>
     <span className="text-text">Series win (Bo{forecast.bestOf}): {first?.name ?? 'Home'} {percent(forecast.homeSeriesWinProbability)} · {second?.name ?? 'Away'} {percent(forecast.awaySeriesWinProbability)}</span>
-    <span aria-hidden="true" className="flex h-1.5 max-w-80 overflow-hidden rounded-md border border-dashed border-[var(--preview)]">
-      <span className="bg-[var(--preview)]" style={{ width: `${forecast.homeSeriesWinProbability * 100}%` }} />
-    </span>
     <span>Game win: {first?.name ?? 'Home'} {percent(forecast.homeGameWinProbability)} · {second?.name ?? 'Away'} {percent(forecast.awayGameWinProbability)}</span>
     {conditional?.status === 'ready' ? <span>Score-conditioned series odds: {percent(conditional.homeSeriesWinProbability)} · {percent(conditional.awaySeriesWinProbability)}. Uses the frozen pre-series model, not in-game telemetry.</span> : null}
     {conditional?.status === 'unavailable' ? <span>Score-conditioned odds unavailable: {conditional.detail}</span> : null}

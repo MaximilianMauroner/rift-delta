@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
 import {
@@ -45,7 +46,7 @@ export function EventOverview({
   const meanOf = (values: number[]) =>
     values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length)
   return (
-    <section className="grid min-w-0 gap-3" aria-label="Tournament statistics">
+    <section className="grid min-w-0 gap-3" aria-label="Tournament statistics" data-first-answer="tournament-reports">
       <h3 className="sr-only">Tournament</h3>
       <ul className="grid grid-cols-2 gap-px overflow-hidden border-y border-line bg-line lg:grid-cols-4">
         <RateTile label="Blue side wins" rate={summary.blueSide} />
@@ -142,6 +143,16 @@ export function EventOverview({
                 </ScatterChart>
               </ResponsiveContainer>
             </div>
+            <details className="min-w-0 text-sm">
+              <summary className="cursor-pointer font-semibold">Team chart values</summary>
+              <Table aria-label="Win rate and gold at 15 values">
+                <TableHeader><TableRow><TableHead>Team</TableHead><TableHead>Games</TableHead><TableHead>Win rate</TableHead><TableHead>Gold at 15</TableHead></TableRow></TableHeader>
+                <TableBody>{points.map((point) => <TableRow key={point.id}>
+                  <TableHead scope="row"><Button variant="ghost" className="h-auto whitespace-normal text-left" onClick={() => onSelectTeam(point.id)}>{teams.get(point.id)?.name}</Button></TableHead>
+                  <TableCell>{point.games}</TableCell><TableCell>{point.winRate.toFixed(1)}%</TableCell><TableCell>{signedGold(point.gold)}</TableCell>
+                </TableRow>)}</TableBody>
+              </Table>
+            </details>
           </CardContent>
         </Card>
         <div className="grid min-w-0 content-start gap-3">

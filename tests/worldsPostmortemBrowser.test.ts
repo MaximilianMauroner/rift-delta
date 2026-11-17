@@ -258,6 +258,12 @@ test(
         exact: true,
       })
       await overview.getByText('Blue side wins', { exact: true }).waitFor()
+      await overview.getByText('Team chart values', { exact: true }).click()
+      const chartValues = overview.getByRole('table', { name: 'Win rate and gold at 15 values' })
+      await chartValues.getByRole('button', { name: 'Alpha', exact: true }).focus()
+      assert.equal(await chartValues.getByRole('row').count(), 3)
+      assert.match(await chartValues.innerText(), /Alpha[\s\S]*100.0%/)
+      await overview.getByText('Team chart values', { exact: true }).click()
       const blueSide = overview
         .locator('li')
         .filter({ has: page.getByText('Blue side wins', { exact: true }) })
@@ -268,6 +274,7 @@ test(
         .getByRole('region', { name: 'Alpha compared with the field' })
         .getByText('Win rate', { exact: true })
         .waitFor()
+      await page.getByText('A style, not better or worse', { exact: true }).first().waitFor()
       await overview
         .getByRole('button', {
           name: 'Open BET team report from Biggest gold swings after 15',

@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { TeamMark } from '../../components/TeamMark'
+import { teamIdentityFor } from '../../domains/rankings/evidence'
+import { leagueColor } from '../../shared/teamColor'
 import { cn } from '../../shared/utils'
 import { hasUnresolvedResult, type TournamentSeries } from '../../domains/tournaments/read'
 import {
@@ -204,11 +206,11 @@ function SeriesCard({ series, trace, timezone, compact = false }: { series: Tour
   const dimmed = trace.active !== null && !traced
   const teams = series.teams.length ? series.teams : [undefined, undefined]
   const unresolved = hasUnresolvedResult(series)
-  const status = <span className={cn('flex min-w-0 items-center gap-1.5 truncate', unresolved && 'text-text')}>{live ? <Badge variant="live" className="border-[var(--live)] px-1.5 py-0 text-[var(--live)]">Live</Badge> : null}{statusText(series, timezone)}</span>
+  const status = <span className={cn('flex min-w-0 items-center gap-1.5 truncate', unresolved && 'text-text')}>{live ? <Badge variant="live" className="px-1.5 py-0">Live</Badge> : null}{statusText(series, timezone)}</span>
   // Compact Swiss cards skip dates to stay dense, but still say when a series is live, postponed, cancelled or missing its result.
   const flagged = live || unresolved || series.status === 'postponed' || series.status === 'cancelled'
   return <article aria-label={seriesLabel(series)} data-first-answer="tournaments"
-    className={cn('grid border bg-surface motion-safe:transition-[opacity,border-color]',
+    className={cn('grid overflow-hidden rounded-lg border bg-surface motion-safe:transition-[opacity,border-color]',
       live ? 'border-[var(--live)]' : 'border-line',
       traced && 'border-focus', dimmed && 'opacity-40', compact ? 'py-1' : 'pb-1')}
     style={compact ? undefined : { height: rem(CARD_H) }}>
@@ -231,11 +233,12 @@ function TeamLine({ team, won, trace }: { team: TournamentSeries['teams'][number
     </span>
     <span className={cn('w-4 shrink-0 text-right text-xs tabular-nums', won === true ? 'font-bold text-up' : 'text-muted')}>{score ?? ''}</span>
   </>
-  const row = 'flex h-6 min-w-0 items-center gap-2 px-2.5 text-sm'
-  if (!key) return <div className={row}>{body}</div>
+  const stripe = { borderLeftColor: leagueColor(teamIdentityFor(team?.name ?? '')?.league ?? '') }
+  const row = 'league-row flex h-6 min-w-0 items-center gap-2 px-2.5 text-sm'
+  if (!key) return <div className={row} style={stripe}>{body}</div>
   return <button type="button" data-slot="bracket-team" className={cn(row, 'w-full rounded-md outline-none hover:bg-raised focus-visible:bg-raised focus-visible:ring-1 focus-visible:ring-focus',
     trace.pinned === key && 'bg-[var(--focus-wash)]')}
-    aria-pressed={trace.pinned === key}
+    aria-pressed={trace.pinned === key} style={stripe}
     onMouseEnter={() => trace.hover(key)} onMouseLeave={() => trace.hover(null)}
     onFocus={() => trace.hover(key)} onBlur={() => trace.hover(null)}
     onClick={() => trace.toggle(key)}>{body}</button>
@@ -295,7 +298,8 @@ function StandingRow({ standing, trace, name }: { standing: Standing; trace: Tra
   const label = name ?? standing.team
   const dimmed = trace.active !== null && trace.active !== standing.team
   return <button type="button" data-slot="bracket-team" aria-pressed={trace.pinned === standing.team}
-    className={cn('flex h-6 w-full min-w-0 items-center gap-2 px-2.5 text-sm outline-none hover:bg-raised focus-visible:bg-raised focus-visible:ring-1 focus-visible:ring-focus motion-safe:transition-opacity',
+    style={{ borderLeftColor: leagueColor(teamIdentityFor(label)?.league ?? '') }}
+    className={cn('league-row flex h-6 w-full min-w-0 items-center gap-2 px-2.5 text-sm outline-none hover:bg-raised focus-visible:bg-raised focus-visible:ring-1 focus-visible:ring-focus motion-safe:transition-opacity',
       trace.pinned === standing.team && 'bg-[var(--focus-wash)]', dimmed && 'opacity-40')}
     onMouseEnter={() => trace.hover(standing.team)} onMouseLeave={() => trace.hover(null)}
     onFocus={() => trace.hover(standing.team)} onBlur={() => trace.hover(null)}

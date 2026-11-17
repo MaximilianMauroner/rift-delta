@@ -1,3 +1,4 @@
+import { TriangleAlert } from 'lucide-react'
 import {
   useTournamentReport,
   useTournamentReports,
@@ -14,6 +15,7 @@ import {
   type TournamentReport,
   type TournamentReportIndex,
 } from '../../../domains/rankings/tournament-reports'
+import { TournamentTabs } from '../TournamentTabs'
 import { TeamReportCard } from './TeamReportCard'
 import { PlayerEvidence } from './PlayerEvidence'
 import { EventOverview } from './EventOverview'
@@ -34,6 +36,7 @@ export function PostmortemView() {
           </Button>
         </div>
       ) : null}
+      {state.status !== 'ready' ? <TournamentTabs current="postmortem" tabs={['bracket', 'schedule', 'postmortem']} /> : null}
       {state.status === 'loading' ? (
         <p role="status">Loading report catalog…</p>
       ) : state.status === 'unavailable' ? (
@@ -44,12 +47,12 @@ export function PostmortemView() {
           </Button>
         </Alert>
       ) : state.status === 'error' ? (
-        <Alert data-first-answer="tournament-reports" variant="warning" role="alert">
+        <Alert data-first-answer="tournament-reports" variant="warning" role="alert"><TriangleAlert aria-hidden="true" /><div className="min-w-0">
           Report catalog could not be loaded. {state.message}{' '}
           <Button variant="outline" onClick={retry}>
             Retry catalog
           </Button>
-        </Alert>
+        </div></Alert>
       ) : (
         <ReportCatalog index={state.data} retryCatalog={retry} />
       )}
@@ -79,7 +82,7 @@ function ReportCatalog({
         </label>
         <Select
           id="report-event"
-          className="max-w-full font-semibold text-text"
+          className="h-auto max-w-full border-transparent bg-transparent py-1 pl-0 text-xl font-semibold text-text sm:text-2xl"
           value={entry?.id ?? ''}
           onChange={(event) =>
             selectTournamentReport({ event: event.target.value })
@@ -93,12 +96,13 @@ function ReportCatalog({
           ))}
         </Select>
         {state.status === 'ready' && syntheticReport(state.data) ? (
-          <p role="status" className="min-w-[7.5rem] flex-1 text-xs leading-snug text-[var(--warn)]">
+          <p role="status" className="min-w-[7.5rem] flex-1 text-xs leading-snug text-[var(--warn)]"><TriangleAlert aria-hidden="true" className="mr-1 inline size-4 align-text-bottom" />
             Synthetic test fixture. These player stats and results are
             synthetic.
           </p>
         ) : null}
       </div>
+      <TournamentTabs current="postmortem" tabs={['bracket', 'schedule', 'postmortem']} />
       {!entry ? (
         <Alert data-first-answer="tournament-reports" role="status">
           {requested !== null
@@ -115,12 +119,12 @@ function ReportCatalog({
           </Button>
         </Alert>
       ) : state.status === 'error' ? (
-        <Alert data-first-answer="tournament-reports" variant="warning" role="alert">
+        <Alert data-first-answer="tournament-reports" variant="warning" role="alert"><TriangleAlert aria-hidden="true" /><div className="min-w-0">
           This report could not be loaded. {state.message}{' '}
           <Button variant="outline" onClick={retry}>
             Retry report
           </Button>
-        </Alert>
+        </div></Alert>
       ) : (
         <ReportBody report={state.data} />
       )}

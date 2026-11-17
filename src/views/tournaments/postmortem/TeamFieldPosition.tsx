@@ -1,7 +1,7 @@
 import { Card, CardContent } from '../../../components/ui/card'
 import { cn } from '../../../shared/utils'
 import { FieldStrip, FieldStripKey } from '../../../components/FieldStrip'
-import { percent, signedGold } from '../../../components/fieldFormat'
+import { percent, signedGold, standingLabel } from '../../../components/fieldFormat'
 import {
   REPORT_FIELD_MIN_GAMES,
   REPORT_TEAM_METRICS,
@@ -45,6 +45,7 @@ export function TeamFieldPosition({
                 nameFor={(id) => codes.get(id) ?? id}
                 within="at the event"
                 minSamples={REPORT_FIELD_MIN_GAMES}
+                note={position.better === null ? 'A style, not better or worse' : position.standing ? standingLabel(position.standing, position.better, 'at the event') : undefined}
               />
             )
           })}

@@ -1,17 +1,3 @@
-/* Tournament colour roles from direction D's decisions after unit 1. They are
-   not in the shared tokens yet. Each keeps one meaning and always comes with
-   a word, so colour is never the only signal.
-     live     a series in progress, with the word Live
-     preview  a forecast, scenario or hypothetical, with a dashed line and a label.
-              Preview content must never read as a live or actual result.
-     warn     a stale or incomplete source, and test data */
-.tournament-route {
-  --live: #f28ba8;
-  --preview: #b79cf2;
-  --warn: #e5a84b;
-  --preview-wash: color-mix(in srgb, var(--preview) 10%, transparent);
-}
-
 /* The bracket scrolls inside its own frame. A soft edge shows that more
    rounds sit on the side the reader has not scrolled to yet. */
 .bracket-frame[data-more-start="true"][data-more-end="true"] {
