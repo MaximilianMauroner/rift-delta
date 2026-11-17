@@ -59,7 +59,7 @@ export function TeamReportCard({
       </CardHeader>
       <CardContent className="grid min-w-0 gap-2 px-0 pb-3 pt-3">
         <h5 className="px-4 text-sm font-bold">Lineup</h5>
-        <div aria-hidden="true" className="grid grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] gap-2 px-4 text-xs text-muted sm:hidden">
+        <div aria-hidden="true" className="grid grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)] gap-2 px-4 text-xs text-muted sm:hidden">
           <span>Role</span>
           <span>Player</span>
           <span className="text-right">Average</span>
@@ -103,7 +103,7 @@ export function TeamReportCard({
                 aria-pressed={player.key === selected}
                 aria-label={`View ${player.name}, ${player.role}`}
                 onClick={() => onSelect(player)}
-                className="grid h-auto min-h-14 w-full min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] items-center gap-2 rounded-none border-l-2 border-transparent px-4 py-2 text-left whitespace-normal text-text hover:bg-raised aria-pressed:border-l-[var(--focus)] aria-pressed:bg-[var(--focus-wash)] sm:grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_4.5rem]"
+                className="grid h-auto min-h-14 w-full min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)] items-center gap-2 rounded-none border-l-2 border-transparent px-4 py-2 text-left whitespace-normal text-text hover:bg-raised aria-pressed:border-l-[var(--focus)] aria-pressed:bg-[var(--focus-wash)] sm:grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)]"
               >
                 <span className="text-xs font-normal text-muted">
                   {player.role}
@@ -150,6 +150,9 @@ export function TeamReportCard({
                       ? '—'
                       : signedGold(mean)}
                   </span>
+                  {gold.length ? <span className="text-right text-xs font-normal text-muted tabular-nums">
+                    {signedGold(minimum)} to {signedGold(maximum)} · {gold.length} {gold.length === 1 ? 'game' : 'games'}
+                  </span> : null}
                 </span>
               </Button>
             )

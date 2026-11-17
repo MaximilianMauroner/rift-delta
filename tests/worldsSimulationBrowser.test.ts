@@ -46,6 +46,7 @@ test('Worlds fixture journey computes off-thread, cancels, navigates and invalid
     await waitForComplete()
     assert.equal(await page.locator('table').first().locator('tbody tr').count(), 19)
     assert.match(await page.locator('table').first().getByRole('cell', { name: 'Swiss: 100.0%; observed outcome', exact: true }).first().getAttribute('aria-label') ?? '', /observed outcome/)
+    assert.match(await page.locator('table').first().getByRole('cell', { name: 'Swiss: 100.0%; observed outcome', exact: true }).first().innerText(), /Observed/)
     await page.getByText('Simulation basis and precision', { exact: true }).click()
     await page.getByText(/seeded-monte-carlo · 10,000 sampled trials/).waitFor()
     assert.match(await page.locator('body').innerText(), /Synthetic Worlds state and model evidence/)

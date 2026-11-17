@@ -127,6 +127,7 @@ function WorldsReportView({ report, name }: { report: WorldsReport; name: (id: s
             const label = interval ? `${percent(team.stages[stage])}; 95% sampling interval ${percent(interval[0])} to ${percent(interval[1])}`
               : `${percent(team.stages[stage])}${team.deterministicStages[stage] ? '; observed outcome' : ''}`
             return <TableCell key={stage} aria-label={`${STAGE_LABELS[stage]}: ${label}`}>{percent(team.stages[stage])}
+              {team.deterministicStages[stage] ? <span className="block text-xs text-muted" aria-hidden="true">Observed</span> : null}
               {interval ? <span className="block text-xs text-muted" aria-hidden="true">{percent(interval[0])}–{percent(interval[1])}</span> : null}</TableCell>
           })}
         </TableRow>)}</TableBody>
