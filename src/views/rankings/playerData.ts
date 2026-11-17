@@ -15,3 +15,7 @@ export function playersForTeam(players: CompactPlayer[] | undefined, team: Ranki
     })
     .sort((a, b) => a.rank - b.rank || (ROLE_ORDER.get(a.role) ?? 99) - (ROLE_ORDER.get(b.role) ?? 99) || a.name.localeCompare(b.name))
 }
+
+export function playerLeague(player: CompactPlayer): string {
+  return player.league ?? player.region ?? 'Unknown league'
+}
