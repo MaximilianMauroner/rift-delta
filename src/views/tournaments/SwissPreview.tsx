@@ -1,3 +1,4 @@
+import { TriangleAlert } from 'lucide-react'
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Alert } from '../../components/ui/alert'
 import { Badge } from '../../components/ui/badge'
@@ -8,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { TeamMark } from '../../components/TeamMark'
 import { teamBrandingFor } from '../../data/teamBranding'
 import { canonicalTeamNameFor, teamCodeFor, teamIdentityFor } from '../../domains/rankings/evidence'
+import { leagueColor } from '../../shared/teamColor'
 import { cn } from '../../shared/utils'
 import { hashEnum, hashParam, useHashSync } from '../../browser/navigation'
 import { formatTournamentTime, type TournamentEvent } from '../../domains/tournaments/read'
@@ -181,9 +183,9 @@ export function SwissPreview({ event, playInEvent, checkedAt, timezone }: { even
     return (
       <div className="grid min-w-0 justify-items-start gap-4">
         {startControl}
-        <Alert variant="warning" role="status">
+        <Alert variant="warning" role="status"><TriangleAlert aria-hidden="true" /><div className="min-w-0">
           Live draws are not available: {live.detail} Your live picks stay in the page address until live draws return.
-        </Alert>
+        </div></Alert>
       </div>
     )
   }
@@ -242,7 +244,7 @@ export function SwissPreview({ event, playInEvent, checkedAt, timezone }: { even
 
       <SwissStatsBar stats={stats} />
 
-      <div className="grid min-w-0 items-start gap-4 min-[1700px]:grid-cols-[minmax(0,1fr)_28rem]">
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="grid min-w-0 gap-2">
           <NextStep scenario={current} canDraw={canDraw} team={team} playInOpen={baseline.kind === 'seeds' && !playIn} />
           <SwissOddsProvider stats={stats}>
@@ -448,14 +450,20 @@ function RecordBox({ box, children }: { box: BracketBox; children: ReactNode }) 
   )
 }
 
-const ROW = 'flex h-7 w-full min-w-0 items-center gap-1.5 px-1.5 text-xs font-semibold'
+const ROW = 'league-row flex h-auto min-h-10 w-full min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0 px-1.5 py-1 text-xs font-semibold whitespace-normal'
 
 /** Teams known to hold a record, then quiet open places for teams that have not reached it yet. */
 function TeamSlots({ ids, size, team }: { ids: readonly string[]; size: number; team: TeamLookup }) {
   const open = Math.max(0, size - ids.length)
   return (
     <ul className="grid gap-1">
-      {ids.map((id) => <li key={id} title={team(id).name} className={cn(ROW, 'rounded-md bg-raised text-text')}><TeamLine info={team(id)} oddsId={id} /></li>)}
+      {ids.map((id) => {
+        const info = team(id)
+        return <li key={id} title={info.name} data-team-name={info.name}
+          style={{ borderLeftColor: leagueColor(teamIdentityFor(info.name)?.league ?? '') }} className={cn(ROW, 'rounded-md bg-raised text-text')}>
+          <TeamLine info={info} oddsId={id} />
+        </li>
+      })}
       {Array.from({ length: open }, (_, index) => (
         <li key={`open-${index}`} aria-hidden="true" className="h-7 rounded-md border border-[color-mix(in_srgb,var(--line)_55%,transparent)]" />
       ))}
@@ -507,7 +515,7 @@ function TeamRow({ id, info, match, locked, onPick }: { id: string; info: TeamIn
   const lost = Boolean(match.winnerId) && !won
   if (locked) {
     return (
-      <span title={info.name} className={cn(ROW, won
+      <span title={info.name} data-team-name={info.name} style={{ borderLeftColor: leagueColor(teamIdentityFor(info.name)?.league ?? '') }} className={cn(ROW, won
         ? 'bg-[color-mix(in_srgb,var(--up)_16%,var(--raised))] text-text shadow-[inset_2px_0_0_var(--up)]'
         : 'bg-raised text-muted')}>
         <TeamLine info={info} faded={lost} oddsId={match.winnerId ? undefined : id} />
@@ -516,21 +524,17 @@ function TeamRow({ id, info, match, locked, onPick }: { id: string; info: TeamIn
     )
   }
   return (
-    <Button variant="ghost" aria-pressed={won} title={info.name} onClick={() => onPick(won ? null : id)}
+    <Button variant="ghost" aria-pressed={won} title={info.name} data-team-name={info.name} style={{ borderLeftColor: leagueColor(teamIdentityFor(info.name)?.league ?? '') }} onClick={() => onPick(won ? null : id)}
       className={cn(ROW, 'justify-start rounded-none border-0 bg-raised text-text hover:bg-line hover:text-text',
         'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus',
-        won && 'bg-[color-mix(in_srgb,var(--muted)_16%,var(--raised))] text-text outline-1 -outline-offset-1 outline-dashed outline-muted hover:bg-[color-mix(in_srgb,var(--muted)_22%,var(--raised))]',
+        won && 'bg-raised text-text outline-1 -outline-offset-1 outline-dashed outline-[var(--forecast)]',
         lost && 'text-muted')}>
       <TeamLine info={info} faded={lost} oddsId={match.winnerId ? undefined : id} />
     </Button>
   )
 }
 
-/**
- * Logo, short code and seed slot. Screen readers then hear the full name, so a pick button's name starts with its
- * visible text. The row title also shows the full name. `oddsId` is set only on the row that holds the team's
- * current record, so each team's chance to advance shows once.
- */
+/** Odds belong to the row that holds the team's current record. */
 function TeamLine({ info, faded = false, oddsId }: { info: TeamInfo; faded?: boolean; oddsId?: string }) {
   return (
     <>
@@ -539,7 +543,7 @@ function TeamLine({ info, faded = false, oddsId }: { info: TeamInfo; faded?: boo
         : <span aria-hidden="true" className="size-4 shrink-0 rounded-md border border-line" />}
       <span className="min-w-0 truncate">{info.code}</span>
       {info.slot ? <span className="ml-auto shrink-0 text-xs font-normal text-muted">{info.slot}</span> : null}
-      {info.name !== info.code ? <span className="sr-only">, {info.name}</span> : null}
+      {info.name !== info.code ? <span className="order-last w-full pl-5 text-left font-normal text-muted"><span className="sr-only">, </span>{info.name}</span> : null}
       {oddsId ? <AdvanceOdds id={oddsId} className={info.slot ? undefined : 'ml-auto'} /> : null}
     </>
   )
@@ -631,7 +635,7 @@ function StandingCell({ row, active }: { row: SwissTeamStanding; active: boolean
   const outcome = teamOutcome(row)
   // Wraps only at spaces, so a narrow table never splits a record or a placing at its dash.
   return (
-    <TableCell className={cn('whitespace-normal', !active && 'border-l border-dashed border-muted text-muted')}>
+    <TableCell className={cn('whitespace-normal', !active && 'border-l border-dashed border-[var(--forecast)] text-muted')}>
       <span className="whitespace-nowrap tabular-nums">{outcome.wins}–{outcome.losses}</span>{' '}
       <span className={cn(outcome.state === 'advanced' && active && 'text-up', outcome.state === 'eliminated' && active && 'text-down')}>{outcomeLabel(row)}</span>
     </TableCell>

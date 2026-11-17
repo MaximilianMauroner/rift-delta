@@ -7,6 +7,10 @@ import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { chromium, type BrowserContext, type Page } from 'playwright-core'
 import { createServer, type Plugin } from 'vite'
+import { createGenerationManifest, prepareSemanticArtifact } from '../../scripts/public-artifact-storage.mjs'
+import { createPublicArtifactWritePlan } from '../../src/domains/rankings/artifact-write.ts'
+import { createStaticRankingData, tournamentReportFamily } from '../../src/domains/rankings/build.ts'
+import type { MatchRecord, TeamProfile } from '../../src/domains/rankings/types.ts'
 
 const { values } = parseArgs({ options: { out: { type: 'string' } } })
 if (!values.out) throw new Error('Usage: pnpm ui:capture --out <directory>')
@@ -20,6 +24,8 @@ type Route = {
   id: string
   open: (page: Page, base: string) => Promise<void>
   fixedClock?: boolean
+  /** The page reads data the harness made up, not the reference snapshot. */
+  synthetic?: boolean
 }
 
 const visit = (address: string) => async (page: Page, base: string) => { await page.goto(`${base}${address}`) }
@@ -52,8 +58,13 @@ const routes: Route[] = [
   { id: 'matches', open: visit('/#matches?scope=all') },
   { id: 'tournaments', open: visit('/#tournaments?scope=all'), fixedClock: true },
   {
-    id: 'tournament-reports', fixedClock: true,
+    id: 'tournament-reports', fixedClock: true, synthetic: true,
     open: async (page, base) => {
+      // The reference snapshot has no report family, so this page alone reads a synthetic generation.
+      await page.route((url) => url.pathname.startsWith('/data/'), async (route) => {
+        const body = reportGeneration.get(new URL(route.request().url()).pathname)
+        await (body ? route.fulfill({ status: 200, contentType: 'application/json', body }) : route.fulfill({ status: 404, body: '{}' }))
+      })
       await page.goto(`${base}/#tournaments?scope=all`)
       await page.getByRole('link', { name: 'Team reports', exact: true }).click()
     },
@@ -101,6 +112,74 @@ const syntheticFeed = {
     ],
   }],
 }
+
+const reportRoles = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'] as const
+const reportTeams: Record<string, TeamProfile> = {
+  Alpha: { name: 'Alpha', code: 'ALP', region: 'LCK', league: 'LCK' },
+  Beta: { name: 'Beta', code: 'BET', region: 'LPL', league: 'LPL' },
+  Gamma: { name: 'Gamma', code: 'GAM', region: 'LEC', league: 'LEC' },
+  Delta: { name: 'Delta', code: 'DEL', region: 'LCS', league: 'LCS' },
+}
+
+/** One synthetic Worlds game: `lead` is the blue side's team gold lead at 15, `swing` its change by the end. */
+function reportGame(index: number, blue: string, red: string, blueWins: boolean, lead: number, swing: number): MatchRecord {
+  const date = `2025-10-${String(15 + Math.floor(index / 2)).padStart(2, '0')}`
+  const roster = (team: string, side: 0 | 1) => ({
+    sourceProvider: 'oracles-elixir' as const, teamId: team.toLowerCase(), observedAt: date, completeness: 'complete-five-role' as const,
+    players: reportRoles.map((role, slot) => {
+      const sign = side === 0 ? 1 : -1
+      const share = [0.3, 0.15, 0.25, 0.2, 0.1][slot]!
+      return {
+        id: `${team.toLowerCase()}-${slot}`, name: `${team} ${role}`, role,
+        stats: {
+          side: side === 0 ? 'blue' as const : 'red' as const, won: side === 0 ? blueWins : !blueWins,
+          kills: 2 + slot % 3, deaths: 1 + (index + slot) % 3, assists: 4 + slot,
+          champion: ['Aatrox', 'Vi', 'Azir', 'Varus', 'Rell', 'Renekton', 'Xin Zhao', 'Orianna', 'Kalista', 'Nautilus'][(slot + index) % 10]!,
+          goldDiffAt15: Math.round(sign * lead * share), damagePerMinute: 400 + 60 * slot + 15 * index, csPerMinute: slot === 4 ? 1.2 : 8 + slot / 4,
+          killParticipation: 0.5 + slot / 20,
+        },
+      }
+    }),
+  })
+  return {
+    id: `capture-${index}`, sourceProvider: 'oracles-elixir', date, season: 2025, gameNumber: 1 + index % 3,
+    event: 'Worlds 2025', phase: index < 6 ? 'Swiss' : 'Knockout', region: 'International', league: 'WLDs', patch: '', bestOf: 3, tier: 'worlds-main',
+    teamA: blue, teamB: red, winner: blueWins ? blue : red, teamAHomeLeague: reportTeams[blue]!.league, teamBHomeLeague: reportTeams[red]!.league,
+    teamAKills: 12, teamBKills: 9, teamAGold: 60_000 + lead + swing, teamBGold: 60_000,
+    gameLengthSeconds: 60 * (28 + (index * 3) % 9),
+    sourceGameId: `capture-game-${index}`, sourceMatchId: `capture-series-${index}`, sourceFileName: 'synthetic-capture-fixture.csv',
+    teamARoster: roster(blue, 0), teamBRoster: roster(red, 1),
+  } as MatchRecord
+}
+
+/** A complete published generation whose only purpose is the reports capture. Every value is synthetic. */
+function syntheticReportGeneration() {
+  const matches = [
+    reportGame(0, 'Alpha', 'Beta', true, 1800, 2500), reportGame(1, 'Gamma', 'Delta', false, 900, -4200),
+    reportGame(2, 'Beta', 'Gamma', true, 2400, 1200), reportGame(3, 'Delta', 'Alpha', false, -600, -3100),
+    reportGame(4, 'Alpha', 'Gamma', true, 300, 3900), reportGame(5, 'Beta', 'Delta', true, -1500, 5200),
+    reportGame(6, 'Delta', 'Beta', false, 1100, -2800), reportGame(7, 'Alpha', 'Delta', true, 2600, 1900),
+  ]
+  const data = createStaticRankingData({
+    matches, teams: reportTeams, rosters: {}, source: 'Synthetic capture-harness report fixture',
+    dataMode: 'seeded-sample', generatedAt: '2025-11-10T00:00:00.000Z',
+  })
+  const family = tournamentReportFamily({
+    observed: { matches, teams: reportTeams }, ratedMatches: matches, ratedTeams: reportTeams,
+    dataMode: data.dataMode, modelVersion: data.model.version, modelConfigHash: data.model.configHash,
+  })
+  const plan = createPublicArtifactWritePlan(data, { families: [family] })
+  const objects = new Map<string, string>()
+  const entries = plan.writes.map((write) => {
+    const prepared = prepareSemanticArtifact(write.value)
+    for (const object of [...(prepared.children ?? []), prepared]) objects.set(`/data/objects/sha256/${object.digest}`, object.canonicalJson)
+    return { logicalPath: `/data/${write.relativePath}`, digest: prepared.digest, bytes: prepared.bytes }
+  })
+  objects.set('/data/ranking-summary.json', JSON.stringify(createGenerationManifest({ generationId: plan.manifest.artifactMeta!.runId, rootManifest: plan.manifest, entries })))
+  return objects
+}
+
+const reportGeneration = syntheticReportGeneration()
 
 const tournamentFeedFixture: Plugin = {
   name: 'capture-tournament-feed-fixture',
@@ -178,7 +257,7 @@ async function capture(context: BrowserContext, base: string, route: Route, size
   await page.screenshot({ path: join(out, file), fullPage: true })
   await page.close()
   return {
-    route: route.id, width: size.width, height: size.height, file, answerSelector: answer,
+    route: route.id, width: size.width, height: size.height, file, answerSelector: answer, synthetic: route.synthetic ?? false,
     ...metrics, overflow: metrics.scrollWidth > size.width, consoleErrors, failure,
   }
 }
@@ -226,6 +305,7 @@ try {
     revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
     rankingData: { generatedAt: manifest.generatedAt, dataMode: manifest.dataMode, modelVersion: manifest.model.version, modelConfigHash: manifest.model.configHash },
     tournamentFeed: 'synthetic-fixture served by the capture harness',
+    tournamentReports: 'synthetic: the tournament-reports capture reads a seeded-sample generation built by the capture harness, not the reference snapshot',
     captures,
   }, null, 2)}\n`)
   if (captures.some((capture) => capture.failure || capture.overflow || capture.firstAnswerY === null || capture.consoleErrors.length > 0)) {

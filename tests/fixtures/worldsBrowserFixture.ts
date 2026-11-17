@@ -148,6 +148,6 @@ export async function createWorldsFixtureServer(port = 0) {
       } else response.end(JSON.stringify(body))
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port, strictPort: true }, plugins: [plugin] })
+  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port, strictPort: port !== 0 }, plugins: [plugin] })
   return { server, controls, current, plan, workerGate }
 }

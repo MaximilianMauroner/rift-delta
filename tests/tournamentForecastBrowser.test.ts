@@ -215,6 +215,7 @@ test('Worlds source changes retain observations and withhold official-basis odds
       controls.missingModel = missingModel
       await page.reload()
       await page.getByText('Computation complete.', { exact: true }).waitFor()
+      await page.getByText('All stage probabilities', { exact: true }).click()
       await page.getByText('Simulation basis and precision', { exact: true }).click()
       await page.getByText(/observed-state/).waitFor()
       const panel = page.getByLabel('Worlds simulation', { exact: true })

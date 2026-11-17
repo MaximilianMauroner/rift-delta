@@ -1,3 +1,4 @@
+import { leagueColor } from '../../../shared/teamColor'
 import { TeamMark } from '../../../components/TeamMark'
 import { signedGold } from '../../../components/fieldFormat'
 import { Button } from '../../../components/ui/button'
@@ -29,7 +30,7 @@ export function TeamReportCard({
   )
   const extent = Math.max(1, ...allGold.map(Math.abs))
   return (
-    <Card className="gap-0 py-0">
+    <Card className="gap-0 border-l-[3px] py-0" style={{ borderLeftColor: leagueColor(team.league) }}>
       <CardHeader className="gap-3 border-b border-line bg-raised py-4">
         <div className="flex min-w-0 items-center gap-3">
           <TeamMark team={team.name} code={team.code} className="size-11" />
@@ -58,14 +59,14 @@ export function TeamReportCard({
       </CardHeader>
       <CardContent className="grid min-w-0 gap-2 px-0 pb-3 pt-3">
         <h5 className="px-4 text-sm font-bold">Lineup</h5>
-        <div aria-hidden="true" className="grid grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] gap-2 px-4 text-xs text-muted sm:hidden">
+        <div aria-hidden="true" className="grid grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)] gap-2 px-4 text-xs text-muted sm:hidden">
           <span>Role</span>
           <span>Player</span>
           <span className="text-right">Average</span>
         </div>
         <div
           aria-hidden="true"
-          className="hidden grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_4.5rem] items-end gap-2 px-4 text-xs text-muted sm:grid"
+          className="hidden grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)] items-end gap-2 px-4 text-xs text-muted sm:grid"
         >
           <span>Role</span>
           <span>Player</span>
@@ -102,7 +103,7 @@ export function TeamReportCard({
                 aria-pressed={player.key === selected}
                 aria-label={`View ${player.name}, ${player.role}`}
                 onClick={() => onSelect(player)}
-                className="grid h-auto min-h-14 w-full min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] items-center gap-2 rounded-none border-l-2 border-transparent px-4 py-2 text-left whitespace-normal hover:bg-raised aria-pressed:border-l-[var(--focus)] aria-pressed:bg-[var(--focus-wash)] sm:grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_4.5rem]"
+                className="grid h-auto min-h-14 w-full min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)] items-center gap-2 rounded-none border-l-2 border-transparent px-4 py-2 text-left whitespace-normal text-text hover:bg-raised aria-pressed:border-l-[var(--focus)] aria-pressed:bg-[var(--focus-wash)] sm:grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)]"
               >
                 <span className="text-xs font-normal text-muted">
                   {player.role}
@@ -116,14 +117,13 @@ export function TeamReportCard({
                   {gold.length ? (
                     <span
                       role="img"
-                      aria-label={`Gold lead at 15 ranged from ${minimum} to ${maximum} gold`}
-                      title={`Gold lead at 15 ranged from ${minimum} to ${maximum} gold. ${gold.length} observed games.`}
+                      aria-label={`Gold lead at 15 ranged from ${minimum} to ${maximum} gold in ${gold.length} games`}
                       className="relative block h-5"
                     >
                       <span className="absolute inset-x-0 top-1/2 border-t border-line" />
                       <span className="absolute inset-y-0 left-1/2 border-l border-line" />
                       <span
-                        className="absolute top-1/2 h-2 -translate-y-1/2 rounded-md bg-[var(--focus-wash)]"
+                        className="absolute top-1/2 h-2 -translate-y-1/2 rounded-md bg-[color-mix(in_srgb,var(--muted)_40%,transparent)]"
                         style={{
                           left: `${((minimum + extent) / (2 * extent)) * 100}%`,
                           width: `${((maximum - minimum) / (2 * extent)) * 100}%`,
@@ -150,6 +150,9 @@ export function TeamReportCard({
                       ? '—'
                       : signedGold(mean)}
                   </span>
+                  {gold.length ? <span className="text-right text-xs font-normal text-muted tabular-nums">
+                    {signedGold(minimum)} to {signedGold(maximum)} · {gold.length} {gold.length === 1 ? 'game' : 'games'}
+                  </span> : null}
                 </span>
               </Button>
             )
@@ -191,7 +194,7 @@ function StatHighlight({
             key={player.key}
             variant="ghost"
             aria-label={`View ${player.name}, ${player.role}, ${label}`}
-            className="grid h-auto w-full min-w-0 justify-start justify-items-start gap-0 px-0 py-1 whitespace-normal hover:underline min-[440px]:flex min-[440px]:justify-between min-[440px]:gap-2"
+            className="grid h-auto w-full min-w-0 justify-start justify-items-start gap-0 px-0 py-1 whitespace-normal text-text hover:underline min-[440px]:flex min-[440px]:justify-between min-[440px]:gap-2"
             onClick={() => onSelect(player)}
           >
             <span className="min-w-0 break-words text-left">{player.name}</span>

@@ -1,3 +1,4 @@
+import { TriangleAlert } from 'lucide-react'
 import { createContext, use, useId, useMemo, type ReactNode } from 'react'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
@@ -16,9 +17,12 @@ export function SwissStatsBar({ stats }: { stats: SwissStats }) {
   const { state } = stats
   const result = ready(stats)
   return (
-    <section role="region" aria-labelledby={titleId} className="grid min-w-0 max-w-4xl gap-2 rounded-md border border-line bg-surface px-3 py-2">
+    <section role="region" aria-labelledby={titleId} className="grid min-w-0 max-w-4xl gap-2 border-l-2 border-dashed border-[var(--forecast)] px-3 py-2">
       <div className="flex min-h-8 min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-        <h3 id={titleId} className="text-sm font-semibold text-text">Swiss stats</h3>
+        <div className="grid shrink-0 gap-0.5">
+          <h3 id={titleId} className="text-sm font-semibold text-text">Swiss stats</h3>
+          <span className="text-xs text-[var(--forecast)]">Forecast</span>
+        </div>
         {stats.blocked ? null : pending(stats)
           ? <Button variant="outline" size="sm" className="min-w-28" onClick={stats.cancel}>Cancel stats</Button>
           : result ? <Button variant="outline" size="sm" className="min-w-28" onClick={stats.cancel}>Hide stats</Button>
@@ -38,9 +42,9 @@ export function SwissStatsBar({ stats }: { stats: SwissStats }) {
         </div>
       </div>
       <p className="text-xs text-muted">Estimates use a uniform legal draw model, not Riot’s official draw probabilities.</p>
-      {stats.blocked ? <Alert variant="warning">{stats.blocked}</Alert> : null}
-      {!stats.blocked && stats.conditioned ? <Alert variant="warning">{stats.conditioned} live or partly scored series {stats.conditioned === 1 ? 'is' : 'are'} fixed to your picked winner. These estimates do not use the live score.</Alert> : null}
-      {!stats.blocked && state.status === 'error' ? <Alert variant="warning" role="alert">Stats are unavailable. {state.detail}</Alert> : null}
+      {stats.blocked ? <Alert variant="warning"><TriangleAlert aria-hidden="true" /><div className="min-w-0">{stats.blocked}</div></Alert> : null}
+      {!stats.blocked && stats.conditioned ? <Alert variant="warning"><TriangleAlert aria-hidden="true" /><div className="min-w-0">{stats.conditioned} live or partly scored series {stats.conditioned === 1 ? 'is' : 'are'} fixed to your picked winner. These estimates do not use the live score.</div></Alert> : null}
+      {!stats.blocked && state.status === 'error' ? <Alert variant="warning" role="alert"><TriangleAlert aria-hidden="true" /><div className="min-w-0">Stats are unavailable. {state.detail}</div></Alert> : null}
     </section>
   )
 }
@@ -61,10 +65,9 @@ export function AdvanceOdds({ id, className }: { id: string; className?: string 
   if (odds.status === 'pending') return <span data-slot="skeleton" aria-hidden="true" className={cn('loading-skeleton h-3 w-7 shrink-0 rounded-md bg-line!', className)} />
   const team = odds.status === 'ready' ? odds.teams.get(id) : undefined
   if (odds.status !== 'ready' || !team || team.fixed) return null
-  const [low, high] = worldsSamplingInterval(team.advanceCount, odds.trials)
   return (
-    <span title={`Advances in ${team.advanceCount.toLocaleString()} of ${odds.trials.toLocaleString()} trials. 95% sampling interval ${percent(low)} to ${percent(high)}.`}
-      className={cn('shrink-0 text-xs font-normal text-text tabular-nums motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300', className)}>
+    <span data-advance-odds
+      className={cn('shrink-0 text-xs font-normal text-[var(--forecast)] tabular-nums motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300', className)}>
       <span className="sr-only">, </span>{chance(team.advanceCount, odds.trials)}<span className="sr-only"> to advance</span>
     </span>
   )
@@ -86,13 +89,13 @@ export function SwissStatsDetails({ stats }: { stats: SwissStats }) {
 function StatsResults({ result }: { result: SwissStatsResult }) {
   const teams = [...result.teams].sort((a, b) => b.advanceCount - a.advanceCount || a.label.localeCompare(b.label))
   return <div className="min-w-0 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300 motion-reduce:animate-none">
-    {result.provenance.dataMode !== 'scheduled-public-data' ? <PanelBody><Alert variant="warning">The ratings are sample data, not the published Power Index. These estimates are not official LoL Esports data.</Alert></PanelBody> : null}
+    {result.provenance.dataMode !== 'scheduled-public-data' ? <PanelBody><Alert variant="warning"><TriangleAlert aria-hidden="true" /><div className="min-w-0">The ratings are sample data, not the published Power Index. These estimates are not official LoL Esports data.</div></Alert></PanelBody> : null}
     <Table aria-label="Team advancement" className="table-fixed [&_th]:[overflow-wrap:anywhere]" containerClassName="max-h-none">
       <TableHeader><TableRow><TableHead className="w-2/5 whitespace-normal">Team</TableHead><TableHead className="whitespace-normal">Advance</TableHead><TableHead className="whitespace-normal">95% interval</TableHead></TableRow></TableHeader>
       <TableBody>{teams.map((team) => <TableRow key={team.id}>
         <th scope="row" className="break-words p-2 text-left font-semibold">{team.label}<span className="block text-xs text-muted">{team.region}</span></th>
         <TableCell className="whitespace-normal tabular-nums">{estimate(team.advanceCount, result.trials, team.fixed !== null)}{team.fixed ? <span className="block font-sans text-xs text-muted">Fixed {team.fixed}</span> : null}</TableCell>
-        <TableCell className="whitespace-normal text-xs tabular-nums">{team.fixed ? 'Fixed' : interval(team.advanceCount, result.trials)}</TableCell>
+        <TableCell className="whitespace-normal text-xs tabular-nums">{team.fixed ? 'Fixed' : <>{interval(team.advanceCount, result.trials)}<span className="block text-muted">Advances in {team.advanceCount.toLocaleString()} of {result.trials.toLocaleString()} trials.</span></>}</TableCell>
       </TableRow>)}</TableBody>
     </Table>
     <Table aria-label="Region advancement" className="table-fixed [&_th]:[overflow-wrap:anywhere]" containerClassName="max-h-none">
@@ -123,9 +126,6 @@ function chance(count: number, trials: number) {
   if (value < 0.1) return '<0.1%'
   if (value > 99.9) return '>99.9%'
   return value < 1 || value > 99 ? `${value.toFixed(1)}%` : `${Math.round(value)}%`
-}
-function percent(value: number) {
-  return `${(value * 100).toFixed(1)}%`
 }
 function estimate(count: number, trials: number, fixed: boolean) {
   if (!fixed && count === 0) return '0 sampled'

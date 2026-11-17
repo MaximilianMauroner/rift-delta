@@ -1,5 +1,10 @@
+import { TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { TeamMark } from '../../components/TeamMark'
+import { leagueColor } from '../../shared/teamColor'
+import { teamIdentityFor } from '../../domains/rankings/evidence'
 import { Alert } from '../../components/ui/alert'
+import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
@@ -54,7 +59,8 @@ export function WorldsTournamentPanel({ event, forecast, fixtureFeed }: { event:
       }).catch((error: unknown) => {
         window.clearTimeout(timeout)
         if (!active || controller.signal.aborted) return
-        setMode('error'); setDetail(error instanceof Error ? error.message : String(error))
+        setMode('error')
+        setDetail(error instanceof SyntaxError ? 'The reviewed Worlds state could not be read. Refresh the schedule to try again.' : error instanceof Error ? error.message : String(error))
       })
     }, 0)
     return () => {
@@ -65,17 +71,17 @@ export function WorldsTournamentPanel({ event, forecast, fixtureFeed }: { event:
 
   const names = new Map(event.series.flatMap((series) => series.teams.filter((team) => team.id).map((team) => [team.id!, team.name ?? team.id!])))
   const name = (id: string) => names.get(id) ?? id
-  return <Card className="min-w-0" aria-label="Worlds simulation">
-    <CardHeader><CardTitle>Worlds advancement</CardTitle></CardHeader>
+  return <Card className="min-w-0 border-dashed border-[var(--forecast)]" aria-label="Worlds simulation">
+    <CardHeader><CardTitle role="heading" aria-level={3} className="flex flex-wrap items-center gap-2">Worlds outlook <Badge variant="preview">Forecast</Badge></CardTitle></CardHeader>
     <CardContent className="grid min-w-0 gap-3">
-      {artifact?.dataMode === 'synthetic-fixture' ? <Alert variant="warning">Synthetic Worlds state and model evidence. These probabilities are fixture estimates, not official forecasts.</Alert> : null}
+      {artifact?.dataMode === 'synthetic-fixture' ? <Alert variant="warning"><TriangleAlert aria-hidden="true" /><div className="min-w-0">Synthetic Worlds state and model evidence. These probabilities are fixture estimates, not official forecasts.</div></Alert> : null}
       {display?.status === 'supported' && display.report.model && display.report.model.dataMode !== 'scheduled-public-data'
-        ? <Alert variant="warning">Sample model inputs. These probabilities use seeded or unavailable sample data and are not official forecasts.</Alert> : null}
+        ? <Alert variant="warning"><TriangleAlert aria-hidden="true" /><div className="min-w-0">Sample model inputs. These probabilities use seeded or unavailable sample data and are not official forecasts.</div></Alert> : null}
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm text-muted" role="status">{mode === 'running' ? progress ? `Sampling · ${progress.toLocaleString()} / ${OPTIONS.trials.toLocaleString()} trials` : 'Computing remaining stages.' : mode === 'cancelled' ? 'Simulation cancelled. Observed state remains available.' : mode === 'loading' ? detail : mode === 'done' ? 'Computation complete.' : `Forecast unavailable: ${detail}`}</p>
         {mode === 'running' ? <Button variant="outline" size="sm" onClick={() => { stop.current?.(); stop.current = null; setMode('cancelled') }}>Cancel simulation</Button> : artifact ? <Button variant="outline" size="sm" onClick={() => setRun((value) => value + 1)}>Run simulation</Button> : null}
       </div>
-      {display?.status === 'unsupported' ? <Alert variant="warning">Forecast unavailable: {display.detail}</Alert> : null}
+      {display?.status === 'unsupported' ? <Alert variant="warning"><TriangleAlert aria-hidden="true" /><div className="min-w-0">Forecast unavailable: {display.detail}</div></Alert> : null}
       {display?.status === 'supported' ? <WorldsReportView report={display.report} name={name} /> : null}
       {historical ? <HistoricalGroupView result={historical} name={name} asOf={artifact?.state.format === 'worlds-2022-group' ? artifact.state.asOf : ''} /> : null}
     </CardContent>
@@ -83,17 +89,35 @@ export function WorldsTournamentPanel({ event, forecast, fixtureFeed }: { event:
 }
 
 function WorldsReportView({ report, name }: { report: WorldsReport; name: (id: string) => string }) {
+  const championChances = report.teams.flatMap((team) =>
+    team.stages.champion === null || team.stages.champion <= 0 || team.deterministicStages.champion
+      ? [] : [{ id: team.id, probability: team.stages.champion }],
+  ).sort((first, second) => second.probability - first.probability).slice(0, 4)
   const lastSwissRound = Math.max(0, ...(report.pinnedState.swiss?.rounds.map((round) => round.round) ?? []))
   const currentMatches = report.matches.filter((match) => report.currentStage === 'Play-In' ? match.label.startsWith('Play-In')
     : report.currentStage.startsWith('Swiss') ? match.label.startsWith(`Swiss R${lastSwissRound || 1}`)
       : !match.label.startsWith('Swiss') && !match.label.startsWith('Play-In'))
   const earlierMatches = report.matches.filter((match) => !currentMatches.includes(match))
   return <>
+    {championChances.length ? <section aria-label="Champion forecast" className="grid min-w-0 gap-2">
+      <h3 className="text-sm font-semibold">Who lifts the trophy</h3>
+      <ol className="grid gap-2">{championChances.map((team) => <li key={team.id} className="flex min-w-0 items-center gap-2 text-sm">
+        <TeamMark team={name(team.id)} className="size-5" fallback="initial" />
+        <span className="min-w-0 flex-1 break-words">{name(team.id)}</span>
+        <span aria-hidden="true" className="h-1.5 w-12 shrink-0 overflow-hidden rounded-md bg-raised">
+          <span className="block h-full" style={{ width: `${team.probability * 100}%`, background: leagueColor(teamIdentityFor(name(team.id))?.league ?? '') }} />
+        </span>
+        <strong className="w-12 shrink-0 text-right tabular-nums">{percent(team.probability)}</strong>
+      </li>)}</ol>
+      <p className="text-xs text-muted">Forecast from the pinned Worlds state and model.</p>
+    </section> : null}
     <h3 className="text-sm font-semibold">Current stage: {report.currentStage}</h3>
-    {report.unavailable.map((reason) => <Alert key={reason} variant="warning">Forecast unavailable: {reason}</Alert>)}
+    {report.unavailable.map((reason) => <Alert key={reason} variant="warning"><TriangleAlert aria-hidden="true" /><div className="min-w-0">Forecast unavailable: {reason}</div></Alert>)}
+    <details className="min-w-0 text-sm">
+      <summary className="cursor-pointer font-semibold">All stage probabilities</summary>
     <div role="region" aria-label="Worlds cumulative probabilities" tabIndex={0} className="min-w-0">
       <Table>
-        <TableCaption>Cumulative chances to reach each stage. Totals are 16 / 8 / 4 / 2 / 1 when all stages are supported. A dash means unavailable.</TableCaption>
+        <TableCaption>Cumulative chances to reach each stage. Totals are 16 / 8 / 4 / 2 / 1 when all stages are supported. A dash means unavailable. The small range under a sampled chance is its 95% sampling interval.</TableCaption>
         <TableHeader><TableRow><TableHead scope="col">Team / seed</TableHead><TableHead scope="col">Observed state</TableHead>{WORLD_STAGES.map((stage) => <TableHead scope="col" key={stage}>{STAGE_LABELS[stage]}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{report.teams.map((team) => <TableRow key={team.id}>
           <TableHead scope="row">{name(team.id)} · {team.seed}</TableHead><TableCell>{team.state}</TableCell>
@@ -102,24 +126,27 @@ function WorldsReportView({ report, name }: { report: WorldsReport; name: (id: s
             const interval = count !== undefined && report.trials && !team.deterministicStages[stage] ? worldsSamplingInterval(count, report.trials) : null
             const label = interval ? `${percent(team.stages[stage])}; 95% sampling interval ${percent(interval[0])} to ${percent(interval[1])}`
               : `${percent(team.stages[stage])}${team.deterministicStages[stage] ? '; observed outcome' : ''}`
-            return <TableCell key={stage} title={label} aria-label={`${STAGE_LABELS[stage]}: ${label}`}>{percent(team.stages[stage])}</TableCell>
+            return <TableCell key={stage} aria-label={`${STAGE_LABELS[stage]}: ${label}`}>{percent(team.stages[stage])}
+              {team.deterministicStages[stage] ? <span className="block text-xs text-muted" aria-hidden="true">Observed</span> : null}
+              {interval ? <span className="block text-xs text-muted" aria-hidden="true">{percent(interval[0])}–{percent(interval[1])}</span> : null}</TableCell>
           })}
         </TableRow>)}</TableBody>
       </Table>
     </div>
+    </details>
     <details className="min-w-0 text-sm"><summary className="cursor-pointer font-semibold">Exclusive finish probabilities</summary>
       <Table><TableCaption>Finish buckets are mutually exclusive. A complete supported row sums to 100%.</TableCaption>
         <TableHeader><TableRow><TableHead scope="col">Team</TableHead>{WORLD_FINISHES.map((finish) => <TableHead scope="col" key={finish}>{finish === '1' ? 'Champion' : finish === '2' ? 'Runner-up' : finish}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{report.teams.map((team) => <TableRow key={team.id}><TableHead scope="row">{name(team.id)}</TableHead>{WORLD_FINISHES.map((finish) => <TableCell key={finish}>{percent(team.finishes[finish])}</TableCell>)}</TableRow>)}</TableBody>
       </Table>
     </details>
-    <details className="text-sm" open><summary className="cursor-pointer font-semibold">Current draw and bracket</summary>
-      <div className="mt-2 grid gap-2 md:grid-cols-2">{currentMatches.map((match, index) => <p className="rounded-md border border-line p-2" key={index}>{match.label}: {name(match.teamIds[0])} vs {name(match.teamIds[1])}{match.winnerId ? ` · Winner: ${name(match.winnerId)}` : ' · Unresolved'}</p>)}</div>
+    <details className="text-sm"><summary className="cursor-pointer font-semibold">Current draw and bracket</summary>
+      <div className="mt-2 grid gap-2">{currentMatches.map((match, index) => <p className="break-words rounded-md border border-line p-2" key={index}>{match.label}: {name(match.teamIds[0])} vs {name(match.teamIds[1])}{match.winnerId ? ` · Winner: ${name(match.winnerId)}` : ' · Unresolved'}</p>)}</div>
       {!currentMatches.length ? <p className="mt-2 text-muted">No observed draw is available for this stage.</p> : null}
       {report.pinnedState.knockout ? <p className="mt-2 text-muted">Fixed links: quarterfinals 1–2 feed semifinal 1; quarterfinals 3–4 feed semifinal 2. The semifinal winners meet in the final.</p> : null}
       {report.currentStage === 'Knockout draw pending' || report.method === 'seeded-monte-carlo' ? <p className="mt-2 text-muted">The future knockout draw is sampled under §4.3.4. These pairings are not an observed bracket. Winners follow fixed links after each draw.</p> : null}
     </details>
-    {earlierMatches.length ? <details className="text-sm"><summary className="cursor-pointer font-semibold">Previous draws and results</summary><div className="mt-2 grid gap-2 md:grid-cols-2">{earlierMatches.map((match, index) => <p className="rounded-md border border-line p-2" key={index}>{match.label}: {name(match.teamIds[0])} vs {name(match.teamIds[1])}{match.winnerId ? ` · Winner: ${name(match.winnerId)}` : ' · Unresolved'}</p>)}</div></details> : null}
+    {earlierMatches.length ? <details className="text-sm"><summary className="cursor-pointer font-semibold">Previous draws and results</summary><div className="mt-2 grid gap-2">{earlierMatches.map((match, index) => <p className="break-words rounded-md border border-line p-2" key={index}>{match.label}: {name(match.teamIds[0])} vs {name(match.teamIds[1])}{match.winnerId ? ` · Winner: ${name(match.winnerId)}` : ' · Unresolved'}</p>)}</div></details> : null}
     <details className="min-w-0 text-sm"><summary className="cursor-pointer font-semibold">Simulation basis and precision</summary>
       <div className="mt-2 grid gap-2 break-words text-muted">
         <p>{report.method} · {report.trials.toLocaleString()} sampled trials · Seed {report.seed} · {report.elapsedMs.toFixed(0)} ms. Exact enumeration has no sampling error.</p>
@@ -135,7 +162,7 @@ function WorldsReportView({ report, name }: { report: WorldsReport; name: (id: s
   </>
 }
 function HistoricalGroupView({ result, name, asOf }: { result: GroupReplayResult; name: (id: string) => string; asOf: string }) {
-  if (result.status === 'unsupported') return <Alert variant="warning">Historical group replay unavailable: {result.detail}. Historical forecasts require as-of ratings; current ratings are not used.</Alert>
+  if (result.status === 'unsupported') return <Alert variant="warning"><TriangleAlert aria-hidden="true" /><div className="min-w-0">Historical group replay unavailable: {result.detail}. Historical forecasts require as-of ratings; current ratings are not used.</div></Alert>
   return <div className="grid gap-2"><h3 className="text-sm font-semibold">Worlds 2022 · Group {result.groupId} · Observed results</h3>
     <p className="text-sm text-muted">Information cutoff {asOf}. Top two advance to the knockout draw. Forecast unavailable: historical model inputs are unavailable. Current ratings are not used.</p>
     <Table><TableHeader><TableRow><TableHead scope="col">Team</TableHead><TableHead scope="col">Record</TableHead><TableHead scope="col">Advancement</TableHead></TableRow></TableHeader>

@@ -258,8 +258,14 @@ test(
         exact: true,
       })
       await overview.getByText('Blue side wins', { exact: true }).waitFor()
+      await overview.getByText('Team chart values', { exact: true }).click()
+      const chartValues = overview.getByRole('table', { name: 'Win rate and gold at 15 values' })
+      await chartValues.getByRole('button', { name: 'Alpha', exact: true }).focus()
+      assert.equal(await chartValues.getByRole('row').count(), 3)
+      assert.match(await chartValues.innerText(), /Alpha[\s\S]*100.0%/)
+      await overview.getByText('Team chart values', { exact: true }).click()
       const blueSide = overview
-        .locator('div')
+        .locator('li')
         .filter({ has: page.getByText('Blue side wins', { exact: true }) })
         .last()
       await blueSide.getByText('100%', { exact: true }).waitFor()
@@ -268,6 +274,7 @@ test(
         .getByRole('region', { name: 'Alpha compared with the field' })
         .getByText('Win rate', { exact: true })
         .waitFor()
+      await page.getByText('A style, not better or worse', { exact: true }).first().waitFor()
       await overview
         .getByRole('button', {
           name: 'Open BET team report from Biggest gold swings after 15',
@@ -380,8 +387,13 @@ test(
       await evidence(page)
         .getByText('Gold lead at 15: unavailable', { exact: true })
         .waitFor()
-      for (const width of [320, 360]) {
+      const focal = team(report, 'Alpha').participants.find((player) => player.role === 'Mid')!
+      const goldValues = focal.games.flatMap((game) => game.metrics.goldDiffAt15 === null ? [] : [game.metrics.goldDiffAt15])
+      const formatGold = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(Math.round(value)).toLocaleString('en-US')}`
+      const lineupRange = `${formatGold(Math.min(...goldValues))} to ${formatGold(Math.max(...goldValues))} · ${goldValues.length} ${goldValues.length === 1 ? 'game' : 'games'}`
+      for (const width of [320, 360, 390, 1280]) {
         await page.setViewportSize({ width, height: 844 })
+        assert.ok(await page.getByRole('button', { name: 'View Focal, Mid', exact: true }).getByText(lineupRange, { exact: true }).isVisible(), `Lineup range and game count are visible at ${width}px`)
         await page
           .getByText('Method and source provenance', { exact: true })
           .click()
