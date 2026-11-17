@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { predictPregameSeries, replayPregameSeriesBatch, replaySimpleEloSeriesBatch, predictSimpleEloSeries, simpleEloPolicy } from '../../src/domains/rankings/forecast.ts'
@@ -178,7 +178,7 @@ export async function exportPregameSeries(manifestPath: string, requestsPath: st
   return receipts
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && await realpath(process.argv[1]).catch(() => undefined) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2)
   if (args.length === 1 && args[0] === '--help') {
     console.log('Usage: export-pregame-series <manifest.json> <requests.json> <candidate.json> <output.jsonl>\nOffline only. Requests contain evidenceMode, availability, explicit game observations and canonical series identities. Existing outputs are never replaced.')

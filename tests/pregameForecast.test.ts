@@ -2,9 +2,9 @@ import { writeOracleForecastFixture } from './fixtures/oracleForecastFixture.ts'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createHash } from 'node:crypto'
-import { mkdtemp, readFile, readdir, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, writeFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { predictPregameSeries, replayPregameSeriesState, seriesWinnerProbability, temperatureProbability } from '../src/domains/rankings/forecast.ts'
 import type { AvailableRankingGame, PregameForecastInput, PregameSeriesRequest } from '../src/domains/rankings/forecast.ts'
@@ -136,6 +136,20 @@ test('dependence fits the complete score even when winner loss prefers independe
     assert.ok(fitted.meanScoreLogLoss < independent.meanScoreLogLoss)
     assert.ok(fitted.meanWinnerLogLoss > independent.meanWinnerLogLoss)
   }
+})
+
+test('forecast CLI runs through a symlinked entry point and stays inactive on import', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'pregame-entry-'))
+  try {
+    const entry = join(dir, 'export.ts')
+    await symlink(resolve('scripts/rankings/export-pregame-series.ts'), entry)
+    const stdout = execFileSync(process.execPath, ['--import', 'tsx', entry, '--help'], { encoding: 'utf8' })
+    assert.match(stdout, /^Usage: export-pregame-series /)
+    const imported = execFileSync(process.execPath, ['--import', 'tsx', '--input-type=module', '--eval',
+      `await import(${JSON.stringify(new URL('../scripts/rankings/export-pregame-series.ts', import.meta.url).href)})`,
+      join(dir, 'not-an-entry')], { encoding: 'utf8' })
+    assert.equal(imported, '')
+  } finally { await rm(dir, { recursive: true, force: true }) }
 })
 
 test('offline CLI exports actual hashes and exact states without backdating generatedAt', async () => {
