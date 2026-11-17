@@ -1,3 +1,5 @@
+import { Panel } from "../../components/ui/panel.tsx";
+import { Button } from "../../components/ui/button.tsx";
 import { COMBO_PRESETS, actionAvailable } from "../../browser/dps/presets.ts";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import type { ProgressionApiResponse } from "../../domains/dps/datasets.ts";
@@ -48,7 +50,7 @@ import {
 } from "../../components/dps/controls.tsx";
 import { EnemySlices } from "../../components/dps/slices.tsx";
 import { HeadToHead } from "../../components/dps/head-to-head.tsx";
-import { OptimizerPanel } from "../../components/dps/optimizer.tsx";
+import { OptimizerPanel, OptimizerResults } from "../../components/dps/optimizer.tsx";
 import { EvidenceFold, LimitsFold, TraceFold } from "../../components/dps/panels.tsx";
 import type { CohortPayload, DraftRow, LabDataset, LabResult } from "../../components/dps/types.ts";
 import { IdenticalBuildsBand, VerdictBand } from "../../components/dps/verdict.tsx";
@@ -705,20 +707,18 @@ export default function Home() {
   );
 
   return (
-    <div className="page">
+    <main className="page">
       <header className="top">
         <div className="top-in">
-          <span className="logo" aria-hidden>
-            Δ
-          </span>
-          <strong>DPS lab</strong>
+          <div>
+            <h1 className="lab-title">DPS lab</h1>
+            <p className="note">Compare Yunara builds against the selected targets.</p>
+          </div>
           <div className="top-right">
-            <span className="pill pill-gold">
-              Patch {PATCH} · {DATA_VERSION}
-            </span>
+            <span className="pill">Patch {PATCH} · {DATA_VERSION}</span>
             {dataset && (
               <span className={dataset.provenance === "riot" ? "pill pill-riot" : "pill pill-demo"}>
-                {dataset.provenance === "riot" ? "Riot snapshots" : "Fixture / demo data"}
+                {dataset.provenance === "riot" ? "Riot snapshots" : "⚠ Fixture / demo data"}
               </span>
             )}
           </div>
@@ -735,6 +735,20 @@ export default function Home() {
             onLevel={setLevel}
             onAdjustRank={adjustRank}
             onYunTalStacks={setYunTalStacks}
+          />
+          <OptimizerPanel
+            objective={optimizerObjective}
+            slotCount={optimizerSlotCount}
+            topN={optimizerTopN}
+            running={optimizerRunning}
+            progress={optimizerProgress}
+            result={optimizerResult}
+            error={optimizerError}
+            onObjective={setOptimizerObjective}
+            onSlotCount={updateOptimizerSlotCount}
+            onTopN={setOptimizerTopN}
+            onRun={() => void runOptimizer()}
+            onCancel={cancelOptimizer}
           />
           <OpenerCard
             actions={actions}
@@ -779,40 +793,24 @@ export default function Home() {
             onManual={setManual}
             onMetric={setMetric}
           />
-          <section className="card status">
+          <Panel className="dps-panel status">
             <p>
-              <strong>Live</strong> — every change re-runs against the cached cohort. Level and
+              <strong>Automatic rerun.</strong> Every change re-runs against the cached cohort. Level and
               filter changes fetch a new one.
             </p>
-            <button className="ghost" onClick={() => void run()} disabled={loading}>
+            <Button variant="outline" className="ghost" onClick={() => void run()} disabled={loading}>
               {loading ? "Calculating…" : "Run again"}
-            </button>
-          </section>
+            </Button>
+          </Panel>
         </aside>
 
-        <main className="board">
+        <div className="board">
           {error && (
             <div className="error" role="alert">
               {error}
             </div>
           )}
 
-          <OptimizerPanel
-            objective={optimizerObjective}
-            slotCount={optimizerSlotCount}
-            topN={optimizerTopN}
-            running={optimizerRunning}
-            progress={optimizerProgress}
-            result={optimizerResult}
-            cohortCount={optimizerCohortCount}
-            error={optimizerError}
-            onObjective={setOptimizerObjective}
-            onSlotCount={updateOptimizerSlotCount}
-            onTopN={setOptimizerTopN}
-            onRun={() => void runOptimizer()}
-            onCancel={cancelOptimizer}
-            onUseBuild={useOptimizerBuild}
-          />
 
           {identical ? (
             <IdenticalBuildsBand
@@ -843,11 +841,11 @@ export default function Home() {
               <BreakpointHeat points={result.breakpoints} duration={duration} labels={labels} />
             </VerdictBand>
           ) : (
-            <section className="card band band-flat" aria-live="polite">
+            <Panel className="dps-panel band band-flat" aria-live="polite">
               <div>
-                <h1 data-first-answer={loading ? undefined : "lab"} className="question">
+                <h2 data-first-answer={loading ? undefined : "lab"} className="question">
                   {loading ? "Running the comparison…" : "No current comparison"}
-                </h1>
+                </h2>
                 <p className="lede">
                   {loading
                     ? "Simulating both builds against every target in the cohort."
@@ -855,8 +853,14 @@ export default function Home() {
                 </p>
               </div>
               <div />
-            </section>
+            </Panel>
           )}
+
+          <OptimizerResults
+            result={optimizerRunning ? null : optimizerResult}
+            cohortCount={optimizerCohortCount}
+            onUseBuild={useOptimizerBuild}
+          />
 
           <div className={identical ? "" : "grid2"}>
             <HeadToHead
@@ -917,7 +921,7 @@ export default function Home() {
             modelWarnings={result?.modelWarnings ?? []}
             assumptions={result?.assumptions ?? ""}
           />
-        </main>
+        </div>
       </div>
 
       <footer>
@@ -925,7 +929,7 @@ export default function Home() {
         involved in producing or managing League of Legends. League of Legends and Riot Games are
         trademarks or registered trademarks of Riot Games, Inc.
       </footer>
-    </div>
+    </main>
   );
 }
 

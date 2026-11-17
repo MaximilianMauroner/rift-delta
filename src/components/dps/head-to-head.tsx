@@ -1,3 +1,6 @@
+import { Button } from "../ui/button.tsx";
+import { Select } from "../ui/select.tsx";
+import { Panel } from "../ui/panel.tsx";
 import { itemLabel, slotEditorModel } from "../../domains/dps/compare-view.ts";
 import { buildGoldTotal } from "../../domains/dps/items.ts";
 import type { SimulationResult } from "../../domains/dps/types.ts";
@@ -35,7 +38,7 @@ function ItemSelect({
           ?
         </span>
       )}
-      <select
+      <Select
         id={id}
         aria-label={label}
         value={value > 0 ? value : ""}
@@ -49,16 +52,17 @@ function ItemSelect({
             {itemLabel(candidate)}
           </option>
         ))}
-      </select>
+      </Select>
       {onRemove && (
-        <button
+        <Button
+          variant="outline"
           type="button"
           className="slot-remove"
           aria-label={`Remove ${label}`}
           onClick={onRemove}
         >
           ×
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -182,7 +186,7 @@ export function HeadToHead({
   const sharedCost = buildGoldTotal(model.shared.map((slot) => slot.id));
 
   return (
-    <section className="card" aria-labelledby="h2h">
+    <Panel className="dps-panel" role="region" aria-labelledby="h2h">
       <h2 id="h2h">Head to head</h2>
       <p className="sub">Pick the items under test; the rest of the build stays shared.</p>
 
@@ -205,9 +209,9 @@ export function HeadToHead({
               }
             />
           ))}
-          <button type="button" className="ghost" onClick={() => onAddSide("a")}>
+          <Button variant="outline" type="button" className="ghost" onClick={() => onAddSide("a")}>
             + item only in A
-          </button>
+          </Button>
         </div>
         <div>
           <span className="fl">Only in B</span>
@@ -227,9 +231,9 @@ export function HeadToHead({
               }
             />
           ))}
-          <button type="button" className="ghost" onClick={() => onAddSide("b")}>
+          <Button variant="outline" type="button" className="ghost" onClick={() => onAddSide("b")}>
             + item only in B
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -263,14 +267,14 @@ export function HeadToHead({
                 onRemove={() => onSharedChange(slot.aIndex, slot.bIndex, null)}
               />
             ))}
-            <button type="button" className="ghost" onClick={onAddShared}>
+            <Button variant="outline" type="button" className="ghost" onClick={onAddShared}>
               + shared item
-            </button>
+            </Button>
           </div>
           <p className="note">Shared edits apply to both builds. {manualNote}</p>
-          <button type="button" className="ghost" onClick={onResetDefault}>
+          <Button variant="outline" type="button" className="ghost" onClick={onResetDefault}>
             Reset to the observed level default
-          </button>
+          </Button>
         </div>
       </details>
 
@@ -326,6 +330,6 @@ export function HeadToHead({
         One observed target, the same opener for both builds. Δ is {labels.shortA} minus{" "}
         {labels.shortB}. Cohort-wide results are in the verdict above.
       </p>
-    </section>
+    </Panel>
   );
 }

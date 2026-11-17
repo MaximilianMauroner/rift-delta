@@ -1,3 +1,5 @@
+import { Button } from "../ui/button.tsx";
+import { Panel } from "../ui/panel.tsx";
 import {
   groupSlices,
   sliceRow,
@@ -7,6 +9,14 @@ import {
 } from "../../domains/dps/compare-view.ts";
 import type { SampleComparison } from "../../domains/dps/types.ts";
 import type { ComparisonLabels, DraftRow, LabDataset } from "./types.ts";
+
+const ROLE_LABELS: Record<string, string> = {
+  TOP: "Top",
+  JUNGLE: "Jungle",
+  MIDDLE: "Middle",
+  BOTTOM: "Bottom",
+  UTILITY: "Utility",
+};
 
 const TONE: Record<SliceTier, string> = {
   flips: "b",
@@ -55,19 +65,22 @@ function Row({
   );
   if (!onPick) {
     return (
-      <div className="slice" title={reading}>
+      <div className="slice">
         {content}
+        <span className="slice-reading">{reading}</span>
       </div>
     );
   }
   return (
-    <button
+    <Button
+      variant="outline"
       className="slice"
       onClick={() => onPick(row)}
-      title={`${reading}. Re-run on this group`}
+      aria-label={`${reading}. Re-run on this group`}
     >
       {content}
-    </button>
+      <span className="slice-reading">{reading}. Re-run on this group.</span>
+    </Button>
   );
 }
 
@@ -98,7 +111,7 @@ export function EnemySlices({
       buildAWinRate: row.share,
     });
   const roles = groupSlices(
-    (comparison?.byRole ?? []).map((group) => sliceRow(group.role, group.role, group)),
+    (comparison?.byRole ?? []).map((group) => sliceRow(group.role, ROLE_LABELS[group.role] ?? group.role, group)),
   );
   const champions = groupSlices(
     (comparison?.byChampion ?? []).map((group) => sliceRow(group.champion, group.champion, group)),
@@ -112,11 +125,11 @@ export function EnemySlices({
   ];
 
   return (
-    <section className="card slices" aria-labelledby="slices">
+    <Panel className="dps-panel slices" role="region" aria-labelledby="slices">
       <h2 id="slices">Which enemies change the answer</h2>
       <p className="sub">
         The same comparison, re-run on each group of the enemies in the cohort. {labels.shortA}{" "}
-        takes the teal side of every bar.
+        takes the green side of every bar.
       </p>
 
       {whole && (
@@ -231,6 +244,6 @@ export function EnemySlices({
           · minute {summary.minute?.median ?? "—"}.
         </p>
       )}
-    </section>
+    </Panel>
   );
 }
