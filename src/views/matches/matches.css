@@ -1,0 +1,196 @@
+.matches-view {
+  gap: 12px;
+}
+
+.matches-heading {
+  scroll-margin-top: calc(var(--app-nav-h) + 12px);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.matches-heading:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+.matches-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+}
+
+.matches-summary > div {
+  gap: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.matches-summary b {
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.matches-filters {
+  display: grid;
+  grid-template-columns: minmax(120px, .7fr) minmax(180px, 1fr) minmax(200px, 1.3fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.matches-ledger {
+  overflow: hidden;
+}
+
+.matches-table th,
+.matches-table td {
+  padding: 10px 12px;
+}
+
+.matches-table th {
+  height: 36px;
+  padding-block: 6px;
+}
+
+.matches-date-column {
+  width: 116px;
+}
+
+.matches-event-column {
+  width: 19%;
+}
+
+.matches-impact-column {
+  width: 176px;
+}
+
+.matches-expand-column {
+  width: 44px;
+}
+
+.matches-table .matches-expand-column,
+.matches-table td:last-child {
+  padding-inline: 4px;
+}
+
+.matches-series-row {
+  background: var(--surface);
+}
+
+.matches-date {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.matches-team-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.matches-score {
+  min-width: 42px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--text);
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.matches-series-card {
+  min-width: 0;
+  border-left: 3px solid var(--league-other);
+  background: var(--surface);
+}
+
+.matches-series-card + .matches-series-card {
+  border-top: 1px solid var(--line);
+}
+
+.matches-series-card .matches-date {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+}
+
+.matches-archive-note {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.matches-archive-note summary {
+  width: fit-content;
+  cursor: pointer;
+}
+
+.matches-archive-note summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+
+.matches-archive-note p {
+  max-width: 74ch;
+  margin-top: 6px;
+}
+
+@media (max-width: 1023px) {
+  .matches-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .matches-search {
+    grid-column: span 2;
+  }
+
+  .matches-event-filter {
+    grid-column: span 2;
+  }
+
+  .matches-clear {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 639px) {
+  .matches-summary {
+    gap: 8px;
+  }
+
+  .matches-summary > div {
+    padding: 9px 10px;
+  }
+
+  .matches-summary > div > span > svg {
+    display: none;
+  }
+
+  .matches-summary b,
+  .matches-summary small {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .matches-summary small {
+    font-size: 11px;
+  }
+}

@@ -80,9 +80,9 @@ test('prefetching an older match page retains the loaded page on screen', { time
       await rows.nth(24).waitFor()
       const heading = page.getByRole('heading', { name: 'Series ledger' })
       assert.ok(await heading.evaluate((node) => {
-        const top = node.getBoundingClientRect().top
+        const { top, width, height } = node.getBoundingClientRect()
         const headerBottom = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0
-        return top >= headerBottom && top < innerHeight / 2
+        return node === document.activeElement && width > 1 && height > 1 && top >= headerBottom && top < innerHeight / 2
       }), 'Explicit pagination returns to the results heading below the sticky navigation')
     }
     const prefetched = page.waitForResponse((response) => new URL(response.url()).pathname === oldestPath).catch(async (error: unknown) => {
@@ -109,6 +109,18 @@ test('prefetching an older match page retains the loaded page on screen', { time
     await rows.nth(24).waitFor({ timeout: 5_000 })
     assert.equal(await rows.count(), 25, 'Focus prefetch must retain all 25 visible series')
     await page.getByText('Page 17 of 18', { exact: true }).waitFor()
+    for (const width of [800, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.getByRole('button', { name: 'Previous page', exact: true }).click()
+      await page.locator('[data-first-answer="matches"]').nth(24).waitFor()
+      const heading = page.getByRole('heading', { name: 'Series ledger' })
+      assert.ok(await heading.evaluate((node) => {
+        const { top, width, height } = node.getBoundingClientRect()
+        const headerBottom = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0
+        return node === document.activeElement && width > 1 && height > 1 && top >= headerBottom && top < innerHeight / 2
+      }), `Pagination reveals and focuses the ledger heading at ${width}px`)
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    }
     assert.deepEqual(errors, [])
   } finally { await browser?.close(); await server.close() }
 })
