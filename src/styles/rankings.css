@@ -18,7 +18,9 @@
   vertical-align: middle;
 }
 .ranking-table tbody tr.board-row:hover { background: var(--raised); }
-.ranking-table tbody tr.is-picked { background: var(--focus-wash); }
+/* Picked and selected rows use raised, not the focus wash: tier C text
+   falls to 4.15:1 on the wash and holds 4.73:1 on raised. */
+.ranking-table tbody tr.is-picked { background: var(--raised); }
 .ranking-table tbody tr.is-excluded { color: var(--muted); }
 .ranking-table td.right, .ranking-table th.right { text-align: right; }
 
@@ -691,7 +693,7 @@ table.ranking-table.board-grid col.board-col-action { width: 104px; }
   min-width: 0;
 }
 .ranking-table tbody tr.is-selected {
-  background: var(--focus-wash);
+  background: var(--raised);
   box-shadow: inset 0 0 0 1px var(--focus);
 }
 .team-dossier {
