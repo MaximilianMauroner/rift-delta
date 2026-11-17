@@ -23,7 +23,7 @@ class IntakeTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix='research-intake-')
         self.addCleanup(self.temporary.cleanup)
-        self.home = Path(self.temporary.name)
+        self.home = Path(self.temporary.name).resolve()
         self.source = self.home / 'source'
         self.root = self.home / 'bundle'
         self.source.mkdir()
