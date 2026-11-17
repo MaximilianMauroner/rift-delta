@@ -19,14 +19,24 @@ export function useTournamentReportAddress() {
   return new URLSearchParams(hash.slice(1).split('?', 2)[1] ?? '')
 }
 
-export function tournamentSubviewAddress(
-  view: 'postmortem' | 'bracket',
+export type TournamentTab = 'bracket' | 'schedule' | 'swiss' | 'postmortem'
+
+/**
+ * The address of one tournament tab. Bracket, schedule and Swiss preview read
+ * the same competition, so they keep the whole query. Team reports use their
+ * own event ids, so crossing to or from them keeps only the scope.
+ */
+export function tournamentTabAddress(
+  tab: TournamentTab,
+  from: TournamentTab,
   query: URLSearchParams,
 ) {
-  const next = new URLSearchParams()
+  const crossing = (tab === 'postmortem') !== (from === 'postmortem')
+  const next = crossing ? new URLSearchParams() : new URLSearchParams(query)
   const scope = query.get('scope')
-  if (scope) next.set('scope', scope)
-  if (view === 'postmortem') next.set('view', view)
+  if (crossing && scope) next.set('scope', scope)
+  if (tab === 'bracket') next.delete('view')
+  else next.set('view', tab)
   return `#tournaments${next.size ? `?${next}` : ''}`
 }
 

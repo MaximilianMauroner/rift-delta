@@ -23,7 +23,7 @@ export function PostmortemView() {
   const { state, retry } = useTournamentReports()
   return (
     <section
-      className="grid min-w-0 gap-3 px-[var(--page-x)] py-4"
+      className="grid min-w-0 gap-3 px-[var(--page-x)] pt-3 pb-5"
       aria-label="Worlds team reports"
     >
       {state.status !== 'ready' ? (
@@ -73,29 +73,31 @@ function ReportCatalog({
   const { state, retry } = useTournamentReport(index, entry)
   return (
     <>
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <label htmlFor="report-event" className="sr-only">
-            Report event
-          </label>
-          <Select
-            id="report-event"
-            value={entry?.id ?? ''}
-            onChange={(event) =>
-              selectTournamentReport({ event: event.target.value })
-            }
-          >
-            {!entry ? <option value="">Choose a report</option> : null}
-            {index.tournaments.map((event) => (
-              <option key={event.id} value={event.id}>
-                {event.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <Button variant="ghost" onClick={retryCatalog}>
-          Refresh reports
-        </Button>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <label htmlFor="report-event" className="sr-only">
+          Report event
+        </label>
+        <Select
+          id="report-event"
+          className="max-w-full font-semibold text-text"
+          value={entry?.id ?? ''}
+          onChange={(event) =>
+            selectTournamentReport({ event: event.target.value })
+          }
+        >
+          {!entry ? <option value="">Choose a report</option> : null}
+          {index.tournaments.map((event) => (
+            <option key={event.id} value={event.id}>
+              {event.label}
+            </option>
+          ))}
+        </Select>
+        {state.status === 'ready' && syntheticReport(state.data) ? (
+          <p role="status" className="min-w-[7.5rem] flex-1 text-xs leading-snug text-[var(--warn)]">
+            Synthetic test fixture. These player stats and results are
+            synthetic.
+          </p>
+        ) : null}
       </div>
       {!entry ? (
         <Alert role="status">
@@ -122,8 +124,17 @@ function ReportCatalog({
       ) : (
         <ReportBody report={state.data} />
       )}
+      <div>
+        <Button variant="outline" size="sm" onClick={retryCatalog}>
+          Refresh reports
+        </Button>
+      </div>
     </>
   )
+}
+
+function syntheticReport(report: TournamentReport) {
+  return report.provenance.dataMode === 'seeded-sample' || report.provenance.providers.includes('seed')
 }
 
 function ReportBody({ report }: { report: TournamentReport }) {
@@ -136,33 +147,18 @@ function ReportBody({ report }: { report: TournamentReport }) {
   const players = new Set(report.teams.flatMap((team) => team.participants.map((player) => player.playerId))).size
   return (
     <>
-      <header className="grid gap-3 rounded-md border border-line bg-surface p-4">
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-8 gap-y-3">
-          <div className="grid gap-1">
-            <h2 className="text-2xl font-bold">{report.label}</h2>
-            <p className="text-sm text-muted">
-              {coverage.observedGames} games · {coverage.observedTeams} teams ·{' '}
-              {players} players · {coverage.since} to {coverage.through}
-            </p>
-          </div>
-        </div>
-        {report.provenance.dataMode === 'seeded-sample' ||
-        report.provenance.providers.includes('seed') ? (
-          <Alert variant="warning" role="status">
-            Synthetic test fixture. These player stats and results are
-            synthetic.
-          </Alert>
-        ) : null}
-      </header>
+      <h2 className="sr-only">{report.label}</h2>
       {report.games ? (
         <EventOverview
           report={report}
+          caption={`${coverage.observedGames} games · ${coverage.observedTeams} teams · ${players} players · ${coverage.since} to ${coverage.through}`}
           onSelectTeam={(team) =>
             selectTournamentReport({ event: report.id, team })
           }
         />
       ) : (
         <Alert role="status">
+          {coverage.observedGames} games · {coverage.observedTeams} teams · {players} players · {coverage.since} to {coverage.through}.
           This published report has no game records. Tournament and team
           statistics appear after the next report rebuild.
         </Alert>

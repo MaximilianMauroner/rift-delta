@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert } from '../../components/ui/alert'
+import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
@@ -65,8 +66,8 @@ export function WorldsTournamentPanel({ event, forecast, fixtureFeed }: { event:
 
   const names = new Map(event.series.flatMap((series) => series.teams.filter((team) => team.id).map((team) => [team.id!, team.name ?? team.id!])))
   const name = (id: string) => names.get(id) ?? id
-  return <Card className="min-w-0" aria-label="Worlds simulation">
-    <CardHeader><CardTitle>Worlds advancement</CardTitle></CardHeader>
+  return <Card className="min-w-0 border-dashed border-[var(--preview)]" aria-label="Worlds simulation">
+    <CardHeader><CardTitle className="flex flex-wrap items-center gap-2">Who is likely through <Badge variant="preview" className="border-[var(--preview)] text-[var(--preview)]">Forecast</Badge></CardTitle></CardHeader>
     <CardContent className="grid min-w-0 gap-3">
       {artifact?.dataMode === 'synthetic-fixture' ? <Alert variant="warning">Synthetic Worlds state and model evidence. These probabilities are fixture estimates, not official forecasts.</Alert> : null}
       {display?.status === 'supported' && display.report.model && display.report.model.dataMode !== 'scheduled-public-data'
@@ -93,7 +94,7 @@ function WorldsReportView({ report, name }: { report: WorldsReport; name: (id: s
     {report.unavailable.map((reason) => <Alert key={reason} variant="warning">Forecast unavailable: {reason}</Alert>)}
     <div role="region" aria-label="Worlds cumulative probabilities" tabIndex={0} className="min-w-0">
       <Table>
-        <TableCaption>Cumulative chances to reach each stage. Totals are 16 / 8 / 4 / 2 / 1 when all stages are supported. A dash means unavailable.</TableCaption>
+        <TableCaption>Cumulative chances to reach each stage. Totals are 16 / 8 / 4 / 2 / 1 when all stages are supported. A dash means unavailable. The small range under a sampled chance is its 95% sampling interval.</TableCaption>
         <TableHeader><TableRow><TableHead scope="col">Team / seed</TableHead><TableHead scope="col">Observed state</TableHead>{WORLD_STAGES.map((stage) => <TableHead scope="col" key={stage}>{STAGE_LABELS[stage]}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{report.teams.map((team) => <TableRow key={team.id}>
           <TableHead scope="row">{name(team.id)} · {team.seed}</TableHead><TableCell>{team.state}</TableCell>
@@ -102,7 +103,8 @@ function WorldsReportView({ report, name }: { report: WorldsReport; name: (id: s
             const interval = count !== undefined && report.trials && !team.deterministicStages[stage] ? worldsSamplingInterval(count, report.trials) : null
             const label = interval ? `${percent(team.stages[stage])}; 95% sampling interval ${percent(interval[0])} to ${percent(interval[1])}`
               : `${percent(team.stages[stage])}${team.deterministicStages[stage] ? '; observed outcome' : ''}`
-            return <TableCell key={stage} title={label} aria-label={`${STAGE_LABELS[stage]}: ${label}`}>{percent(team.stages[stage])}</TableCell>
+            return <TableCell key={stage} aria-label={`${STAGE_LABELS[stage]}: ${label}`}>{percent(team.stages[stage])}
+              {interval ? <span className="block text-xs text-muted" aria-hidden="true">{percent(interval[0])}–{percent(interval[1])}</span> : null}</TableCell>
           })}
         </TableRow>)}</TableBody>
       </Table>

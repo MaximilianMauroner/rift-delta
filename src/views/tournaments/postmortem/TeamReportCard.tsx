@@ -102,7 +102,7 @@ export function TeamReportCard({
                 aria-pressed={player.key === selected}
                 aria-label={`View ${player.name}, ${player.role}`}
                 onClick={() => onSelect(player)}
-                className="grid h-auto min-h-14 w-full min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] items-center gap-2 rounded-none border-l-2 border-transparent px-4 py-2 text-left whitespace-normal hover:bg-raised aria-pressed:border-l-[var(--focus)] aria-pressed:bg-[var(--focus-wash)] sm:grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_4.5rem]"
+                className="grid h-auto min-h-14 w-full min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] items-center gap-2 rounded-none border-l-2 border-transparent px-4 py-2 text-left whitespace-normal text-text hover:bg-raised aria-pressed:border-l-[var(--focus)] aria-pressed:bg-[var(--focus-wash)] sm:grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1.2fr)_4.5rem]"
               >
                 <span className="text-xs font-normal text-muted">
                   {player.role}
@@ -116,14 +116,13 @@ export function TeamReportCard({
                   {gold.length ? (
                     <span
                       role="img"
-                      aria-label={`Gold lead at 15 ranged from ${minimum} to ${maximum} gold`}
-                      title={`Gold lead at 15 ranged from ${minimum} to ${maximum} gold. ${gold.length} observed games.`}
+                      aria-label={`Gold lead at 15 ranged from ${minimum} to ${maximum} gold in ${gold.length} games`}
                       className="relative block h-5"
                     >
                       <span className="absolute inset-x-0 top-1/2 border-t border-line" />
                       <span className="absolute inset-y-0 left-1/2 border-l border-line" />
                       <span
-                        className="absolute top-1/2 h-2 -translate-y-1/2 rounded-md bg-[var(--focus-wash)]"
+                        className="absolute top-1/2 h-2 -translate-y-1/2 rounded-md bg-[color-mix(in_srgb,var(--muted)_40%,transparent)]"
                         style={{
                           left: `${((minimum + extent) / (2 * extent)) * 100}%`,
                           width: `${((maximum - minimum) / (2 * extent)) * 100}%`,
@@ -191,7 +190,7 @@ function StatHighlight({
             key={player.key}
             variant="ghost"
             aria-label={`View ${player.name}, ${player.role}, ${label}`}
-            className="grid h-auto w-full min-w-0 justify-start justify-items-start gap-0 px-0 py-1 whitespace-normal hover:underline min-[440px]:flex min-[440px]:justify-between min-[440px]:gap-2"
+            className="grid h-auto w-full min-w-0 justify-start justify-items-start gap-0 px-0 py-1 whitespace-normal text-text hover:underline min-[440px]:flex min-[440px]:justify-between min-[440px]:gap-2"
             onClick={() => onSelect(player)}
           >
             <span className="min-w-0 break-words text-left">{player.name}</span>

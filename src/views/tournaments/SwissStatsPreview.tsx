@@ -16,7 +16,7 @@ export function SwissStatsBar({ stats }: { stats: SwissStats }) {
   const { state } = stats
   const result = ready(stats)
   return (
-    <section role="region" aria-labelledby={titleId} className="grid min-w-0 max-w-4xl gap-2 rounded-md border border-line bg-surface px-3 py-2">
+    <section role="region" aria-labelledby={titleId} className="grid min-w-0 max-w-4xl gap-2 border-l-2 border-dashed border-[var(--preview)] bg-[var(--preview-wash)] px-3 py-2">
       <div className="flex min-h-8 min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
         <h3 id={titleId} className="text-sm font-semibold text-text">Swiss stats</h3>
         {stats.blocked ? null : pending(stats)
@@ -64,7 +64,7 @@ export function AdvanceOdds({ id, className }: { id: string; className?: string 
   const [low, high] = worldsSamplingInterval(team.advanceCount, odds.trials)
   return (
     <span title={`Advances in ${team.advanceCount.toLocaleString()} of ${odds.trials.toLocaleString()} trials. 95% sampling interval ${percent(low)} to ${percent(high)}.`}
-      className={cn('shrink-0 text-xs font-normal text-text tabular-nums motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300', className)}>
+      className={cn('shrink-0 text-xs font-normal text-[var(--preview)] tabular-nums motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300', className)}>
       <span className="sr-only">, </span>{chance(team.advanceCount, odds.trials)}<span className="sr-only"> to advance</span>
     </span>
   )

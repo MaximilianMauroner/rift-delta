@@ -41,19 +41,19 @@ export function TournamentBracket({ series, timezone }: { series: TournamentSeri
   }
   const names = useMemo(() => new Map(series.flatMap((entry) => entry.teams.map((team) => [teamKey(team), team.name] as const))), [series])
 
-  return <div className="grid min-w-0 gap-6">
-    <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-live="polite">
-      {pinned
-        ? <><span>Tracing <strong className="text-text">{displayName(names.get(pinned) ?? pinned)}</strong></span>
-          <Button variant="outline" size="xs" onClick={() => setPinned(null)}>Clear</Button></>
-        : <span>Bracket inferred from schedule results.</span>}
-    </div>
-    {sections.map((section, index) => <section key={index} className="grid min-w-0 gap-2.5" aria-label={sectionTitle(section, sections)}>
+  return <div className="grid min-w-0 gap-4">
+    {sections.map((section, index) => <section key={index} className="grid min-w-0 gap-2" aria-label={sectionTitle(section, sections)}>
       {sections.length > 1 ? <h3 className="text-base font-semibold text-text">{sectionTitle(section, sections)}</h3> : null}
       {section.kind === 'elimination' ? <EliminationView section={section} trace={trace} timezone={timezone} />
         : section.kind === 'swiss' ? <SwissView section={section} trace={trace} timezone={timezone} />
           : <GroupsView section={section} trace={trace} names={names} />}
     </section>)}
+    <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-live="polite">
+      {pinned
+        ? <><span>Tracing <strong className="text-text">{displayName(names.get(pinned) ?? pinned)}</strong></span>
+          <Button variant="outline" size="xs" onClick={() => setPinned(null)}>Clear</Button></>
+        : <span>Bracket inferred from schedule results. Select a team to trace its path.</span>}
+    </div>
   </div>
 }
 
@@ -116,7 +116,7 @@ function EliminationView({ section, trace, timezone }: { section: EliminationSec
   const focusColumn = currentColumn(section.columns.map((_, column) => section.matches.filter((match) => match.column === column).map((match) => match.series)))
   return <BracketScroller focusX={focusColumn * COLUMN_W}>
     <div className="relative" style={{ width: rem(layout.width), height: rem(layout.height) }}>
-      {section.columns.map((title, column) => <ColumnHeader key={title} x={column * COLUMN_W} title={title}
+      {section.columns.map((title, column) => <ColumnHeader key={title} x={column * COLUMN_W} title={title} current={column === focusColumn}
         series={section.matches.filter((match) => match.column === column).map((match) => match.series)} timezone={timezone} />)}
       {layout.champion ? <ColumnHeader x={section.columns.length * COLUMN_W} title="Winner" series={[]} timezone={timezone} /> : null}
       {layout.lowerTop !== null ? <p className="absolute left-0 text-xs font-semibold text-muted" style={{ top: rem(layout.lowerTop - LANE_LABEL_H + 0.375) }}>Lower bracket</p> : null}
@@ -157,14 +157,15 @@ function ChampionCard({ team, trace, x, y }: { team: TournamentSeries['teams'][n
     {team.name ? <TeamMark team={team.name} className="size-7" /> : null}
     <div className="grid min-w-0">
       <span className="text-xs font-semibold text-text">Event winner</span>
-      <span className="truncate text-sm font-semibold text-text" title={team.name ?? undefined}>{displayName(team.name)}</span>
+      <span className="truncate text-sm font-semibold text-text">{displayName(team.name)}</span>
     </div>
   </div>
 }
 
-function ColumnHeader({ x, title, series, timezone }: { x: number; title: string; series: TournamentSeries[]; timezone: string }) {
-  return <div className="absolute top-0 flex items-baseline justify-between gap-2 border-b border-line pb-1.5" style={{ left: rem(x), width: rem(CARD_W) }}>
-    <span className="truncate text-xs font-semibold text-text">{title}</span>
+function ColumnHeader({ x, title, series, timezone, current = false }: { x: number; title: string; series: TournamentSeries[]; timezone: string; current?: boolean }) {
+  return <div className={cn('absolute top-0 flex items-baseline justify-between gap-2 border-b pb-1.5', current ? 'border-text' : 'border-line')} style={{ left: rem(x), width: rem(CARD_W) }}
+    aria-current={current ? 'step' : undefined}>
+    <span className={cn('truncate text-xs font-semibold', current ? 'text-text' : 'text-muted')}>{title}{current ? <span className="sr-only"> (current round)</span> : null}</span>
     <span className="shrink-0 text-xs text-muted tabular-nums">{dateRange(series, timezone)}</span>
   </div>
 }
@@ -172,15 +173,27 @@ function ColumnHeader({ x, title, series, timezone }: { x: number; title: string
 /** Scrolls sideways inside its own frame. Opens with the current round and the one after it in view, and as much history as fits. */
 function BracketScroller({ focusX, children }: { focusX: number; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
+  const [more, setMore] = useState({ start: false, end: false })
   useLayoutEffect(() => {
     const element = ref.current
-    if (!element || element.scrollWidth <= element.clientWidth) return
-    const px = parseFloat(getComputedStyle(document.documentElement).fontSize)
-    element.scrollLeft = Math.max(0, Math.min(focusX * px, (focusX + 2 * COLUMN_W) * px - element.clientWidth))
+    if (!element) return
+    if (element.scrollWidth > element.clientWidth) {
+      const px = parseFloat(getComputedStyle(document.documentElement).fontSize)
+      element.scrollLeft = Math.max(0, Math.min(focusX * px, (focusX + 2 * COLUMN_W) * px - element.clientWidth))
+    }
+    const measure = () => setMore({ start: element.scrollLeft > 1, end: element.scrollLeft + element.clientWidth < element.scrollWidth - 1 })
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    element.addEventListener('scroll', measure, { passive: true })
+    return () => { observer.disconnect(); element.removeEventListener('scroll', measure) }
   }, [focusX])
-  return <div ref={ref} tabIndex={0} role="region" aria-label="Bracket, scrolls sideways"
-    className="min-w-0 overflow-x-auto overscroll-x-contain border border-line bg-[color-mix(in_srgb,var(--surface)_45%,var(--ground))] p-4 outline-none focus-visible:ring-1 focus-visible:ring-focus">
-    {children}
+  return <div className="grid min-w-0 gap-1.5">
+    <div ref={ref} tabIndex={0} role="region" aria-label="Bracket, scrolls sideways" data-more-start={more.start} data-more-end={more.end}
+      className="bracket-frame min-w-0 overflow-x-auto overscroll-x-contain border-y border-line px-1 pt-1 pb-3 outline-none focus-visible:ring-1 focus-visible:ring-focus">
+      {children}
+    </div>
+    {more.start || more.end ? <p className="text-xs text-muted">Scroll sideways to see {more.start && more.end ? 'earlier and later rounds' : more.end ? 'later rounds' : 'earlier rounds'}.</p> : null}
   </div>
 }
 
@@ -191,12 +204,12 @@ function SeriesCard({ series, trace, timezone, compact = false }: { series: Tour
   const dimmed = trace.active !== null && !traced
   const teams = series.teams.length ? series.teams : [undefined, undefined]
   const unresolved = hasUnresolvedResult(series)
-  const status = <span className={cn('flex min-w-0 items-center gap-1.5 truncate', unresolved && 'text-text')}>{live ? <Badge variant="live" className="px-1.5 py-0">Live</Badge> : null}{statusText(series, timezone)}</span>
+  const status = <span className={cn('flex min-w-0 items-center gap-1.5 truncate', unresolved && 'text-text')}>{live ? <Badge variant="live" className="border-[var(--live)] px-1.5 py-0 text-[var(--live)]">Live</Badge> : null}{statusText(series, timezone)}</span>
   // Compact Swiss cards skip dates to stay dense, but still say when a series is live, postponed, cancelled or missing its result.
   const flagged = live || unresolved || series.status === 'postponed' || series.status === 'cancelled'
   return <article aria-label={seriesLabel(series)}
     className={cn('grid border bg-surface motion-safe:transition-[opacity,border-color]',
-      live ? 'border-[color-mix(in_srgb,var(--text)_55%,var(--line))]' : 'border-line',
+      live ? 'border-[var(--live)]' : 'border-line',
       traced && 'border-focus', dimmed && 'opacity-40', compact ? 'py-1' : 'pb-1')}
     style={compact ? undefined : { height: rem(CARD_H) }}>
     {!compact ? <div className="flex h-5 items-center justify-between gap-2 px-2.5 pt-0.5 text-xs text-muted tabular-nums">
@@ -222,7 +235,7 @@ function TeamLine({ team, won, trace }: { team: TournamentSeries['teams'][number
   if (!key) return <div className={row}>{body}</div>
   return <button type="button" data-slot="bracket-team" className={cn(row, 'w-full rounded-md outline-none hover:bg-raised focus-visible:bg-raised focus-visible:ring-1 focus-visible:ring-focus',
     trace.pinned === key && 'bg-[var(--focus-wash)]')}
-    aria-pressed={trace.pinned === key} title={`Trace ${team?.name ?? key}`}
+    aria-pressed={trace.pinned === key}
     onMouseEnter={() => trace.hover(key)} onMouseLeave={() => trace.hover(null)}
     onFocus={() => trace.hover(key)} onBlur={() => trace.hover(null)}
     onClick={() => trace.toggle(key)}>{body}</button>
@@ -235,8 +248,8 @@ function SwissView({ section, trace, timezone }: { section: SwissSection; trace:
   return <BracketScroller focusX={focusColumn * (CARD_W + 1)}>
     <div className="flex items-start gap-4">
       {section.rounds.map((round, index) => <div key={round.title} className="grid shrink-0 content-start gap-2.5" style={{ width: rem(CARD_W) }}>
-          <div className="flex items-baseline justify-between gap-2 border-b border-line pb-1.5">
-            <span className="truncate text-xs font-semibold text-text">{round.title}</span>
+          <div className={cn('flex items-baseline justify-between gap-2 border-b pb-1.5', index === focusColumn ? 'border-text' : 'border-line')} aria-current={index === focusColumn ? 'step' : undefined}>
+            <span className={cn('truncate text-xs font-semibold', index === focusColumn ? 'text-text' : 'text-muted')}>{round.title}{index === focusColumn ? <span className="sr-only"> (current round)</span> : null}</span>
             <span className="shrink-0 text-xs text-muted tabular-nums">{dateRange(round.series, timezone)}</span>
           </div>
           {round.pools.some((pool) => pool.pending) ? <p className="px-1 text-xs text-muted">{index === 0 ? 'Waiting for the opening draw' : `Drawn after ${section.rounds[index - 1]!.title}`}</p> : null}
@@ -281,7 +294,7 @@ function StandingList({ title, standings, trace }: { title: string; standings: S
 function StandingRow({ standing, trace, name }: { standing: Standing; trace: Trace; name?: string | null }) {
   const label = name ?? standing.team
   const dimmed = trace.active !== null && trace.active !== standing.team
-  return <button type="button" data-slot="bracket-team" aria-pressed={trace.pinned === standing.team} title={`Trace ${label}`}
+  return <button type="button" data-slot="bracket-team" aria-pressed={trace.pinned === standing.team}
     className={cn('flex h-6 w-full min-w-0 items-center gap-2 px-2.5 text-sm outline-none hover:bg-raised focus-visible:bg-raised focus-visible:ring-1 focus-visible:ring-focus motion-safe:transition-opacity',
       trace.pinned === standing.team && 'bg-[var(--focus-wash)]', dimmed && 'opacity-40')}
     onMouseEnter={() => trace.hover(standing.team)} onMouseLeave={() => trace.hover(null)}

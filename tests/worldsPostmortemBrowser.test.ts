@@ -259,7 +259,7 @@ test(
       })
       await overview.getByText('Blue side wins', { exact: true }).waitFor()
       const blueSide = overview
-        .locator('div')
+        .locator('li')
         .filter({ has: page.getByText('Blue side wins', { exact: true }) })
         .last()
       await blueSide.getByText('100%', { exact: true }).waitFor()

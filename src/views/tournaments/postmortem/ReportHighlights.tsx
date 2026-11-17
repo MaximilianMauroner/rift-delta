@@ -48,15 +48,18 @@ export function ReportHighlights({ report }: { report: TournamentReport }) {
   if (!highlights.length) return null
   return (
     <section className="grid min-w-0 gap-2" aria-label="Stand-out stats">
-      <h4 className="flex items-center gap-1.5 text-sm font-bold" title="The records furthest from the event average, picked automatically.">
-        <Sparkles className="size-4 text-text" aria-hidden="true" />
-        Stand-out stats
-      </h4>
+      <div>
+        <h4 className="flex items-center gap-1.5 text-sm font-bold">
+          <Sparkles className="size-4 text-text" aria-hidden="true" />
+          Stand-out stats
+        </h4>
+        <p className="text-xs text-muted">The records furthest from the event average, picked automatically.</p>
+      </div>
       <ul className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {highlights.map((highlight) => {
           const format = FORMATS[highlight.unit]
           return (
-            <li key={highlight.measure} className="grid min-w-0 content-start gap-0.5 rounded-md bg-raised px-3 py-2.5">
+            <li key={highlight.measure} className="grid min-w-0 content-start gap-0.5 border-l-2 border-line bg-surface px-3 py-2.5">
               <span className="text-xs text-muted">{highlight.title}</span>
               <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <span className="text-lg leading-tight font-bold text-text tabular-nums sm:text-2xl">

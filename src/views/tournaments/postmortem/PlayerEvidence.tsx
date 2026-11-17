@@ -104,18 +104,18 @@ export function PlayerEvidence({
               >
                 <XAxis
                   dataKey="game"
-                  fontSize={10}
+                  fontSize={12}
                   tickLine={false}
                   tick={{ fill: 'var(--muted)' }}
                   label={{
                     value: 'Game',
                     position: 'insideBottom',
                     offset: -5,
-                    fontSize: 10,
+                    fontSize: 12,
                     fill: 'var(--muted)',
                   }}
                 />
-                <YAxis width={48} fontSize={10} tickLine={false} tick={{ fill: 'var(--muted)' }} />
+                <YAxis width={48} fontSize={12} tickLine={false} tick={{ fill: 'var(--muted)' }} />
                 <ReferenceLine y={0} stroke="var(--line)" />
                 <Tooltip
                   labelFormatter={(value) => `Game ${value}`}
@@ -129,7 +129,7 @@ export function PlayerEvidence({
                 <Line
                   dataKey="gold"
                   name="Gold lead at 15"
-                  stroke="var(--focus)"
+                  stroke="var(--text)"
                   strokeWidth={2}
                   connectNulls={false}
                   dot={{ r: 3 }}

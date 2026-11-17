@@ -389,7 +389,7 @@ function RoundColumn({ round, boxes, scenario, team, pools, canDraw, focus, onFo
     <div ref={column} tabIndex={-1} role="region" aria-labelledby={titleId}
       className="row-span-2 grid min-w-0 grid-rows-subgrid rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus">
       <ColumnHeader ref={header} title={`Round ${round}`} titleId={titleId}
-        badge={resolved ? resolved.liveDraw ? <Badge>Live draw</Badge> : <Badge variant="preview">Your draw</Badge> : null}>
+        badge={resolved ? resolved.liveDraw ? <Badge>Live draw</Badge> : <Badge variant="preview" className="border-[var(--preview)] text-[var(--preview)]">Your draw</Badge> : null}>
         {resolved ? resolved.liveDraw ? null : <>
           <Button variant={editing ? 'default' : 'outline'} size="sm" aria-pressed={editing} onClick={() => setEditing((value) => !value)}>Change pairings</Button>
           {scenario.rounds.length === round && !resolved.matches.some((match) => match.winnerId)
@@ -519,7 +519,7 @@ function TeamRow({ id, info, match, locked, onPick }: { id: string; info: TeamIn
     <Button variant="ghost" aria-pressed={won} title={info.name} onClick={() => onPick(won ? null : id)}
       className={cn(ROW, 'justify-start rounded-none border-0 bg-raised text-text hover:bg-line hover:text-text',
         'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus',
-        won && 'bg-[color-mix(in_srgb,var(--muted)_16%,var(--raised))] text-text outline-1 -outline-offset-1 outline-dashed outline-muted hover:bg-[color-mix(in_srgb,var(--muted)_22%,var(--raised))]',
+        won && 'bg-[color-mix(in_srgb,var(--muted)_16%,var(--raised))] text-text outline-1 -outline-offset-1 outline-dashed outline-[var(--preview)] hover:bg-[color-mix(in_srgb,var(--muted)_22%,var(--raised))]',
         lost && 'text-muted')}>
       <TeamLine info={info} faded={lost} oddsId={match.winnerId ? undefined : id} />
     </Button>
@@ -631,7 +631,7 @@ function StandingCell({ row, active }: { row: SwissTeamStanding; active: boolean
   const outcome = teamOutcome(row)
   // Wraps only at spaces, so a narrow table never splits a record or a placing at its dash.
   return (
-    <TableCell className={cn('whitespace-normal', !active && 'border-l border-dashed border-muted text-muted')}>
+    <TableCell className={cn('whitespace-normal', !active && 'border-l border-dashed border-[var(--preview)] text-muted')}>
       <span className="whitespace-nowrap tabular-nums">{outcome.wins}–{outcome.losses}</span>{' '}
       <span className={cn(outcome.state === 'advanced' && active && 'text-up', outcome.state === 'eliminated' && active && 'text-down')}>{outcomeLabel(row)}</span>
     </TableCell>
