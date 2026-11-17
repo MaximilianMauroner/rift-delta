@@ -72,6 +72,16 @@
     padding-bottom: 40px;
   }
 
+  .lab > .rail {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .lab > .board {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
   .rail,
   .board {
     display: grid;
@@ -972,6 +982,12 @@
   @media (max-width: 759px) {
     .lab {
       grid-template-columns: minmax(0, 1fr);
+    }
+
+    .lab > .rail,
+    .lab > .board {
+      grid-column: auto;
+      grid-row: auto;
     }
 
     .top-in,

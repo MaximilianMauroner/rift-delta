@@ -726,84 +726,6 @@ export default function Home() {
       </header>
 
       <div className="lab">
-        <aside className="rail" aria-label="Simulation setup">
-          <AttackerCard
-            level={level}
-            ranks={ranks}
-            rankNotice={rankNotice}
-            yunTalStacks={yunTalStacks}
-            onLevel={setLevel}
-            onAdjustRank={adjustRank}
-            onYunTalStacks={setYunTalStacks}
-          />
-          <OptimizerPanel
-            objective={optimizerObjective}
-            slotCount={optimizerSlotCount}
-            topN={optimizerTopN}
-            running={optimizerRunning}
-            progress={optimizerProgress}
-            result={optimizerResult}
-            error={optimizerError}
-            onObjective={setOptimizerObjective}
-            onSlotCount={updateOptimizerSlotCount}
-            onTopN={setOptimizerTopN}
-            onRun={() => void runOptimizer()}
-            onCancel={cancelOptimizer}
-          />
-          <OpenerCard
-            actions={actions}
-            level={level}
-            continueAutos={continueAutos}
-            duration={duration}
-            onPreset={applyComboPreset}
-            onAddAction={(action) => {
-              if (!actionAvailable(action, level)) return;
-              comboEditedRef.current = true;
-              setActions((current) => [...current, action]);
-            }}
-            onRemoveAction={(index) => {
-              comboEditedRef.current = true;
-              setActions((current) => current.filter((_, position) => position !== index));
-            }}
-            onMoveAction={(index, direction) => {
-              comboEditedRef.current = true;
-              setActions((current) => moveItem(current, index, direction));
-            }}
-            onContinueAutos={setContinueAutos}
-            onDuration={(seconds) => setDuration(clampDuration(seconds))}
-          />
-          <TargetCard
-            targetMode={targetMode}
-            region={region}
-            rank={rank}
-            role={role}
-            phase={phase}
-            targetChampionDraft={targetChampionDraft}
-            appliedChampion={targetChampion}
-            manual={manual}
-            metric={metric}
-            snapshotCount={dataset?.count ?? null}
-            onTargetMode={setTargetMode}
-            onRegion={setRegion}
-            onRank={setRank}
-            onRole={setRole}
-            onPhase={setPhase}
-            onChampionDraft={setTargetChampionDraft}
-            onCommitChampion={commitTargetChampion}
-            onManual={setManual}
-            onMetric={setMetric}
-          />
-          <Panel className="dps-panel status">
-            <p>
-              <strong>Automatic rerun.</strong> Every change re-runs against the cached cohort. Level and
-              filter changes fetch a new one.
-            </p>
-            <Button variant="outline" className="ghost" onClick={() => void run()} disabled={loading}>
-              {loading ? "Calculating…" : "Run again"}
-            </Button>
-          </Panel>
-        </aside>
-
         <div className="board">
           {error && (
             <div className="error" role="alert">
@@ -922,6 +844,84 @@ export default function Home() {
             assumptions={result?.assumptions ?? ""}
           />
         </div>
+
+        <aside className="rail" aria-label="Simulation setup">
+          <AttackerCard
+            level={level}
+            ranks={ranks}
+            rankNotice={rankNotice}
+            yunTalStacks={yunTalStacks}
+            onLevel={setLevel}
+            onAdjustRank={adjustRank}
+            onYunTalStacks={setYunTalStacks}
+          />
+          <OptimizerPanel
+            objective={optimizerObjective}
+            slotCount={optimizerSlotCount}
+            topN={optimizerTopN}
+            running={optimizerRunning}
+            progress={optimizerProgress}
+            result={optimizerResult}
+            error={optimizerError}
+            onObjective={setOptimizerObjective}
+            onSlotCount={updateOptimizerSlotCount}
+            onTopN={setOptimizerTopN}
+            onRun={() => void runOptimizer()}
+            onCancel={cancelOptimizer}
+          />
+          <OpenerCard
+            actions={actions}
+            level={level}
+            continueAutos={continueAutos}
+            duration={duration}
+            onPreset={applyComboPreset}
+            onAddAction={(action) => {
+              if (!actionAvailable(action, level)) return;
+              comboEditedRef.current = true;
+              setActions((current) => [...current, action]);
+            }}
+            onRemoveAction={(index) => {
+              comboEditedRef.current = true;
+              setActions((current) => current.filter((_, position) => position !== index));
+            }}
+            onMoveAction={(index, direction) => {
+              comboEditedRef.current = true;
+              setActions((current) => moveItem(current, index, direction));
+            }}
+            onContinueAutos={setContinueAutos}
+            onDuration={(seconds) => setDuration(clampDuration(seconds))}
+          />
+          <TargetCard
+            targetMode={targetMode}
+            region={region}
+            rank={rank}
+            role={role}
+            phase={phase}
+            targetChampionDraft={targetChampionDraft}
+            appliedChampion={targetChampion}
+            manual={manual}
+            metric={metric}
+            snapshotCount={dataset?.count ?? null}
+            onTargetMode={setTargetMode}
+            onRegion={setRegion}
+            onRank={setRank}
+            onRole={setRole}
+            onPhase={setPhase}
+            onChampionDraft={setTargetChampionDraft}
+            onCommitChampion={commitTargetChampion}
+            onManual={setManual}
+            onMetric={setMetric}
+          />
+          <Panel className="dps-panel status">
+            <p>
+              <strong>Automatic rerun.</strong> Every change re-runs against the cached cohort. Level and
+              filter changes fetch a new one.
+            </p>
+            <Button variant="outline" className="ghost" onClick={() => void run()} disabled={loading}>
+              {loading ? "Calculating…" : "Run again"}
+            </Button>
+          </Panel>
+        </aside>
       </div>
 
       <footer>
