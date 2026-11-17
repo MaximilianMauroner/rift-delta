@@ -17,7 +17,6 @@ import { ConditionalPowerPreview } from './ConditionalPowerPreview'
 import { SwissPreview } from './SwissPreview'
 import { TournamentBracket } from './TournamentBracket'
 import { WorldsTournamentPanel } from './WorldsTournamentPanel'
-import { TournamentTabs } from './TournamentTabs'
 import { cn } from '../../shared/utils'
 import type { TournamentTab } from '../../browser/tournament-reports/navigation'
 
@@ -33,9 +32,8 @@ function replaceLegacyEventAlias(requested: string, address: string | undefined)
   writeNavigationHash(`#tournaments?${query}`, 'replace')
 }
 
-export function TournamentsView() {
+export function TournamentsView({ view, onAvailabilityChange }: { view: TournamentPanel; onAvailabilityChange: (hasEvent: boolean, swiss: boolean) => void }) {
   const [requestedEvent, setRequestedEvent] = useState(() => hashParam('event') ?? '')
-  const [view, setView] = useState(() => hashParam('view'))
   const { state, now, forecastArtifacts, refresh } = useTournamentResources(view)
   const events = state.status === 'ready' ? state.feed.events : EMPTY_EVENTS
   useEffect(() => {
@@ -45,7 +43,6 @@ export function TournamentsView() {
       const link = resolveEventLink(events, requested)
       replaceLegacyEventAlias(requested, link.kind === 'resolved' ? link.address : undefined)
       setRequestedEvent(requested)
-      setView(hashParam('view', query))
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
@@ -59,16 +56,17 @@ export function TournamentsView() {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time'
   const grouped = useMemo(() => groupTournamentSeries(selected?.series ?? []), [selected])
 
-  const loadingTabs = <TournamentTabs current={view === 'schedule' || view === 'swiss' ? view : 'bracket'} tabs={['bracket', 'schedule', 'postmortem']} />
-  if (state.status === 'loading') return <div className="grid min-w-0 gap-3 px-[var(--page-x)] pt-2">{loadingTabs}<LoadingState presentation="page" layout="schedule" delay={false} label="Loading tournament schedule" /></div>
-  if (state.status === 'error') return <div className="grid min-w-0 gap-3 px-[var(--page-x)] pt-2 pb-6">{loadingTabs}<Alert variant="warning" role="alert"><TriangleAlert aria-hidden="true" /><div className="min-w-0">Tournament schedule unavailable: {state.message} <Button className="ml-2" onClick={() => void refresh()}>Retry</Button></div></Alert></div>
+  const swissAvailable = selected !== undefined && selected === findSwissEvent(events)
+  const hasEvent = state.status !== 'ready' || selected !== undefined
+  useEffect(() => {
+    onAvailabilityChange(hasEvent, swissAvailable)
+  }, [hasEvent, onAvailabilityChange, swissAvailable])
+  if (state.status === 'loading') return <div className="grid min-w-0 gap-3 px-[var(--page-x)] pt-2"><LoadingState presentation="page" layout="schedule" delay={false} label="Loading tournament schedule" /></div>
+  if (state.status === 'error') return <div className="grid min-w-0 gap-3 px-[var(--page-x)] pt-2 pb-6"><Alert variant="warning" role="alert"><TriangleAlert aria-hidden="true" /><div className="min-w-0">Tournament schedule unavailable: {state.message} <Button className="ml-2" onClick={() => void refresh()}>Retry</Button></div></Alert></div>
   const sourceAge = now - Date.parse(state.health?.checkedAt ?? state.feed.fetchedAt)
   const stale = Boolean(state.error) || (state.health
     ? !state.health.complete || !Number.isFinite(sourceAge) || sourceAge > STALE_MS
     : !state.healthPending)
-  const swissAvailable = selected !== undefined && selected === findSwissEvent(events)
-  const shown: TournamentPanel = view === 'swiss' && swissAvailable ? 'swiss' : view === 'schedule' ? 'schedule' : 'bracket'
-  const tabs: TournamentTab[] = selected ? ['bracket', 'schedule', ...(swissAvailable ? ['swiss' as const] : []), 'postmortem'] : ['postmortem']
   const worldsPanel = selected?.competition === 'worlds' ? <WorldsTournamentPanel
     key={JSON.stringify([state.feed.source, worldsFeedEventKey(selected), forecastArtifacts.basis?.snapshotId, forecastArtifacts.basis?.model.version,
       forecastArtifacts.basis?.model.configHash, forecastArtifacts.basis?.ratingDataAsOf, forecastArtifacts.basis?.ratingPublishedAt, forecastArtifacts.basis?.identityMap.revision])}
@@ -86,7 +84,6 @@ export function TournamentsView() {
         </Select>
         {state.feed.dataMode === 'synthetic-fixture' ? <p role="status" className="min-w-[7.5rem] flex-1 text-xs leading-snug text-[var(--warn)]"><TriangleAlert aria-hidden="true" className="mr-1 inline size-4 align-text-bottom" />Test fixture data. Not official LoL Esports results.</p> : null}
       </div>
-      <TournamentTabs current={shown} tabs={tabs} />
       {stale ? <Alert variant="warning" role="status"><TriangleAlert aria-hidden="true" /><div className="min-w-0">
         Schedule may be stale. Feed changed {formatFeedAge(state.feed.fetchedAt, now)}, last checked {state.health ? formatFeedAge(state.health.checkedAt, now) : 'unknown'}.
         {[state.error, ...(state.health?.warnings ?? [])].filter(Boolean).map((warning) => ` ${warning}`).join('')}
@@ -97,7 +94,7 @@ export function TournamentsView() {
       ) : null}
       {link.kind === 'missing' ? <Alert role="status">This competition link is not in the current schedule. Choose a competition.</Alert>
         : link.kind === 'ambiguous' ? <Alert role="status">This competition link matches more than one event.</Alert>
-          : !selected ? <p className="text-sm text-muted">No tournaments in the schedule window.</p> : shown === 'bracket' ? (
+          : !selected ? <p className="text-sm text-muted">No tournaments in the schedule window.</p> : view === 'bracket' ? (
         <>
           <h2 className="sr-only">{selected.label}</h2>
           <div className={cn('grid min-w-0 items-start gap-4', selected.competition === 'worlds' && 'lg:grid-cols-[minmax(0,1fr)_20rem]')}>
@@ -105,7 +102,7 @@ export function TournamentsView() {
             {worldsPanel}
           </div>
         </>
-      ) : shown === 'swiss' ? (
+      ) : view === 'swiss' ? (
         <>
           <h2 className="text-lg font-semibold text-text">Worlds 2026 Swiss preview</h2>
           <SwissPreview event={selected}

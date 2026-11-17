@@ -15,7 +15,10 @@ function series(id: string, stage: string, completed: boolean): TournamentSeries
 
 test('current rounds clear the start mask and long names fit at 390px', async () => {
   let swiss = false
-  const fixture: Plugin = { name: 'review-bracket-fixture', configureServer(server) {
+  const fixture: Plugin = { name: 'review-bracket-fixture', enforce: 'pre', transform(source, id) {
+    if (!id.split('?')[0].endsWith('/src/views/tournaments/TournamentsView.tsx')) return
+    return source.replace('  const [requestedEvent', "  if (view === 'bracket' && window.location.hash.includes('fixtureCrash=true')) throw new Error('Synthetic view crash')\n  const [requestedEvent")
+  }, configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture').pathname
       if (!path.startsWith('/tournament-data/')) return next()
@@ -62,6 +65,13 @@ test('current rounds clear the start mask and long names fit at 390px', async ()
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
       await page.evaluate(() => localStorage.removeItem('tournament-feed'))
     }
+    await page.goto(`http://127.0.0.1:${address.port}/#tournaments?fixtureCrash=true`)
+    await page.getByText('This page could not load', { exact: true }).waitFor()
+    assert.equal(await page.getByRole('navigation', { name: 'Tournament views' }).count(), 1)
+    await page.getByRole('link', { name: 'Schedule', exact: true }).click()
+    await page.getByRole('heading', { name: 'Synthetic bracket', exact: true }).waitFor()
+    assert.equal(await page.getByText('This page could not load', { exact: true }).count(), 0)
+    assert.equal(await page.getByRole('navigation', { name: 'Tournament views' }).count(), 1)
   } finally {
     await browser.close()
     await server.close()

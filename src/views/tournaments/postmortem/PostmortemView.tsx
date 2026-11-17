@@ -15,7 +15,6 @@ import {
   type TournamentReport,
   type TournamentReportIndex,
 } from '../../../domains/rankings/tournament-reports'
-import { TournamentTabs } from '../TournamentTabs'
 import { TeamReportCard } from './TeamReportCard'
 import { PlayerEvidence } from './PlayerEvidence'
 import { EventOverview } from './EventOverview'
@@ -36,7 +35,6 @@ export function PostmortemView() {
           </Button>
         </div>
       ) : null}
-      {state.status !== 'ready' ? <TournamentTabs current="postmortem" tabs={['bracket', 'schedule', 'postmortem']} /> : null}
       {state.status === 'loading' ? (
         <p role="status">Loading report catalog…</p>
       ) : state.status === 'unavailable' ? (
@@ -102,7 +100,6 @@ function ReportCatalog({
           </p>
         ) : null}
       </div>
-      <TournamentTabs current="postmortem" tabs={['bracket', 'schedule', 'postmortem']} />
       {!entry ? (
         <Alert data-first-answer="tournament-reports" role="status">
           {requested !== null

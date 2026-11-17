@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useRef, type MouseEvent } from 'react'
+import { lazy, Suspense, useCallback, useRef, useState, type MouseEvent } from 'react'
 import { hashForModeAndScope, readScopeFromHash, writeNavigationHash } from '../../browser/navigation'
 import { RouteErrorBoundary } from '../../components/RouteErrorBoundary'
 import { LoadingState } from '../../components/ui/loading'
@@ -15,7 +15,13 @@ export function TournamentRoute() {
   const query = useTournamentReportAddress()
   const view = query.get('view')
   const postmortem = view === 'postmortem'
-  const current: TournamentTab = postmortem ? 'postmortem' : view === 'schedule' || view === 'swiss' ? view : 'bracket'
+  const [availability, setAvailability] = useState({ hasEvent: true, swiss: false })
+  const onAvailabilityChange = useCallback((hasEvent: boolean, swiss: boolean) => setAvailability({ hasEvent, swiss }), [])
+  const activeView = view === 'schedule' ? 'schedule' : view === 'swiss' && availability.swiss ? 'swiss' : 'bracket'
+  const current: TournamentTab = postmortem ? 'postmortem' : activeView
+  const tabs: TournamentTab[] = postmortem || availability.hasEvent
+    ? ['bracket', 'schedule', ...(!postmortem && availability.swiss ? ['swiss' as const] : []), 'postmortem']
+    : ['postmortem']
   const scope = readScopeFromHash() ?? currentSeasonScope()
   const mainRef = useRef<HTMLElement | null>(null)
   const goHome = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
@@ -27,12 +33,10 @@ export function TournamentRoute() {
     <AppNavigation mode="tournaments" scope={scope} onGoHome={goHome} />
     <main id="main-content" tabIndex={-1} ref={mainRef} className="min-w-0 flex-1 pb-6 max-sm:pb-[calc(var(--tabbar-h)+24px+env(safe-area-inset-bottom))]">
       <h1 className="sr-only">Tournaments</h1>
-      <RouteErrorBoundary key={postmortem ? 'postmortem' : 'tournaments'}>
-        <Suspense fallback={<>
-          {postmortem ? null : <TournamentTabs current={current} tabs={['bracket', 'schedule', 'postmortem']} className="px-[var(--page-x)] pt-2" />}
-          <LoadingState presentation="page" layout="schedule" label="Loading Tournaments" />
-        </>}>
-          {postmortem ? <PostmortemView /> : <TournamentsView />}
+      <TournamentTabs current={current} tabs={tabs} className="px-[var(--page-x)] pt-2" />
+      <RouteErrorBoundary key={current}>
+        <Suspense fallback={<LoadingState presentation="page" layout="schedule" label="Loading Tournaments" />}>
+          {postmortem ? <PostmortemView /> : <TournamentsView view={activeView} onAvailabilityChange={onAvailabilityChange} />}
         </Suspense>
       </RouteErrorBoundary>
     </main>
