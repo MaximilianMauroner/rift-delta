@@ -301,6 +301,7 @@ export function RankingRoute() {
   }, [compare, compareKeys, comparedKeys, snapshotReady])
   // The board picks follow the page, so closing a linked comparison keeps its teams picked.
   const [syncedComparison, setSyncedComparison] = useState<string>()
+  if (!comparePage && syncedComparison !== undefined) setSyncedComparison(undefined)
   if (snapshotReady && comparedTeams && comparedKeys && comparedKeys !== syncedComparison) {
     setSyncedComparison(comparedKeys)
     setTeamPicks(comparedTeams)
