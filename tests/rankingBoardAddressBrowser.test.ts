@@ -130,6 +130,14 @@ test('the Rankings board follows its address after load: typed and linked hashes
     await expectBoard(page, 15, '', 'size changed in the hash')
     await setHash(board('size=15&page=2'))
     await expectBoard(page, 5, '', 'page changed in the hash')
+    // The field holds every page, so a team opened there can be off this page.
+    // Closing it returns focus to its field mark, not to the page body.
+    const strongest = page.locator('.power-field button[tabindex="0"]')
+    const strongestKey = await strongest.getAttribute('data-field-key')
+    assert.equal(await page.locator(`table tbody tr[data-team-key="${strongestKey}"]`).count(), 0, 'the strongest team is on page 1')
+    await strongest.click()
+    await page.getByRole('region', { name: 'Team details', exact: true }).getByRole('button', { name: 'Close', exact: true }).click()
+    await page.waitForFunction((key) => document.activeElement?.getAttribute('data-field-key') === key, strongestKey, { timeout: 2_000 })
     // App owns the search and the board owns the region: both come from the same address.
     await setHash(board('team=Amer+0&region=LCS'))
     await expectBoard(page, 9, 'Amer 0', 'search and region changed together')

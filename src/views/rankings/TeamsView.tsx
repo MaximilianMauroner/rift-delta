@@ -371,9 +371,13 @@ export function TeamsView({
     shownKey.current = detailKey
     if (detailKey && !previous && isTeamPageWidth()) window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
     if (!detailKey && previous) {
-      const row = document.querySelector<HTMLElement>(`[data-team-key="${CSS.escape(previous)}"] .team-cell__button`)
+      // A team opened from the field or by Previous and Next can be on another
+      // page of the list, so its field mark takes focus instead.
+      const key = CSS.escape(previous)
+      const target = document.querySelector<HTMLElement>(`[data-team-key="${key}"] .team-cell__button`)
+        ?? document.querySelector<HTMLElement>(`[data-field-key="${key}"]`)
       if (isTeamPageWidth()) window.scrollTo({ top: boardScroll.current, left: 0, behavior: 'auto' })
-      row?.focus({ preventScroll: true })
+      target?.focus({ preventScroll: true })
     }
   }, [detailKey])
 
