@@ -54,7 +54,7 @@ jobs:
         run: node tools/dev/ci-affected-paths.mjs >> "$GITHUB_OUTPUT"
 
       - name: Verify
-        run: pnpm run verify
+        run: pnpm run verify:full
 
       - name: Bundle
         run: pnpm run bundle

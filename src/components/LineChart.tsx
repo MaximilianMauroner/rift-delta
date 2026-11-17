@@ -351,7 +351,7 @@ function buildChartData(series: ChartSeries[]) {
       if (previousPoint && point.t - previousPoint.t > SEGMENT_GAP_MS) {
         const gapKey = `gap${index}_${segment}`
         gaps.push({ key: gapKey, series: entry })
-        const previousDatum = dataByTime.get(previousPoint.t) ?? { t: previousPoint.t }
+        const previousDatum: ChartDatum = dataByTime.get(previousPoint.t) ?? { t: previousPoint.t }
         previousDatum[gapKey] = previousPoint.y
         const nextDatum: ChartDatum = dataByTime.get(point.t) ?? { t: point.t }
         nextDatum[gapKey] = point.y

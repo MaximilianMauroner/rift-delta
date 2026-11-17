@@ -85,7 +85,7 @@ test('Match year controls publish reloadable addresses before archive nodes arri
 
     await t.test('a year control resets page two before loading and reload keeps the requested filters', async () => {
       await page.goto(`${base}/${hash2026}`)
-      await pager.getByText('Page 2 of 2', { exact: true }).waitFor()
+      await pager.getByText('Page 2 of 2', { exact: true }).waitFor({ timeout: 10_000 })
       await rows.nth(9).waitFor()
       await year.selectOption('2026')
       assert.equal(query().get('page'), '2', 'selecting the effective year must keep the page')

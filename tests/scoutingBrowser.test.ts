@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
 import { scoutingFamily } from '../src/domains/scouting/build.ts'
@@ -31,7 +31,7 @@ function publishedGeneration(extraGames: ReturnType<typeof scoutingGame>[] = [])
   return objects
 }
 
-function scoutingFixture(objects: Map<string, string>, requested: string[] = []): Plugin {
+function scoutingFixture(objects: Map<string, string>, requested: string[] = []): BrowserFixture {
   return { name: 'scouting-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
@@ -48,10 +48,9 @@ function scoutingFixture(objects: Map<string, string>, requested: string[] = [])
 test('Scouting report loads its index and one player file from the published generation, and explains a link to a player with too few games', { timeout: 90_000 }, async () => {
   const objects = publishedGeneration()
   const requested: string[] = []
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [scoutingFixture(objects, requested)] })
+  const server = await startBrowserFixture(scoutingFixture(objects, requested))
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const executablePath = chromium.executablePath()
@@ -124,10 +123,9 @@ test('Lane bars keep small and zero shares accurate and ranked comparisons remai
   const games = Array.from({ length: 60 }, (_, i) => scoutingGame({
     id: `uneven${i}`, date: '2026-05-02', teams: ['c', 'd'], lead: i === 0 ? -600 : 600,
   }))
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [scoutingFixture(publishedGeneration(games))] })
+  const server = await startBrowserFixture(scoutingFixture(publishedGeneration(games)))
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const executablePath = chromium.executablePath()

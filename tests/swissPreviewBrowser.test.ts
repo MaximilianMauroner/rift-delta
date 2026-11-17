@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 import { chromium, type Locator, type Page } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { encodeChoices, fillDraw, resolveScenario, seedBaseline, type DrawnRound, type SwissBaseline } from '../src/domains/tournaments/internal/swissScenario'
 import { WORLDS_2026_SWISS_RULES } from '../src/domains/tournaments/internal/worlds2026Swiss'
 import { worldsRandom } from '../src/domains/tournaments/internal/worldsSimulation'
@@ -15,7 +13,7 @@ for (const ratingsAvailable of [true, false]) test(`Swiss manual preview preserv
   const feed = fixtureFeed()
   const ratings = rankingArtifacts()
   const requests: string[] = []
-  const fixturePlugin: Plugin = {
+  const fixturePlugin: BrowserFixture = {
     name: 'swiss-preview-fixture',
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
@@ -31,14 +29,9 @@ for (const ratingsAvailable of [true, false]) test(`Swiss manual preview preserv
       })
     },
   }
-  const server = await createServer({
-    configFile: false, logLevel: 'silent',
-    resolve: { alias: { '@': new URL('../src', import.meta.url).pathname } },
-    server: { host: '127.0.0.1', port: 0 }, plugins: [fixturePlugin, react(), tailwindcss()],
-  })
+  const server = await startBrowserFixture(fixturePlugin)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}`

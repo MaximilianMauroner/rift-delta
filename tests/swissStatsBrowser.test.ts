@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 import { chromium } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { fixtureFeed, mainId, rankingArtifacts, swissSeries, team } from './fixtures/swissPreviewFixtures'
 
 test('on-demand hypothetical stats load, cancel, retry, and replace changed scenarios without stale estimates', { timeout: 120_000 }, async () => {
@@ -17,7 +15,7 @@ test('on-demand hypothetical stats load, cancel, retry, and replace changed scen
   let ratingsAvailable = true
   let holdRatings = false
   let releaseRatings: (() => void) | undefined
-  const plugin: Plugin = {
+  const plugin: BrowserFixture = {
     name: 'swiss-stats-fixture',
     configureServer(server) {
       server.middlewares.use(async (request, response, next) => {
@@ -34,13 +32,9 @@ test('on-demand hypothetical stats load, cancel, retry, and replace changed scen
       })
     },
   }
-  const server = await createServer({ configFile: false, logLevel: 'silent',
-    resolve: { alias: { '@': new URL('../src', import.meta.url).pathname } },
-    server: { host: '127.0.0.1', port: 0 }, plugins: [plugin, react(), tailwindcss()],
-  })
+  const server = await startBrowserFixture(plugin)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}`

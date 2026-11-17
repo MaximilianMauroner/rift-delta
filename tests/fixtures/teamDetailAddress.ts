@@ -1,4 +1,4 @@
-import type { Plugin } from 'vite'
+import type { BrowserFixture } from './browserFixture'
 import { createStaticRankingData } from '../../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan } from '../../src/domains/rankings/internal/published/writePlan.ts'
 import type { MatchRecord, TeamProfile } from '../../src/domains/rankings/types.ts'
@@ -32,7 +32,7 @@ export function createTeamDetailFixture() {
     held.delete(path)
     pending.get(path)?.splice(0).forEach((respond) => respond())
   }
-  const plugin: Plugin = { name: 'synthetic-team-detail-fixture', configureServer(server) {
+  const plugin: BrowserFixture = { name: 'synthetic-team-detail-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (path.startsWith('/tournament-data/') || path.startsWith('/api/')) {

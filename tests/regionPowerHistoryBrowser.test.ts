@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
 import type { MatchRecord, TeamProfile } from '../src/domains/rankings/types.ts'
@@ -31,7 +31,7 @@ const matches = regions.flatMap((region) => {
 test('the Regions page charts region power over time for the compared regions', { timeout: 60_000 }, async (t) => {
   const data = createStaticRankingData({ matches, teams, rosters: {}, generatedAt: '2026-07-01T00:00:00.000Z', dataMode: 'seeded-sample' })
   const bodies = new Map(createPublicArtifactWritePlan(data).writes.map((write) => [`/data/${write.relativePath}`, write.contents]))
-  const fixture: Plugin = { name: 'region-power-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'region-power-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (!path.startsWith('/data/')) return next()
@@ -41,10 +41,9 @@ test('the Regions page charts region power over time for the compared regions', 
       response.end(body ?? '{}')
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const executablePath = chromium.executablePath()

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium, type Browser, type Page } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import {
   createStaticRankingData,
   tournamentReportFamily,
@@ -116,7 +116,7 @@ async function journey(
 ) {
   const control: Control = { generation: initial }
   const requests: string[] = []
-  const plugin: Plugin = {
+  const plugin: BrowserFixture = {
     name: 'synthetic-worlds-report-http-fixture',
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
@@ -151,15 +151,9 @@ async function journey(
       })
     },
   }
-  const server = await createServer({
-    publicDir: false,
-    logLevel: 'silent',
-    server: { host: '127.0.0.1', port: 0 },
-    plugins: [plugin],
-  })
+  const server = await startBrowserFixture(plugin)
   let browser: Browser | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     console.log(

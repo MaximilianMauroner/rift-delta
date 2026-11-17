@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium, type Page } from 'playwright-core'
-import { createServer } from 'vite'
+import { startBrowserFixture } from './fixtures/browserFixture'
 import { tournamentMovementShardUrlPathForId } from '../src/domains/rankings/internal/published/schema.ts'
 import { createTeamDetailFixture, teamIds } from './fixtures/teamDetailAddress.ts'
 
@@ -22,10 +22,9 @@ async function withFixture(run: (page: Page, base: string, fixture: ReturnType<t
     const members = JSON.parse(snapshot.contents).standings.map((team: { teamId: string }) => team.teamId).sort()
     assert.deepEqual(members, (season === '2025' ? Object.values(teamIds) : [teamIds.alpha, teamIds.beta]).sort())
   }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture.plugin] })
+  const server = await startBrowserFixture(fixture.plugin)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const executablePath = chromium.executablePath()

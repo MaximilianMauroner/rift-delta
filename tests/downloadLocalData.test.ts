@@ -67,8 +67,8 @@ test('LoL Esports reference download failure is warning-only unless required', a
   const tempDir = await mkdtemp(join(tmpdir(), 'lol-ranking-data-'))
   const manifestPath = join(tempDir, 'manifest.json')
   const server = createServer((_request, response) => {
-    response.writeHead(503, { 'content-type': 'application/json' })
-    response.end('{"error":"temporarily unavailable"}\n')
+    response.writeHead(403, { 'content-type': 'application/json' })
+    response.end('{"error":"forbidden"}\n')
   })
 
   try {
