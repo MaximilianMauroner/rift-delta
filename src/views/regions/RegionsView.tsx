@@ -151,6 +151,7 @@ export function RegionsView({
                 <Button
                   type="button"
                   variant="ghost"
+                  data-first-answer="regions"
                   data-row-open=""
                   className="grid h-auto min-h-0 w-full min-w-0 grid-cols-[52px_minmax(150px,1.25fr)_minmax(150px,1fr)_minmax(150px,0.95fr)_minmax(160px,1.4fr)] items-center justify-stretch justify-items-stretch gap-4 rounded-none border-0 bg-transparent py-4 pr-0 pl-4 text-left font-[inherit] whitespace-normal text-[inherit] after:absolute after:inset-0 hover:bg-transparent focus-visible:border-transparent focus-visible:ring-0 focus-visible:outline-none! focus-visible:after:shadow-[inset_0_0_0_2px_var(--focus)] max-[1180px]:grid-cols-[44px_minmax(120px,1.3fr)_minmax(120px,1fr)_minmax(150px,1.4fr)] max-[900px]:grid-cols-[40px_minmax(120px,1fr)_minmax(98px,auto)] max-[900px]:gap-3 max-sm:grid-cols-[28px_minmax(0,1fr)] max-sm:gap-2 max-sm:py-3.5 max-sm:pr-0 max-sm:pl-3"
                   title={`Open ${region.region} region detail`}

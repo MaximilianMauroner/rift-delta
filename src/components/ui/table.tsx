@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { leagueColor } from '../../shared/teamColor'
 import { cn } from "@/shared/utils"
 
 function Table({
@@ -51,10 +52,11 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   )
 }
 
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+function TableRow({ className, league, style, ...props }: React.ComponentProps<"tr"> & { league?: string }) {
   return (
     <tr
       data-slot="table-row"
+      style={league ? { ...style, borderLeft: `3px solid ${leagueColor(league)}` } : style}
       className={cn(
         "border-b transition-colors duration-150 hover:bg-raised/60 has-aria-expanded:bg-raised/60",
         className

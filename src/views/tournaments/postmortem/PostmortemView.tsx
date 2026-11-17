@@ -37,14 +37,14 @@ export function PostmortemView() {
       {state.status === 'loading' ? (
         <p role="status">Loading report catalog…</p>
       ) : state.status === 'unavailable' ? (
-        <Alert role="status">
+        <Alert data-first-answer="tournament-reports" role="status">
           Tournament reports are unavailable in this published generation.{' '}
           <Button variant="outline" onClick={retry}>
             Retry catalog
           </Button>
         </Alert>
       ) : state.status === 'error' ? (
-        <Alert variant="warning" role="alert">
+        <Alert data-first-answer="tournament-reports" variant="warning" role="alert">
           Report catalog could not be loaded. {state.message}{' '}
           <Button variant="outline" onClick={retry}>
             Retry catalog
@@ -98,7 +98,7 @@ function ReportCatalog({
         </Button>
       </div>
       {!entry ? (
-        <Alert role="status">
+        <Alert data-first-answer="tournament-reports" role="status">
           {requested !== null
             ? 'No report matches this event link.'
             : 'No Worlds reports have source-observed games in this generation.'}
@@ -106,14 +106,14 @@ function ReportCatalog({
       ) : state.status === 'loading' ? (
         <p role="status">Loading {entry.label} report…</p>
       ) : state.status === 'unavailable' ? (
-        <Alert role="status">
+        <Alert data-first-answer="tournament-reports" role="status">
           This report artifact is unavailable.{' '}
           <Button variant="outline" onClick={retry}>
             Retry report
           </Button>
         </Alert>
       ) : state.status === 'error' ? (
-        <Alert variant="warning" role="alert">
+        <Alert data-first-answer="tournament-reports" variant="warning" role="alert">
           This report could not be loaded. {state.message}{' '}
           <Button variant="outline" onClick={retry}>
             Retry report
@@ -162,7 +162,7 @@ function ReportBody({ report }: { report: TournamentReport }) {
           }
         />
       ) : (
-        <Alert role="status">
+        <Alert data-first-answer="tournament-reports" role="status">
           This published report has no game records. Tournament and team
           statistics appear after the next report rebuild.
         </Alert>
@@ -192,7 +192,7 @@ function ReportBody({ report }: { report: TournamentReport }) {
         </Select>
       </div>
       {selection.kind !== 'ready' ? (
-        <Alert role="status">
+        <Alert data-first-answer="tournament-reports" role="status">
           {selection.kind === 'missing-player'
             ? 'No participant matches this player link.'
             : selection.kind === 'missing-team'
@@ -221,7 +221,7 @@ function ReportBody({ report }: { report: TournamentReport }) {
                 teams={report.teams}
               />
             ) : (
-              <Alert role="status">
+              <Alert data-first-answer="tournament-reports" role="status">
                 No player roster observations are available for this team.
               </Alert>
             )}

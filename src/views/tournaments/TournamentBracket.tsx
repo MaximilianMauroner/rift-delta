@@ -194,7 +194,7 @@ function SeriesCard({ series, trace, timezone, compact = false }: { series: Tour
   const status = <span className={cn('flex min-w-0 items-center gap-1.5 truncate', unresolved && 'text-text')}>{live ? <Badge variant="live" className="px-1.5 py-0">Live</Badge> : null}{statusText(series, timezone)}</span>
   // Compact Swiss cards skip dates to stay dense, but still say when a series is live, postponed, cancelled or missing its result.
   const flagged = live || unresolved || series.status === 'postponed' || series.status === 'cancelled'
-  return <article aria-label={seriesLabel(series)}
+  return <article aria-label={seriesLabel(series)} data-first-answer="tournaments"
     className={cn('grid border bg-surface motion-safe:transition-[opacity,border-color]',
       live ? 'border-[color-mix(in_srgb,var(--text)_55%,var(--line))]' : 'border-line',
       traced && 'border-focus', dimmed && 'opacity-40', compact ? 'py-1' : 'pb-1')}

@@ -188,14 +188,14 @@ function PageSkeleton({ layout }: { layout: PageLayout }) {
   return (
     <div className="flex min-w-0 flex-col gap-6 px-[var(--page-x)] pt-6" aria-hidden="true">
       <Line size="lg" className="w-[min(560px,80%)]" />
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_320px] items-start gap-6 max-[1280px]:grid-cols-1">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_320px] items-start gap-6 max-[1488px]:grid-cols-1">
         <PanelSkeleton titleWidth="w-32">
           <div className="flex flex-wrap gap-2 border-b border-line px-4 py-3">
             {Array.from({ length: 6 }, (_, index) => <Control className="w-16" key={index} />)}
           </div>
           <Rows count={10} height="h-[53px]" />
         </PanelSkeleton>
-        <div className="grid gap-6 max-[1280px]:hidden">
+        <div className="grid gap-6 max-[1488px]:hidden">
           <PanelSkeleton titleWidth="w-28"><Rows count={6} height="h-11" /></PanelSkeleton>
           <PanelSkeleton titleWidth="w-24"><Rows count={4} height="h-11" /></PanelSkeleton>
         </div>

@@ -845,7 +845,7 @@ export default function Home() {
           ) : (
             <section className="card band band-flat" aria-live="polite">
               <div>
-                <h1 className="question">
+                <h1 data-first-answer={loading ? undefined : "lab"} className="question">
                   {loading ? "Running the comparison…" : "No current comparison"}
                 </h1>
                 <p className="lede">

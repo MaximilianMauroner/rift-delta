@@ -174,7 +174,7 @@ export function TeamDetailDrawer({
           <TeamMark team={team.team} code={team.code} className="size-11" />
           <div className="mr-auto grid min-w-0 gap-1">
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              <SheetTitle className="text-lg font-semibold text-text">{team.team}</SheetTitle>
+              <SheetTitle data-first-answer="team-detail" className="text-lg font-semibold text-text">{team.team}</SheetTitle>
               {seeded ? <Badge variant="warning">Sample data</Badge> : null}
             </div>
             <span className="flex flex-wrap items-center gap-2 text-sm text-muted">

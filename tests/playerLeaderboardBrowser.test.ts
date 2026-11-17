@@ -14,7 +14,7 @@ const playersAddress = '#players?scope=season%3A2026'
 
 function player(name: string, team: string, role: CompactPlayer['role'], rating: number, rank: number): CompactPlayer {
   return {
-    id: `synthetic-${name}`, name, team, role, rating, rank, games: 30 + rank,
+    id: `synthetic-${name}`, name, team, region: team === 'Legacy Team' ? 'LEC' : 'LCK', role, rating, rank, games: 30 + rank,
     delta: 0, impactMultiplier: 1, ratingBasis: 'sourced-player-stats', sourceProvider: 'synthetic-fixture',
   }
 }
@@ -149,6 +149,16 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await navigation.getByRole('link', { name: 'Players', exact: true }).click()
     await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
     assert.equal(requests.filter((path) => path === playerPath).length, 1, 'Leaving Players must keep its pending directory load')
+    const leagueFilter = page.getByRole('navigation', { name: 'League filter' })
+    await leagueFilter.getByRole('link', { name: 'LEC', exact: true }).click()
+    await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('region') === 'LEC')
+    await page.waitForFunction(() => document.querySelectorAll('table[aria-label="Player rankings"] tbody tr').length === 0)
+    await leagueFilter.getByRole('link', { name: 'LCK', exact: true }).click()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    await page.reload()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    assert.equal(await leagueFilter.getByRole('link', { name: 'LCK', exact: true }).getAttribute('aria-current'), 'true')
+    await leagueFilter.getByRole('link', { name: 'All leagues', exact: true }).click()
     assert.deepEqual(await rows.locator('td:nth-child(5)').allTextContents(), ['320', '260', '230'])
     assert.deepEqual(await rows.locator('td:nth-child(6)').allTextContents(), ['31', '32', '33'])
     assert.equal(await page.getByRole('link', { name: 'Scouting report for Cedar', exact: true }).getAttribute('href'), '#scouting?player=synthetic-Cedar%7CMid', 'Each row links to its scouting report by player id and role')

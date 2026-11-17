@@ -1,7 +1,9 @@
+import { AlertTriangle } from 'lucide-react'
 import type { CSSProperties, ReactNode } from 'react'
 import { leagueColor } from '../shared/teamColor'
 import { Button } from './ui/button'
 import { cn } from '../shared/utils'
+import { Alert } from './ui/alert'
 import { Badge } from './ui/badge'
 import { tableHeadClassName } from './ui/table'
 
@@ -28,8 +30,8 @@ export function FormDots({ form }: { form?: string[] }) {
             key={`${result}-${index}`}
             className={cn(
               'grid size-[17px] place-items-center text-xs font-bold not-italic',
-              tone === 'w' && 'rounded-sm bg-[var(--up-wash)] text-up',
-              tone === 'l' && 'rounded-sm bg-[var(--down-wash)] text-down',
+              tone === 'w' && 'rounded-[3px] bg-[var(--up-wash)] text-up',
+              tone === 'l' && 'rounded-[3px] bg-[var(--down-wash)] text-down',
               tone === 't' && 'bg-line text-muted',
               index === recent.length - 1 && 'underline decoration-2 underline-offset-2',
             )}
@@ -183,4 +185,12 @@ export function SortHeader({
       </Button>
     </th>
   )
+}
+
+export function TierChip({ tier }: { tier: 'S' | 'A' | 'B' | 'C' }) {
+  return <span className="tier-chip inline-grid h-[22px] min-w-6 place-items-center rounded-md px-1 text-xs font-bold" aria-label={`${tier} tier`} style={{ '--tier-color': `var(--tier-${tier.toLowerCase()})` } as CSSProperties}>{tier}</span>
+}
+
+export function WarningNote({ children }: { children: ReactNode }) {
+  return <Alert variant="warning"><AlertTriangle size={16} aria-hidden="true" /><span>{children}</span></Alert>
 }

@@ -363,7 +363,19 @@ export function RankingRoute() {
   return (
     <div className="flex min-h-full flex-col">
       <a className="fixed top-[-56px] left-3 z-80 rounded-md border border-focus bg-raised px-3 py-2 text-sm font-semibold text-text no-underline transition-[top] duration-120 ease-out focus-visible:top-3" href="#main-content" onClick={(event) => { event.preventDefault(); mainRef.current?.focus(); mainRef.current?.scrollIntoView({ block: 'start' }) }}>Skip to content</a>
-      <AppNavigation mode={mode} scope={effectiveScope} onGoHome={goHome} search={teamSearch} onSearch={mode === 'matches' || mode === 'players' ? undefined : searchTeams} searchRef={searchRef} onIntent={prepareMode} />
+      <AppNavigation
+        mode={mode}
+        scope={effectiveScope}
+        onGoHome={goHome}
+        search={teamSearch}
+        onSearch={mode === 'matches' || mode === 'players' ? undefined : searchTeams}
+        searchRef={searchRef}
+        onIntent={prepareMode}
+        leagues={mode === 'players'
+          ? activePlayers.flatMap((player) => player.region ? [player.region] : [])
+          : universe.regionOptions}
+        leagueEvents={mode === 'matches' && matchHistoryState.status === 'ready' ? matchHistoryState.data.catalog.series : undefined}
+      />
 
       {/* Space is reserved for the fixed compare tray on the two views that have
           one, and for the bottom tab bar on phones. */}

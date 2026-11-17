@@ -23,7 +23,7 @@ export function HeadToHead({ home, away, model }: { home: RankingSummaryStanding
   const homeName = home.code ?? home.team
 
   return (
-    <section className="grid gap-3 border-b border-line px-5 py-5 max-sm:px-3.5" aria-label={`${home.team} against ${away.team}`}>
+    <section data-first-answer="comparison" className="grid gap-3 border-b border-line px-5 py-5 max-sm:px-3.5" aria-label={`${home.team} against ${away.team}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-text">Who would win</h3>
         <Segmented

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import * as React from 'react'
 import { Card } from './card'
+import { leagueColor } from '../../shared/teamColor'
 import { cn } from '@/shared/utils'
 
 /**
@@ -14,8 +15,8 @@ import { cn } from '@/shared/utils'
  * `Panel` strips Card's default padding: the slots below own their own spacing
  * so a header, a full-bleed table and a footer can sit flush against the edges.
  */
-export function Panel({ className, ...props }: React.ComponentProps<'div'>) {
-  return <Card className={cn('gap-0 py-0', className)} {...props} />
+export function Panel({ className, league, style, ...props }: React.ComponentProps<'div'> & { league?: string }) {
+  return <Card className={cn('gap-0 py-0', className)} style={league ? { ...style, borderTop: `3px solid ${leagueColor(league)}` } : style} {...props} />
 }
 
 /**

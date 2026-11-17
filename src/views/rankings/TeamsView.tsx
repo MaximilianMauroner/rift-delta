@@ -400,7 +400,7 @@ export function TeamsView({
         </Alert>
       ) : null}
       {headline ? <p className="board-headline max-w-[72ch] text-lg leading-[1.3] font-semibold text-text">{headline}</p> : null}
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_320px] items-start gap-6 max-[1280px]:grid-cols-1">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_320px] items-start gap-6 max-[1488px]:grid-cols-1">
         <div className="min-w-0">
           <Panel className="ranking-board">
             <PanelHeader
@@ -570,6 +570,7 @@ export function TeamsView({
                       const tie = tiePositions.get(key)
                       return (
                         <TableRow
+                          data-first-answer="rankings"
                           key={key}
                           className={cn(
                             'board-row group/board cursor-pointer outline-offset-[-2px] hover:bg-raised focus-visible:outline-2 focus-visible:outline-focus',

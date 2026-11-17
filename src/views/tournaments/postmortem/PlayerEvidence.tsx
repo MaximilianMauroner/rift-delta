@@ -44,6 +44,7 @@ export function PlayerEvidence({
     <Card
       className="gap-0 overflow-visible py-0"
       role="region"
+      data-first-answer="tournament-reports"
       aria-label={`Evidence for ${player.name}, ${player.role}`}
     >
       <CardHeader className="gap-3 border-b border-line bg-raised py-4">
