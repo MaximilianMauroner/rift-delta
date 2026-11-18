@@ -1,3 +1,5 @@
+import { Button } from "../../components/ui/button.tsx";
+import { Input } from "../../components/ui/input.tsx";
 import { type FormEvent, useState } from "react";
 
 export default function LoginPage() {
@@ -27,14 +29,14 @@ export default function LoginPage() {
 
   return (
     <main className="login-shell">
-      <form className="login-card" onSubmit={submit}>
+      <form data-first-answer="lab-login" className="login-card" onSubmit={submit}>
         <h1>rift-delta DPS lab</h1>
         <p>
           Private test prototype. Enter the access password to inspect the patch-pinned simulator.
         </p>
         <label>
-          <span>ACCESS PASSWORD</span>
-          <input
+          <span>Access password</span>
+          <Input
             autoFocus
             type="password"
             autoComplete="current-password"
@@ -43,9 +45,9 @@ export default function LoginPage() {
           />
         </label>
         {error && <div className="error">{error}</div>}
-        <button className="run" type="submit" disabled={loading || !password}>
-          {loading ? "CHECKING…" : "ENTER PROTOTYPE"}
-        </button>
+        <Button type="submit" disabled={loading || !password}>
+          {loading ? "Checking…" : "Enter prototype"}
+        </Button>
         <small>
           Private tester access. Riot credentials and raw match archives stay server-side.
         </small>

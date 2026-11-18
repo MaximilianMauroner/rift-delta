@@ -57,7 +57,7 @@ for (const ratingsAvailable of [true, false]) test(`Swiss manual preview preserv
 
     await page.goto(`${base}/#tournaments?event=${encodeURIComponent(mainId)}`)
     await page.getByRole('heading', { name: 'Worlds 2026 Main Event' }).waitFor()
-    await page.getByRole('button', { name: 'Swiss preview' }).click()
+    await page.getByRole('link', { name: 'Swiss preview' }).click()
     await page.getByRole('heading', { name: 'Worlds 2026 Swiss preview' }).waitFor()
     assert.match(page.url(), /view=swiss/)
     assert.match(WORLDS_2026_SWISS_RULES.drawUnavailable, /Future Swiss draw probabilities are unavailable/)
@@ -284,11 +284,11 @@ for (const ratingsAvailable of [true, false]) test(`Swiss manual preview preserv
     // The Play-In is also a Worlds 2026 event, but the Swiss rounds belong to the Main Event.
     await page.locator('#tournament-event').selectOption(playInId)
     await page.getByRole('heading', { name: 'Worlds 2026 Play-In' }).waitFor()
-    assert.equal(await page.getByRole('button', { name: 'Swiss preview' }).count(), 0, 'the Play-In has no Swiss preview, even with view=swiss')
+    assert.equal(await page.getByRole('link', { name: 'Swiss preview' }).count(), 0, 'the Play-In has no Swiss preview, even with view=swiss')
     await page.locator('#tournament-event').selectOption(mainId)
     await page.getByRole('heading', { name: 'Worlds 2026 Swiss preview' }).waitFor()
 
-    await page.getByRole('button', { name: 'Schedule' }).click()
+    await page.getByRole('link', { name: 'Schedule', exact: true }).click()
     await page.getByRole('heading', { name: 'Worlds 2026 Main Event' }).waitFor()
     assert.doesNotMatch(page.url(), /view=swiss/)
     assert.match(await page.locator('section[aria-label="results"]').innerText(), /Alpha 1–0 Bravo/)
@@ -296,7 +296,7 @@ for (const ratingsAvailable of [true, false]) test(`Swiss manual preview preserv
 
     await page.locator('#tournament-event').selectOption('lcs:2027:promotion')
     await page.getByRole('heading', { name: 'LCS 2027 Promotion' }).waitFor()
-    assert.equal(await page.getByRole('button', { name: 'Swiss preview' }).count(), 0, 'the preview belongs to the Worlds 2026 Main Event only')
+    assert.equal(await page.getByRole('link', { name: 'Swiss preview' }).count(), 0, 'the preview belongs to the Worlds 2026 Main Event only')
 
     // Scenario A plays every match, so the standings table holds its longest rows.
     const finished = hashQuery(shared)
@@ -319,7 +319,7 @@ for (const ratingsAvailable of [true, false]) test(`Swiss manual preview preserv
         }
       })
       assert.ok(layout.content <= layout.viewport && layout.clipped === 0, `Horizontal overflow at ${width}px: ${JSON.stringify(layout)}`)
-      assert.equal(layout.bracketScrolls, width <= 1024, `The six bracket columns fit at 1440 px and wider and scroll at 1024 px and narrower: ${width}px`)
+      assert.equal(layout.bracketScrolls, width <= 1440, `The six bracket columns fit beside the standings at 1920 px and scroll within their frame at 1440 px and narrower: ${width}px`)
       const tableOverflow = await table.evaluate((element) => element.parentElement!.scrollWidth - element.parentElement!.clientWidth)
       assert.ok(tableOverflow <= 1, `The standings table fits its panel at ${width}px: ${tableOverflow}px too wide`)
     }

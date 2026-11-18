@@ -1,64 +1,30 @@
-import type { ReactNode } from 'react'
+import { AlertTriangle } from 'lucide-react'
+import type { CSSProperties, ReactNode } from 'react'
+import { leagueColor } from '../shared/teamColor'
 import { Button } from './ui/button'
 import { cn } from '../shared/utils'
+import { Alert } from './ui/alert'
 import { Badge } from './ui/badge'
 import { tableHeadClassName } from './ui/table'
-import { heatBin } from '../shared/display'
 
-export function HeatChip({ value, min, max, label }: { value: number; min: number; max: number; label: string }) {
-  return (
-    <span
-      className="inline-flex items-baseline gap-1 rounded-full px-2 py-1 font-mono text-sm font-semibold text-[var(--heat-ink)] tabular-nums"
-      style={{ background: `var(--heat-${heatBin(value, min, max)})` }}
-    >
-      {label}
-    </span>
-  )
+export function LeagueDot({ league }: { league: string }) {
+  return <span className="league-dot" style={{ '--league-color': leagueColor(league) } as CSSProperties} aria-hidden="true" />
 }
 
-const REGION_BADGE_KEYS = new Set(['LCK', 'LPL', 'LEC', 'LCS', 'LCP', 'CBLOL', 'PCS', 'VCS'])
-const REGION_BADGE_LOGOS: Partial<Record<string, string>> = {
-  LCK: '/league-icons/lck.png',
-  LPL: '/league-icons/lpl.png',
-  LEC: '/league-icons/lec.png',
-  LCS: '/league-icons/lcs.png',
-  LCP: '/league-icons/lcp.png',
-  CBLOL: '/league-icons/cblol.png',
-}
-
-/**
- * Every region renders in the same frame: same box, border, fill and inner
- * padding, tinted by the region hue. Only the contents differ, a league logo
- * where one exists and the region code where one does not. The badge used to
- * mix photographic logos with hand-drawn line-art motifs, which read as two
- * different products inside one column.
- */
 export function RegionBadge({ region, size = 'md' }: { region: string; size?: 'sm' | 'md' }) {
-  const code = region.toUpperCase()
-  const key = REGION_BADGE_KEYS.has(code) ? code : 'DEFAULT'
-  const displayCode = key === 'DEFAULT' ? code.slice(0, 3) : code
-  const logoSrc = REGION_BADGE_LOGOS[key]
-
   return (
-    <span
-      className={`region-badge region-badge--${key.toLowerCase()} region-badge--${size}`}
-      role="img"
-      aria-label={`${code} region badge`}
-    >
-      {logoSrc ? (
-        <img className="region-badge__logo" src={logoSrc} alt="" aria-hidden="true" width={44} height={36} loading="lazy" />
-      ) : (
-        <span className="region-badge__code">{displayCode}</span>
-      )}
+    <span className={cn('league-label', size === 'sm' && 'text-xs')}>
+      <LeagueDot league={region} />
+      {region.toUpperCase()}
     </span>
   )
 }
 
 export function FormDots({ form }: { form?: string[] }) {
   const recent = (form ?? []).slice(-5)
-  if (recent.length === 0) return <span className="text-muted-foreground">—</span>
+  if (recent.length === 0) return <span className="text-muted">—</span>
   return (
-    <span className="inline-flex gap-1" aria-label={`Recent form, oldest to latest: ${recent.join(', ')}. Latest: ${recent.at(-1)}.`} title="Oldest to latest. Underlined result is the latest.">
+    <span className="inline-flex gap-1" aria-label={`Recent form, oldest to latest: ${recent.join(', ')}. Latest: ${recent.at(-1)}.`}>
       {recent.map((result, index) => {
         const normalized = result.toLowerCase()
         const tone = normalized === 'w' ? 'w' : normalized === 't' ? 't' : 'l'
@@ -67,10 +33,10 @@ export function FormDots({ form }: { form?: string[] }) {
           <i
             key={`${result}-${index}`}
             className={cn(
-              'grid size-[17px] place-items-center rounded-sm text-2xs font-bold not-italic',
-              tone === 'w' && 'bg-[var(--win-soft)] text-[var(--win)]',
-              tone === 'l' && 'bg-[var(--loss-soft)] text-[var(--loss)]',
-              tone === 't' && 'bg-[var(--surface-3)] text-muted-foreground',
+              'grid size-[17px] place-items-center text-xs font-bold not-italic',
+              tone === 'w' && 'rounded-[3px] bg-[var(--up-wash)] text-up',
+              tone === 'l' && 'rounded-[3px] bg-[var(--down-wash)] text-down',
+              tone === 't' && 'bg-line text-muted',
               index === recent.length - 1 && 'underline decoration-2 underline-offset-2',
             )}
             aria-hidden="true"
@@ -113,7 +79,7 @@ export function Segmented<T extends string>({
       role="group"
       aria-label={ariaLabel}
       className={cn(
-        'inline-flex h-[var(--control-h)] max-w-full items-stretch overflow-hidden rounded-md border border-[var(--line-strong)] bg-[var(--surface-2)] max-sm:w-full',
+        'inline-flex h-[var(--control-h)] max-w-full items-stretch overflow-hidden rounded-md border border-line bg-surface max-sm:w-full',
         className,
       )}
     >
@@ -130,8 +96,8 @@ export function Segmented<T extends string>({
           onPointerEnter={onIntent ? () => onIntent(option.value) : undefined}
           onFocus={onIntent ? () => onIntent(option.value) : undefined}
           className={cn(
-            'h-auto min-h-0 flex-1 gap-1.5 rounded-none border-y-0 border-r-0 border-l border-l-border px-3 whitespace-nowrap max-sm:min-w-0 max-sm:px-2',
-            'aria-pressed:font-semibold aria-pressed:shadow-[inset_0_-2px_0_var(--accent)] disabled:opacity-60',
+            'h-auto min-h-0 flex-1 gap-1.5 rounded-none border-y-0 border-r-0 border-l border-l-line px-3 text-sm whitespace-nowrap max-sm:min-w-0 max-sm:px-2',
+            'aria-pressed:border-l-line aria-pressed:shadow-[inset_0_-2px_0_var(--focus)] disabled:opacity-60',
             index === 0 && 'border-l-0',
           )}
         >
@@ -155,8 +121,8 @@ export function DataState({
   children?: ReactNode
 }) {
   return (
-    <div className="grid place-items-center gap-2 px-6 py-8 text-center text-muted-foreground sm:py-10 [&>h3]:text-base [&>h3]:font-semibold [&>h3]:text-[var(--text-strong)] [&>p]:max-w-[46ch] [&>p]:text-sm [&>p]:leading-relaxed">
-      <span className="mb-1 grid size-10 place-items-center rounded-lg border border-border bg-[var(--surface-2)] text-muted-foreground" aria-hidden="true">{icon}</span>
+    <div className="grid place-items-center gap-2 px-6 py-8 text-center text-muted sm:py-10 [&>h3]:text-base [&>h3]:font-semibold [&>h3]:text-text [&>p]:max-w-[46ch] [&>p]:text-sm [&>p]:leading-relaxed">
+      <span className="mb-1 grid size-10 place-items-center border border-line bg-raised text-muted" aria-hidden="true">{icon}</span>
       <h3>{title}</h3>
       {children ? <p>{children}</p> : null}
       {action ? <div className="mt-1 flex flex-wrap justify-center gap-2">{action}</div> : null}
@@ -166,7 +132,7 @@ export function DataState({
 
 export function CountBadge({ children, variant = 'secondary' }: { children: ReactNode; variant?: 'secondary' | 'warning' }) {
   return (
-    <Badge variant={variant} className="w-fit justify-self-start text-xs text-muted-foreground tabular-nums">
+    <Badge variant={variant} className="w-fit justify-self-start text-xs text-muted tabular-nums">
       {children}
     </Badge>
   )
@@ -200,7 +166,7 @@ export function SortHeader({
       className={cn(
         tableHeadClassName,
         'select-none p-0!',
-        active && 'text-[var(--accent-strong)]',
+        active && 'text-focus',
         align === 'right' && 'text-right',
         align === 'center' && 'text-center',
         className,
@@ -212,7 +178,7 @@ export function SortHeader({
         variant="ghost"
         size="sm"
         className={cn(
-          'min-h-10 w-full cursor-pointer justify-start gap-1 border-0 bg-transparent px-3.5 py-3 text-xs font-[number:var(--w-label)] text-[inherit] hover:bg-transparent hover:text-foreground focus-visible:rounded-none focus-visible:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-3 focus-visible:outline-[var(--focus)] max-sm:px-1 max-sm:leading-[1.15] max-sm:whitespace-normal',
+          'min-h-10 w-full cursor-pointer justify-start gap-1 border-0 bg-transparent px-3.5 py-3 text-xs font-[number:600] text-[inherit] hover:bg-transparent hover:text-text focus-visible:rounded-none focus-visible:text-text focus-visible:outline-2 focus-visible:-outline-offset-3 focus-visible:outline-focus max-sm:px-1 max-sm:leading-[1.15] max-sm:whitespace-normal',
           align === 'right' && 'justify-end',
           align === 'center' && 'justify-center',
         )}
@@ -223,4 +189,12 @@ export function SortHeader({
       </Button>
     </th>
   )
+}
+
+export function TierChip({ tier }: { tier: 'S' | 'A' | 'B' | 'C' }) {
+  return <span className="tier-chip inline-grid h-[22px] min-w-6 place-items-center rounded-md px-1 text-xs font-bold" aria-label={`${tier} tier`} style={{ '--tier-color': `var(--tier-${tier.toLowerCase()})` } as CSSProperties}>{tier}</span>
+}
+
+export function WarningNote({ children }: { children: ReactNode }) {
+  return <Alert variant="warning"><AlertTriangle size={16} aria-hidden="true" /><span>{children}</span></Alert>
 }

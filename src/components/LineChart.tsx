@@ -80,7 +80,7 @@ const DIRECT_LABEL_MIN_GAP_PX = 24
 const CHART_VERTICAL_CHROME_PX = 92
 /** Lines take their colours from the series, and the tooltip takes names from its payload. */
 const CHART_CONFIG: ChartConfig = {}
-const AXIS_TICK_STYLE = { fill: 'var(--muted)', fontSize: 13, fontWeight: 550 }
+const AXIS_TICK_STYLE = { fill: 'var(--muted)', fontSize: 12 }
 
 export function LineChart({
   series,
@@ -105,7 +105,7 @@ export function LineChart({
   const { data, meta, gaps } = useMemo(() => buildChartData(series), [series])
 
   if (series.length === 0 || domain === null || data.length === 0) {
-    return <p className="text-muted-foreground p-5">No chart data available.</p>
+    return <p className="text-muted p-5">No chart data available.</p>
   }
 
   const { minT, maxT, minY, maxY } = domain
@@ -156,15 +156,15 @@ export function LineChart({
             {entry.label}
           </Button>
         ) : (
-          <span className="inline-flex items-center gap-2 text-sm text-muted-foreground" key={entry.id}>
+          <span className="inline-flex items-center gap-2 text-sm text-muted" key={entry.id}>
             <i className="inline-block h-[3px] w-[11px] shrink-0 rounded-full" style={{ background: entry.color }} aria-hidden="true" />
             {entry.label}
           </span>
         ))}
         {pointReadout && selectedRow.points[0] ? (
           <div className="chart-point-readout ml-auto grid justify-items-end gap-1 text-xs tabular-nums">
-            <time dateTime={new Date(selectedRow.t).toISOString()} className="text-muted-foreground">{formatChartTimestamp(selectedRow.t)}</time>
-            <strong className="text-sm text-foreground">{yFormat(selectedRow.points[0].point.y)}</strong>
+            <time dateTime={new Date(selectedRow.t).toISOString()} className="text-muted">{formatChartTimestamp(selectedRow.t)}</time>
+            <strong className="text-sm text-text">{yFormat(selectedRow.points[0].point.y)}</strong>
           </div>
         ) : null}
       </div>
@@ -211,14 +211,14 @@ export function LineChart({
               key={`${event.label}-${event.start}`}
               x1={event.start}
               x2={event.end}
-              fill="var(--accent)"
+              fill="var(--focus)"
               fillOpacity={0.08}
               strokeOpacity={0}
               ifOverflow="hidden"
             />
           ))}
           {shownEvents.length ? <EventLabels events={shownEvents} /> : null}
-          <RechartsTooltip trigger="hover" cursor={{ stroke: 'var(--line-strong)' }} content={renderTooltip} />
+          <RechartsTooltip trigger="hover" cursor={{ stroke: 'var(--line)' }} content={renderTooltip} />
           {details ? <ActiveRowListener onActive={setHoveredT} /> : null}
           {gaps.map(({ key, series: entry }) => (
             <Line key={key} dataKey={key} opacity={focusedId && focusedId !== entry.id ? 0.18 : 1} stroke={entry.color} strokeWidth={1.5} strokeDasharray="4 4" connectNulls dot={false} activeDot={false} tooltipType="none" isAnimationActive={false} />
@@ -241,7 +241,7 @@ export function LineChart({
                     const target = directLabels.get(entry.id)
                     if (!target || props.index !== target.index || typeof props.x !== 'number') return <g />
                     return (
-                      <text x={props.x + 7} y={target.y(Number(props.y))} dy="0.32em" fill="var(--text)" fontSize={12} fontWeight={680} className="font-mono">
+                      <text x={props.x + 7} y={target.y(Number(props.y))} dy="0.32em" fill="var(--text)" fontSize={12} fontWeight={700}>
                         {entry.label}
                       </text>
                     )
@@ -251,7 +251,7 @@ export function LineChart({
           ))}
         </RechartsLineChart>
       </ChartContainer>
-      {gaps.length > 0 ? <p className="px-4 pb-2 text-xs text-muted-foreground">Dashed lines span gaps of more than 21 days.</p> : null}
+      {gaps.length > 0 ? <p className="px-4 pb-2 text-xs text-muted">Dashed lines span gaps of more than 21 days.</p> : null}
       {details ? (
         <div className="min-w-0 px-4 pb-3" role="region" aria-label="Selected chart point details">
           {details(selectedRow)}
@@ -280,7 +280,7 @@ function EventLabels({ events }: { events: ChartEvent[] }) {
   return (
     <g aria-hidden="true">
       {placeEventLabels(events, scale, plot).map(({ key, x, label }) => (
-        <text key={key} x={x} y={plot.y - 20} textAnchor="middle" fill="var(--muted)" fontSize={11} fontWeight={600}>{label}</text>
+        <text key={key} x={x} y={plot.y - 20} textAnchor="middle" fill="var(--muted)" fontSize={12} fontWeight={600}>{label}</text>
       ))}
     </g>
   )

@@ -12,9 +12,7 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        // The default already is the product's panel: --r-3 corners, a --line
-        // border and the --surface fill. Call sites must not restate this.
-        "group/card flex min-w-0 flex-col gap-(--card-spacing) overflow-hidden rounded-lg border border-border bg-card py-(--card-spacing) text-sm/relaxed text-card-foreground [--card-spacing:--spacing(4)] has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)]",
+        "group/card flex min-w-0 flex-col gap-(--card-spacing) overflow-hidden rounded-[var(--panel-radius)] border border-line bg-surface py-(--card-spacing) text-sm/relaxed text-text [--card-spacing:--spacing(4)] has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)]",
         className
       )}
       {...props}
@@ -40,7 +38,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "font-heading text-base font-semibold text-[var(--text-strong)] group-data-[size=sm]/card:text-md",
+        "text-base font-semibold text-text group-data-[size=sm]/card:text-sm",
         className
       )}
       {...props}

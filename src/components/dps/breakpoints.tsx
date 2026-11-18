@@ -1,16 +1,6 @@
+import type { CSSProperties } from "react";
 import { breakpointGrid } from "../../domains/dps/compare-view.ts";
 import type { BreakpointPoint, ComparisonLabels } from "./types.ts";
-
-function cellStyle(delta: number, maxAbsDelta: number) {
-  const rounded = Math.round(delta);
-  if (rounded === 0 || maxAbsDelta === 0) return undefined;
-  const weight = 0.14 + 0.46 * Math.min(1, Math.abs(delta) / maxAbsDelta);
-  // Side A is teal and side B is ice everywhere in the lab; red stays reserved
-  // for warnings, so a build that leads is never coloured like a fault.
-  return rounded > 0
-    ? { background: `rgba(52, 211, 189, ${weight.toFixed(2)})` }
-    : { background: `rgba(161, 228, 249, ${weight.toFixed(2)})` };
-}
 
 export function BreakpointHeat({
   points,
@@ -24,7 +14,7 @@ export function BreakpointHeat({
   if (points.length === 0) {
     return (
       <>
-        <p className="context">Where it flips</p>
+        <h3 className="context">Where it flips</h3>
         <p className="note">Waiting for the grid…</p>
       </>
     );
@@ -34,7 +24,7 @@ export function BreakpointHeat({
   if (grid.rows.length === 0) {
     return (
       <>
-        <p className="context">Where it flips · applied damage in {duration}s</p>
+        <h3 className="context">Where it flips · applied damage in {duration}s</h3>
         <p className="lede">
           Nothing flips at this fight length. Across every armor and bonus-health point in the
           sweep, both builds apply the same damage to the selected target.
@@ -50,13 +40,18 @@ export function BreakpointHeat({
   return (
     <>
       <div className="heat-head">
-        <p className="context">Where it flips · applied damage in {duration}s</p>
+        <h3 className="context">Where it flips · applied damage in {duration}s</h3>
         <p className="legend">
-          <span className="swatch swatch-a" aria-hidden /> {labels.a} ahead
-          <span className="swatch swatch-b" aria-hidden /> {labels.b} ahead
+          <span className="swatch swatch-a" aria-hidden /> + {labels.a} ahead
+          <span className="swatch swatch-b" aria-hidden /> − {labels.b} ahead
         </p>
       </div>
-      <div className="heat-scroll">
+      <div
+        className="heat-scroll"
+        tabIndex={0}
+        role="region"
+        aria-label="Damage difference by armor and bonus health"
+      >
         <table className="heat">
           <caption className="sr-only">
             Applied damage difference between {labels.a} and {labels.b} by target armor and bonus
@@ -64,10 +59,13 @@ export function BreakpointHeat({
           </caption>
           <thead>
             <tr>
-              <th scope="col">Armor</th>
+              <th scope="col" rowSpan={2}>Armor</th>
+              <th scope="colgroup" colSpan={grid.bonusHealthValues.length}>Bonus HP</th>
+            </tr>
+            <tr>
               {grid.bonusHealthValues.map((value) => (
                 <th scope="col" key={value} className="num">
-                  {value === 0 ? "0 bonus HP" : value.toLocaleString()}
+                  {value.toLocaleString()}
                 </th>
               ))}
             </tr>
@@ -89,8 +87,10 @@ export function BreakpointHeat({
                 {row.cells.map((cell) => (
                   <td
                     key={cell.bonusHealth}
-                    className="num heat-cell"
-                    style={cellStyle(cell.delta, grid.maxAbsDelta)}
+                    className={`num heat-cell ${Math.round(cell.delta) === 0 ? "" : cell.delta > 0 ? "a" : "b"}`}
+                    style={{
+                      "--heat-strength": `${14 + 20 * Math.min(1, Math.abs(cell.delta) / grid.maxAbsDelta)}%`,
+                    } as CSSProperties}
                   >
                     {Math.round(cell.delta) === 0
                       ? "0"

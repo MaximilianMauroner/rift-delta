@@ -24,7 +24,7 @@ export function PlayerPerformancePanel({ players, scopeLabel }: { players: Compa
       />
       {performance && diagnostics ? (
         <>
-          <PanelBody className="text-xs leading-relaxed text-muted-foreground">
+          <PanelBody className="text-xs leading-relaxed text-muted">
             Oracle’s Elixir · {diagnostics.sampleGames} games in {scopeLabel}. Raw averages, not used in scores.
           </PanelBody>
           <Table aria-label={`${player.name} observed stats`}>
@@ -45,7 +45,7 @@ export function PlayerPerformancePanel({ players, scopeLabel }: { players: Compa
             </TableBody>
           </Table>
         </>
-      ) : <PanelBody className="text-sm text-muted-foreground">No stats for this player.</PanelBody>}
+      ) : <PanelBody className="text-sm text-muted">No stats for this player.</PanelBody>}
     </Panel>
   )
 }

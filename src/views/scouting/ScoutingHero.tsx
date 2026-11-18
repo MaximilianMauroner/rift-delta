@@ -1,5 +1,4 @@
 import { ordinal } from '../../components/fieldFormat'
-import type { CSSProperties } from 'react'
 import { TeamMark } from '../../components/TeamMark'
 import { Badge } from '../../components/ui/badge'
 import { Panel } from '../../components/ui/panel'
@@ -15,8 +14,8 @@ function PoolStrip({ player }: { player: PlayerReport }) {
     <div className="sc-pooltop"><span>Last {SCOUTING_RULES.windowDays} days, by champion</span><span className="sc-num">{gameCount(player.recent.games)}</span></div>
     <div role="img" aria-label={`Games by champion in the last ${SCOUTING_RULES.windowDays} days: ${summary}`}>
       <ul className="sc-strip" aria-hidden="true">
-        {segments.map(segment => <li key={segment.name} data-size={segment.size} data-other={segment.heat === 0 || undefined}
-          style={{ flex: segment.games, '--sc-heat': `var(--heat-${segment.heat || 1})` } as CSSProperties}
+        {segments.map(segment => <li key={segment.name} data-size={segment.size} data-other={segment.other || undefined}
+          style={{ flex: segment.games }}
           title={`${segment.name}: ${segment.games} of ${gameCount(player.recent.games)}`}>
           <b>{segment.name}</b><span className="sc-num">{segment.games}</span>
         </li>)}

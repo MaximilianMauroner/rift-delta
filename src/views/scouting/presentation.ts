@@ -79,24 +79,22 @@ export function middleHalf(metric: Metric, band: Band) {
   return { left: Math.min(a, b), width: Math.abs(a - b) }
 }
 
-export type PoolSegment = { name: string; games: number; heat: number; size: 'big' | 'mid' | 'low' | 'tiny' }
+export type PoolSegment = { name: string; games: number; other: boolean; size: 'big' | 'mid' | 'low' | 'tiny' }
 /**
- * The last 90 days split by champion. Heat is the segment's games against the largest segment, from 1 to 6.
- * Games on champions outside the pool table are one muted "Others" segment with heat 0.
+ * The last 90 days split by champion. Games on champions outside the pool table are one muted "Others" segment.
  */
 export function poolSegments(player: Pick<PlayerReport, 'pool' | 'recent'>): PoolSegment[] {
   const rows = player.pool.filter(row => row.recent.games > 0)
   const listed = rows.reduce((sum, row) => sum + row.recent.games, 0)
-  const largest = Math.max(1, ...rows.map(row => row.recent.games))
   const size = (games: number): PoolSegment['size'] => {
     const share = games / player.recent.games
     return share >= 0.15 ? 'big' : share >= 0.095 ? 'mid' : share >= 0.06 ? 'low' : 'tiny'
   }
   const segments = rows.map(row => ({
-    name: row.champion, games: row.recent.games, heat: Math.max(1, Math.min(6, Math.ceil(6 * row.recent.games / largest))), size: size(row.recent.games),
+    name: row.champion, games: row.recent.games, other: false, size: size(row.recent.games),
   }))
   const others = player.recent.games - listed
-  return others > 0 ? [...segments, { name: 'Others', games: others, heat: 0, size: size(others) }] : segments
+  return others > 0 ? [...segments, { name: 'Others', games: others, other: true, size: size(others) }] : segments
 }
 
 export function laneShares(split: LaneSplit) {

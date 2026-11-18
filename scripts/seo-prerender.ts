@@ -115,10 +115,10 @@ function renderHomepageStartup() {
   return [
     '<main class="homepage-startup flex min-h-svh flex-col items-center justify-center px-6 py-8">',
     `<div class="mb-8 size-32 sm:size-40" aria-hidden="true">${POWER_INDEX_MARK.replace('<svg ', '<svg width="100%" height="100%" ')}</div>`,
-    '<p class="mb-2 text-sm text-muted-foreground">rift-delta</p>',
-    '<h1 class="text-2xl font-bold text-[var(--text-strong)]">Rankings</h1>',
-    '<p class="mt-3 text-sm text-muted-foreground">Team power. Region strength.</p>',
-    '<p class="mt-10 text-xs text-muted-foreground" role="status" aria-live="polite" aria-busy="true">Loading rankings</p>',
+    '<p class="mb-2 text-sm text-muted">rift-delta</p>',
+    '<h1 class="text-3xl font-bold text-text">Rankings</h1>',
+    '<p class="mt-3 text-sm text-muted">Team power. Region strength.</p>',
+    '<p class="mt-10 text-xs text-muted" role="status" aria-live="polite" aria-busy="true">Loading rankings</p>',
     '</main>',
   ].join('')
 }
@@ -134,14 +134,14 @@ function renderHomepageSnapshot(data: HomepagePrerenderData) {
 
   return [
     `<section class="min-h-full px-[var(--page-x)] py-[clamp(28px,6vw,72px)]" aria-label="Latest rift-delta snapshot"${data.snapshotKey ? ` data-snapshot-key="${escapeHtml(data.snapshotKey)}"` : ''}>`,
-    '<div class="mx-auto max-w-[1080px] [&>h1]:mt-2 [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:tracking-normal [&>h1]:text-[var(--text-strong)] max-[760px]:[&>h1]:text-xl">',
-    '<p class="text-2xs font-semibold tracking-label text-muted-foreground uppercase">Latest model snapshot</p>',
+    '<div class="mx-auto max-w-[1080px] [&>h1]:mt-2 [&>h1]:text-3xl [&>h1]:font-bold [&>h1]:tracking-normal [&>h1]:text-text max-[760px]:[&>h1]:text-2xl">',
+    '<p class="text-xs font-semibold text-muted">Latest model snapshot</p>',
     '<h1>rift-delta</h1>',
-    '<p class="mt-3 max-w-[760px] text-base leading-[1.55] text-muted-foreground">Model-versioned League of Legends esports team and region power rankings with source provenance, coverage windows, and score context.</p>',
+    '<p class="mt-3 max-w-[760px] text-base leading-[1.55] text-muted">Model-versioned League of Legends esports team and region power rankings with source provenance, coverage windows, and score context.</p>',
     data.seededSample
-      ? '<p class="mt-3.5 max-w-[760px] rounded-sm border border-[color-mix(in_oklch,var(--warn)_46%,var(--line))] bg-[var(--warn-soft)] px-3 py-2.5 text-[var(--text-strong)]">Seeded sample data is loaded. These rows must not be treated as official LoL Esports rankings.</p>'
+      ? '<p class="mt-3.5 max-w-[760px] rounded-md border border-[color-mix(in_srgb,var(--text)_46%,var(--line))] bg-raised px-3 py-2.5 text-text">Seeded sample data is loaded. These rows must not be treated as official LoL Esports rankings.</p>'
       : '',
-    '<dl class="mt-7 grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-border bg-border max-[760px]:grid-cols-1">',
+    '<dl class="mt-7 grid grid-cols-4 gap-px overflow-hidden border border-line bg-line max-[760px]:grid-cols-1">',
     statMarkup('Model', formatModelVersion(data.modelVersion)),
     statMarkup('Matches', formatNumber(data.matchCount)),
     statMarkup('Coverage', coverageLabel),
@@ -150,23 +150,23 @@ function renderHomepageSnapshot(data: HomepagePrerenderData) {
     teams.length > 0 ? '<div class="mt-7 grid grid-cols-2 gap-5 max-[760px]:grid-cols-1">' : '',
     teams.length > 0 ? [
       '<section>',
-      '<h2 class="text-base font-bold text-[var(--text-strong)]">Top teams</h2>',
-      '<ol class="mt-2.5 grid list-none gap-px overflow-hidden rounded-lg border border-border bg-border p-0">',
+      '<h2 class="text-base font-bold text-text">Top teams</h2>',
+      '<ol class="mt-2.5 grid list-none gap-px overflow-hidden border border-line bg-line p-0">',
       ...teams.map(teamMarkup),
       '</ol>',
       '</section>',
     ].join('') : '',
     regions.length > 0 ? [
       '<section>',
-      '<h2 class="text-base font-bold text-[var(--text-strong)]">Region power</h2>',
-      '<ol class="mt-2.5 grid list-none gap-px overflow-hidden rounded-lg border border-border bg-border p-0">',
+      '<h2 class="text-base font-bold text-text">Region power</h2>',
+      '<ol class="mt-2.5 grid list-none gap-px overflow-hidden border border-line bg-line p-0">',
       ...regions.map(regionMarkup),
       '</ol>',
       '</section>',
     ].join('') : '',
     teams.length > 0 ? '</div>' : '',
-    `<p class="mt-4 max-w-[880px] text-xs leading-normal text-muted-foreground">Source: ${escapeHtml(sourceLabel)}. Model config: ${escapeHtml(data.configHash ?? 'unknown')}. Latest match: ${escapeHtml(formatDate(data.latestMatchDate))}.</p>`,
-    `<p class="mt-2.5 max-w-[880px] text-xs leading-normal text-[var(--faint)]">${escapeHtml(RIOT_PROJECT_NOTICE)}</p>`,
+    `<p class="mt-4 max-w-[880px] text-xs leading-normal text-muted">Source: ${escapeHtml(sourceLabel)}. Model config: ${escapeHtml(data.configHash ?? 'unknown')}. Latest match: ${escapeHtml(formatDate(data.latestMatchDate))}.</p>`,
+    `<p class="mt-2.5 max-w-[880px] text-xs leading-normal text-muted">${escapeHtml(RIOT_PROJECT_NOTICE)}</p>`,
     '</div>',
     '</section>',
   ].filter(Boolean).join('')
@@ -234,13 +234,13 @@ function teamMarkup(team: TeamSummary) {
     ? `${formatNumber(team.wins)}-${formatNumber(team.losses)}`
     : 'record unavailable'
   return [
-    '<li class="grid min-h-[58px] grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 bg-card px-3 py-3">',
-    `<span class="font-bold text-muted-foreground tabular-nums">#${escapeHtml(formatNumber(team.rank))}</span>`,
+    '<li class="grid min-h-[58px] grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 bg-surface px-3 py-3">',
+    `<span class="font-bold text-muted tabular-nums">#${escapeHtml(formatNumber(team.rank))}</span>`,
     '<span class="min-w-0">',
-    `<strong class="block overflow-hidden text-ellipsis whitespace-nowrap text-[var(--text-strong)]">${escapeHtml(team.team)}</strong>`,
-    `<small class="block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted-foreground">${escapeHtml([team.code, team.region, record].filter(Boolean).join(' / '))}</small>`,
+    `<strong class="block overflow-hidden text-ellipsis whitespace-nowrap text-text">${escapeHtml(team.team)}</strong>`,
+    `<small class="block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted">${escapeHtml([team.code, team.region, record].filter(Boolean).join(' / '))}</small>`,
     '</span>',
-    `<b class="text-[var(--text-strong)] tabular-nums">${escapeHtml(formatNumber(team.rating))}</b>`,
+    `<b class="text-text tabular-nums">${escapeHtml(formatNumber(team.rating))}</b>`,
     '</li>',
   ].join('')
 }
@@ -251,19 +251,19 @@ function regionMarkup(region: RegionSummary) {
     typeof region.teamCount === 'number' ? `${formatNumber(region.teamCount)} teams` : undefined,
   ].filter(Boolean).join(' / ')
   return [
-    '<li class="grid min-h-[58px] grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 bg-card px-3 py-3">',
-    `<span class="font-bold text-muted-foreground tabular-nums">#${escapeHtml(formatNumber(region.rank))}</span>`,
+    '<li class="grid min-h-[58px] grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 bg-surface px-3 py-3">',
+    `<span class="font-bold text-muted tabular-nums">#${escapeHtml(formatNumber(region.rank))}</span>`,
     '<span class="min-w-0">',
-    `<strong class="block overflow-hidden text-ellipsis whitespace-nowrap text-[var(--text-strong)]">${escapeHtml(region.region)}</strong>`,
-    `<small class="block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted-foreground">${escapeHtml(detail || 'region summary')}</small>`,
+    `<strong class="block overflow-hidden text-ellipsis whitespace-nowrap text-text">${escapeHtml(region.region)}</strong>`,
+    `<small class="block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted">${escapeHtml(detail || 'region summary')}</small>`,
     '</span>',
-    `<b class="text-[var(--text-strong)] tabular-nums">${escapeHtml(formatNumber(region.score))}</b>`,
+    `<b class="text-text tabular-nums">${escapeHtml(formatNumber(region.score))}</b>`,
     '</li>',
   ].join('')
 }
 
 function statMarkup(label: string, value: string) {
-  return `<div class="bg-card px-3.5 py-3"><dt class="text-2xs font-semibold tracking-label text-[var(--faint)] uppercase">${escapeHtml(label)}</dt><dd class="mt-1 text-md font-semibold text-[var(--text-strong)]">${escapeHtml(value)}</dd></div>`
+  return `<div class="bg-surface px-3.5 py-3"><dt class="text-xs font-semibold text-muted">${escapeHtml(label)}</dt><dd class="mt-1 text-sm font-semibold text-text">${escapeHtml(value)}</dd></div>`
 }
 
 async function readJson(path: string): Promise<unknown> {

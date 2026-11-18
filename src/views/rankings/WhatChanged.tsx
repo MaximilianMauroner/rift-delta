@@ -1,5 +1,4 @@
 import { Badge } from '../../components/ui/badge'
-import { Panel, PanelHeader } from '../../components/ui/panel'
 import { formatSigned } from '../../shared/display'
 import { matchEventLabel } from '../../domains/rankings/read'
 import { cn } from '../../shared/utils'
@@ -42,59 +41,62 @@ export function WhatChanged({
 }) {
   if (!riser && !faller && !upset) return null
   return (
-    <Panel aria-label="What changed">
-      <PanelHeader title="What changed" actions={<span className="text-xs text-[var(--faint)]">{period}</span>} />
-      <ul className="grid gap-px bg-border">
+    <details className="board-disclosure">
+      <summary>
+        <span className="text-base font-semibold">What changed</span>
+        <span className="text-xs text-muted">{period}</span>
+      </summary>
+      <ul className="grid gap-px bg-line">
         {riser ? <MovementRow movement={riser} /> : null}
         {faller ? <MovementRow movement={faller} /> : null}
         {upset ? (
-          <li className="flex min-w-0 items-center gap-2.5 bg-card px-4 py-2.5 text-sm">
-            <Badge variant="warning" className="shrink-0">Upset</Badge>
-            <span className="min-w-0 text-muted-foreground">
-              <b className="font-semibold text-[var(--text-strong)]">{upset.winner}</b> beat {upset.loser} with a {Math.round(upset.chance * 100)}% chance
-              {upset.event ? <span className="block truncate text-xs text-[var(--faint)]">{matchEventLabel(upset.event)}</span> : null}
+          <li className="flex min-w-0 items-center gap-2.5 bg-surface px-4 py-2.5 text-sm">
+            <Badge variant="secondary" className="shrink-0">Upset</Badge>
+            <span className="min-w-0 text-muted">
+              <b className="font-semibold text-text">{upset.winner}</b> beat {upset.loser} with a {Math.round(upset.chance * 100)}% chance
+              {upset.event ? <span className="block truncate text-xs text-muted">{matchEventLabel(upset.event)}</span> : null}
             </span>
           </li>
         ) : null}
       </ul>
-    </Panel>
+    </details>
   )
 }
 
 function MovementRow({ movement }: { movement: MovementSpotlight }) {
   const up = movement.places > 0 || (movement.places === 0 && movement.ratingDelta > 0)
   return (
-    <li className="flex min-w-0 items-center gap-2.5 bg-card px-4 py-2.5 text-sm" title={movement.detail}>
+    <li className="flex min-w-0 items-center gap-2.5 bg-surface px-4 py-2.5 text-sm" title={movement.detail}>
       <MovementChip places={movement.places} />
-      <span className="min-w-0 truncate text-muted-foreground">
-        <b className="font-semibold text-[var(--text-strong)]">{movement.code ?? movement.team}</b>{' '}
+      <span className="min-w-0 truncate text-muted">
+        <b className="font-semibold text-text">{movement.code ?? movement.team}</b>{' '}
         {movement.places === 0 ? 'held rank' : `${up ? 'up' : 'down'} ${Math.abs(movement.places)} ${Math.abs(movement.places) === 1 ? 'place' : 'places'}`}
       </span>
-      <span className={cn('ml-auto shrink-0 font-mono text-xs font-semibold tabular-nums', movement.ratingDelta >= 0 ? 'text-[var(--up)]' : 'text-[var(--down)]')}>
+      <span className={cn('ml-auto shrink-0 text-xs font-semibold tabular-nums', movement.ratingDelta >= 0 ? 'text-up' : 'text-down')}>
         {formatSigned(movement.ratingDelta)}
       </span>
     </li>
   )
 }
 
-/** Rank change as a small signed chip, shared by the board and this panel. */
+/** Rank change as a signed arrow and count, shared by the board and this panel. */
 export function MovementChip({ places, title }: { places?: number; title?: string }) {
   if (places === undefined) {
-    return <span className="inline-flex min-w-9 justify-center rounded-sm bg-[var(--surface-2)] px-1.5 py-0.5 font-mono text-2xs font-bold text-[var(--faint)]" title={title}>—</span>
+    return <span className="inline-flex min-w-7 text-xs font-semibold text-muted" title={title}>—<span className="sr-only">no rank change recorded</span></span>
   }
   const tone = places > 0 ? 'up' : places < 0 ? 'down' : 'flat'
   return (
     <span
       className={cn(
-        'inline-flex min-w-9 justify-center rounded-sm px-1.5 py-0.5 font-mono text-2xs font-bold tabular-nums',
-        tone === 'up' && 'bg-[color-mix(in_oklch,var(--up)_12%,transparent)] text-[var(--up)]',
-        tone === 'down' && 'bg-[color-mix(in_oklch,var(--down)_12%,transparent)] text-[var(--down)]',
-        tone === 'flat' && 'bg-[var(--surface-2)] text-[var(--faint)]',
+        'inline-flex min-w-7 items-baseline gap-px text-xs font-bold tabular-nums',
+        tone === 'up' && 'text-up',
+        tone === 'down' && 'text-down',
+        tone === 'flat' && 'text-muted',
       )}
       title={title}
     >
-      <span aria-hidden="true">{tone === 'up' ? '▲' : tone === 'down' ? '▼' : '='}</span>
-      {places === 0 ? null : Math.abs(places)}
+      <span aria-hidden="true">{tone === 'up' ? '↑' : tone === 'down' ? '↓' : '='}</span>
+      <span aria-hidden="true">{places === 0 ? null : Math.abs(places)}</span>
       <span className="sr-only">{places === 0 ? 'no rank change' : `${places > 0 ? 'up' : 'down'} ${Math.abs(places)}`}</span>
     </span>
   )

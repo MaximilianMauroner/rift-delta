@@ -2,7 +2,6 @@ import type { SnapshotCheckpointOption } from '../../domains/rankings/types'
 import { rankingScopePeriod } from '../../domains/rankings/read'
 import { formatDate } from '../../shared/display'
 import { Segmented, type SegmentedOption } from '../../components/ui'
-import { Select } from '../../components/ui/select'
 
 export type PendingCheckpoint = { id: string; label: string }
 
@@ -11,14 +10,10 @@ const FULL_YEAR = 'full-year'
 /**
  * Season and split scope, as one row plus one sentence.
  *
- * The season is a select because years are switched rarely. The full year and
- * the splits are one segmented control, so exactly one segment is filled and
- * that fill is the selection. The previous track marked "Full year" with a
- * small text button and drew a progress bar under the ongoing split, which
- * read as the selected tab while the full year was active.
- *
- * The line beside the controls gives the date of the latest rated match and
- * the publication date. Screen readers also hear the selection in words.
+ * Season and split are segmented controls, so exactly one segment is filled
+ * and that fill is the selection. The sentence beside them gives the selected
+ * window, how far an ongoing split has reached, the date of the latest rated
+ * match and the publication date. Nothing here hides behind a hover.
  */
 export function ScopeBar({
   seasons,
@@ -47,60 +42,43 @@ export function ScopeBar({
   onSelectCheckpoint: (checkpointId: string | undefined) => void
   onIntent?: (checkpointId: string | undefined) => void
 }) {
-  const showSplits = Boolean(activeSeason && activeSeason !== 'All' && checkpoints.length > 0)
+  const season = activeSeason ?? 'All'
+  const showSplits = season !== 'All' && checkpoints.length > 0
   const active = checkpoints.find((entry) => entry.id === activeCheckpoint)
+  const progress = active?.ongoing ? checkpointProgress(active, throughDate) : undefined
   const options: SegmentedOption<string>[] = [
-    { value: FULL_YEAR, label: 'Full year', title: rankingScopePeriod(activeSeason) },
-    ...checkpoints.map((checkpoint) => {
-      const progress = checkpoint.ongoing ? checkpointProgress(checkpoint, throughDate) : undefined
-      return {
-        value: checkpoint.id,
-        label: checkpoint.label,
-        title: `${formatDate(checkpoint.startDate)} to ${formatDate(checkpoint.endDate)}${progress === undefined ? '' : `. Ongoing: results cover ${progress}% of the split's dates.`}`,
-        marker: checkpoint.ongoing ? <LiveMarker /> : undefined,
-      }
-    }),
+    { value: FULL_YEAR, label: 'Full year' },
+    ...checkpoints.map((checkpoint) => ({
+      value: checkpoint.id,
+      label: checkpoint.label,
+      marker: checkpoint.ongoing ? <LiveMarker /> : undefined,
+    })),
     ...(pendingCheckpoint ? [{ value: pendingCheckpoint.id, label: pendingCheckpoint.label, title: `${pendingCheckpoint.label} has not started yet.`, disabled: true }] : []),
   ]
-  const selection = !activeSeason || activeSeason === 'All'
-    ? 'all seasons'
-    : active ? `${activeSeason}, ${active.label}` : `${activeSeason}, full year`
+  const selection = season === 'All' ? 'all seasons' : active ? `${season}, ${active.label}` : `${season}, full year`
 
   return (
-    <div
-      className="ranking-period flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-[color-mix(in_oklch,var(--surface)_76%,var(--bg))] px-[var(--page-x)] py-2.5"
-      role="group"
-      aria-label="Ranking period"
-    >
-      <label className="sr-only" htmlFor="scope-season">Season</label>
-      <Select
-        id="scope-season"
-        className="min-w-[104px] font-mono font-bold text-[var(--text-strong)]"
-        value={activeSeason ?? 'All'}
-        onChange={(event) => onSelectSeason(event.target.value)}
-      >
-        {seasons.map((season) => (
-          <option key={season} value={season}>
-            {season === 'All' ? 'All seasons' : season}
-          </option>
-        ))}
-      </Select>
-
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-line px-[var(--page-x)] pt-1 pb-3 max-sm:pb-2.5" role="group" aria-label="Ranking period">
+      <Segmented
+        value={season}
+        options={seasons.map((value) => ({ value, label: value === 'All' ? 'All seasons' : value }))}
+        onChange={onSelectSeason}
+        ariaLabel="Season"
+      />
       {showSplits ? (
         <Segmented
           value={activeCheckpoint ?? FULL_YEAR}
           options={options}
           onChange={(value) => onSelectCheckpoint(value === FULL_YEAR ? undefined : value)}
           onIntent={onIntent ? (value) => onIntent(value === FULL_YEAR ? undefined : value) : undefined}
-          ariaLabel={`${activeSeason} period`}
-          className="max-sm:basis-full"
+          ariaLabel={`${season} period`}
         />
       ) : null}
-
-      <p className="text-xs text-muted-foreground max-md:basis-full" aria-live="polite">
+      <p className="text-sm text-muted" aria-live="polite">
         <span className="sr-only">Showing {selection}. </span>
-        {scopeThroughDate ? <>Results through <b className="font-semibold text-foreground">{formatDate(scopeThroughDate)}</b></> : null}
-        {publishedAt ? <span className="max-sm:hidden">{scopeThroughDate ? ' · ' : ''}Updated {formatDate(publishedAt)}</span> : null}
+        {season === 'All' ? null : <>{rankingScopePeriod(season, active)}{progress === undefined ? '. ' : `, ${progress}% of its dates played. `}</>}
+        {scopeThroughDate ? <>Results through <b className="font-semibold text-text">{formatDate(scopeThroughDate)}</b>.</> : null}
+        {publishedAt ? <span className="max-sm:hidden"> Updated {formatDate(publishedAt)}.</span> : null}
       </p>
     </div>
   )
@@ -108,8 +86,8 @@ export function ScopeBar({
 
 function LiveMarker() {
   return (
-    <span className="inline-flex items-center gap-1 text-2xs font-semibold text-[var(--up)]">
-      <span className="size-1.5 rounded-full bg-[var(--up)]" aria-hidden="true" />
+    <span className="inline-flex items-center gap-1 text-xs text-muted">
+      <span className="size-1.5 rounded-full bg-text" aria-hidden="true" />
       <span className="max-sm:sr-only">live</span>
     </span>
   )

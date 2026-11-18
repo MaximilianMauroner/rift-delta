@@ -39,7 +39,7 @@ export function Pager({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground',
+        'flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted',
         '[--pager-h:32px]',
         density === 'compact' && '[--pager-h:28px] text-xs',
         className,
@@ -48,7 +48,7 @@ export function Pager({
     >
       {showSize ? (
         <label className="inline-flex items-center gap-2 [&_[data-slot=select]]:h-[var(--pager-h)] [&_[data-slot=select]]:min-w-[74px] [&_[data-slot=select]]:pl-2.5 [&_[data-slot=select]]:text-xs">
-          <span className="whitespace-nowrap font-medium text-foreground">Rows</span>
+          <span className="whitespace-nowrap font-semibold text-text">Rows</span>
           <Select value={String(pageSize)} onChange={(event) => onPageSize?.(Number(event.target.value))} aria-label="Rows per page">
             {pageSizes?.map((option) => (
               <option key={option} value={option}>
@@ -62,7 +62,7 @@ export function Pager({
       {rangeLabel ? <span className="whitespace-nowrap tabular-nums">{rangeLabel}</span> : null}
 
       <div className="ml-auto flex items-center gap-2">
-        <span className="inline-flex h-[var(--pager-h)] items-center justify-center whitespace-nowrap px-1 font-medium text-foreground tabular-nums">
+        <span className="inline-flex h-[var(--pager-h)] items-center justify-center whitespace-nowrap px-1 font-semibold text-text tabular-nums">
           Page {page} of {pageCount}
         </span>
         <div className="inline-flex items-center gap-1.5 [&_[data-slot=button]]:size-[var(--pager-h)]">

@@ -44,13 +44,14 @@ export function PlayerEvidence({
     <Card
       className="gap-0 overflow-visible py-0"
       role="region"
+      data-first-answer="tournament-reports"
       aria-label={`Evidence for ${player.name}, ${player.role}`}
     >
-      <CardHeader className="gap-3 rounded-t-lg border-b border-border bg-[var(--surface-2)] py-4">
+      <CardHeader className="gap-3 border-b border-line bg-raised py-4">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h4 className="break-words text-lg font-bold">{player.name}</h4>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted">
               {player.role} · {player.games.length} games
             </p>
           </div>
@@ -67,8 +68,8 @@ export function PlayerEvidence({
       </CardHeader>
       <CardContent className="grid min-w-0 gap-5 py-4">
         <section aria-label="Event averages" className="grid gap-2">
-          <h5 className="text-base font-semibold text-[var(--text-strong)]">Against other {peers}</h5>
-          <ol className="grid min-w-0 divide-y divide-border">
+          <h5 className="text-base font-semibold text-text">Against other {peers}</h5>
+          <ol className="grid min-w-0 divide-y divide-line">
             {positions.map((position) => {
               const metric = playerPerformanceMetrics[position.metric]
               return (
@@ -104,32 +105,32 @@ export function PlayerEvidence({
               >
                 <XAxis
                   dataKey="game"
-                  fontSize={10}
+                  fontSize={12}
                   tickLine={false}
                   tick={{ fill: 'var(--muted)' }}
                   label={{
                     value: 'Game',
                     position: 'insideBottom',
                     offset: -5,
-                    fontSize: 10,
+                    fontSize: 12,
                     fill: 'var(--muted)',
                   }}
                 />
-                <YAxis width={48} fontSize={10} tickLine={false} tick={{ fill: 'var(--muted)' }} />
-                <ReferenceLine y={0} stroke="var(--line-strong)" />
+                <YAxis width={48} fontSize={12} tickLine={false} tick={{ fill: 'var(--muted)' }} />
+                <ReferenceLine y={0} stroke="var(--line)" />
                 <Tooltip
                   labelFormatter={(value) => `Game ${value}`}
                   formatter={(value) => [`${signedGold(Number(value))} gold`, 'Gold lead at 15']}
                   contentStyle={{
-                    background: 'var(--surface-2)',
-                    borderColor: 'var(--line-strong)',
+                    background: 'var(--raised)',
+                    borderColor: 'var(--line)',
                     fontSize: 12,
                   }}
                 />
                 <Line
                   dataKey="gold"
                   name="Gold lead at 15"
-                  stroke="var(--accent)"
+                  stroke="var(--text)"
                   strokeWidth={2}
                   connectNulls={false}
                   dot={{ r: 3 }}
@@ -147,17 +148,17 @@ export function PlayerEvidence({
                 key={game.matchId}
                 className={`min-w-0 rounded-md p-3 text-xs ${
                   game.result === 'W'
-                    ? 'bg-[var(--win-soft)]'
+                    ? 'bg-[var(--up-wash)]'
                     : game.result === 'L'
-                      ? 'bg-[var(--loss-soft)]'
-                      : 'bg-[var(--surface-2)]'
+                      ? 'bg-[var(--down-wash)]'
+                      : 'bg-raised'
                 }`}
               >
                 <details className="min-w-0 break-words">
                   <summary className="cursor-pointer leading-6">
                     {index + 1}. {game.date} · <strong>{game.result}</strong> vs {game.opponent}{' '}
                     · {game.champion ?? 'Champion unavailable'}
-                    <span className="block text-muted-foreground tabular-nums">
+                    <span className="block text-muted tabular-nums">
                       Gold lead at 15:{' '}
                       {game.metrics.goldDiffAt15 === null
                         ? 'unavailable'
@@ -167,7 +168,7 @@ export function PlayerEvidence({
                   <dl className="mt-2 grid grid-cols-2 gap-2">
                     {Object.entries(playerPerformanceMetrics).map(([key, metric]) => (
                       <div key={key}>
-                        <dt className="text-muted-foreground">{metric.label}</dt>
+                        <dt className="text-muted">{metric.label}</dt>
                         <dd className="tabular-nums">
                           {formatMetric(key as keyof typeof playerPerformanceMetrics, game.metrics[key as keyof typeof playerPerformanceMetrics])}
                         </dd>

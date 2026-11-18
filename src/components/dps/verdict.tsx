@@ -1,3 +1,5 @@
+import { Button } from "../ui/button.tsx";
+import { Panel } from "../ui/panel.tsx";
 import type { ReactNode } from "react";
 import type { WindowSummary } from "../../domains/dps/compare-view.ts";
 import type { SampleComparison } from "../../domains/dps/types.ts";
@@ -100,67 +102,70 @@ export function VerdictBand({
   const bShare = current?.bShare ?? 0;
   const saturated = current?.verdict === "all-killed";
   return (
-    <section className="card band" aria-live="polite">
-      <div>
-        <p className="context">
-          {labels.singleItem ? "Item under test" : "Build comparison"} · level {level} ·{" "}
-          {metric === "ttk" ? "time to kill" : "damage"} · {datasetLabel}
-          {recomputing && <span className="recomputing">recomputing…</span>}
-        </p>
-        <h1 className="question">
-          <span className="side-a">{labels.a}</span> <span className="vs">vs</span>{" "}
-          <span className="side-b">{labels.b}</span>
-        </h1>
-        <div className="tiles" role="group" aria-label="Fight length">
-          {windows.map((summary) => {
-            const text = windowVerdictText(summary, labels);
-            const selected = summary.duration === duration;
-            return (
-              <button
-                key={summary.duration}
-                className={`tile ${selected ? "on" : ""}`}
-                aria-pressed={selected}
-                onClick={() => onDuration(summary.duration)}
-              >
-                <em>{summary.duration} seconds</em>
-                <b className={`tone-${text.tone}`}>{text.headline}</b>
-                <i>{text.detail}</i>
-              </button>
-            );
-          })}
-        </div>
-        <div className="share">
-          <div
-            className={`winbar ${aShare + bShare === 0 ? "winbar-flat" : ""}`}
-            role="img"
-            aria-label={`${labels.shortA} leads ${Math.round(aShare * 100)} percent of decided targets`}
-          >
-            <i style={{ width: `${aShare * 100}%` }} />
+    <>
+      <Panel className="dps-panel band" aria-live="polite">
+        <div>
+          <p className="context">
+            {labels.singleItem ? "Item under test" : "Build comparison"} · level {level} ·{" "}
+            {metric === "ttk" ? "time to kill" : "damage"} · {datasetLabel}
+            {recomputing && <span className="recomputing">recomputing…</span>}
+          </p>
+          <h2 data-first-answer="lab" className="question">
+            <span className="side-a">{labels.a}</span> <span className="vs">vs</span>{" "}
+            <span className="side-b">{labels.b}</span>
+          </h2>
+          <div className="tiles" role="group" aria-label="Fight length">
+            {windows.map((summary) => {
+              const text = windowVerdictText(summary, labels);
+              const selected = summary.duration === duration;
+              return (
+                <Button
+                  variant="outline"
+                  key={summary.duration}
+                  className={`tile ${selected ? "on" : ""}`}
+                  aria-pressed={selected}
+                  onClick={() => onDuration(summary.duration)}
+                >
+                  <em>{summary.duration} seconds</em>
+                  <b className={`tone-${text.tone}`}>{text.headline}</b>
+                  <i>{text.detail}</i>
+                </Button>
+              );
+            })}
           </div>
-          <div className="share-labels">
-            <span>
-              <strong>{Math.round(aShare * 100)}%</strong> {labels.shortA} · {comparison.aWins} rows
-            </span>
-            <span>
-              {comparison.ties} ties · {comparison.censored} censored
-            </span>
-            <span>
-              {labels.shortB} <strong>{Math.round(bShare * 100)}%</strong> · {comparison.bWins} rows
-            </span>
+          <div className="share">
+            <div
+              className={`winbar ${aShare + bShare === 0 ? "winbar-flat" : ""}`}
+              role="img"
+              aria-label={`${labels.shortA} leads ${Math.round(aShare * 100)} percent of decided targets`}
+            >
+              <i style={{ width: `${aShare * 100}%` }} />
+            </div>
+            <div className="share-labels">
+              <span>
+                <strong>{Math.round(aShare * 100)}%</strong> {labels.shortA} · {comparison.aWins} rows
+              </span>
+              <span>
+                {comparison.ties} ties · {comparison.censored} censored
+              </span>
+              <span>
+                {labels.shortB} <strong>{Math.round(bShare * 100)}%</strong> · {comparison.bWins} rows
+              </span>
+            </div>
+          </div>
+          <div className="callout">
+            <b>Read</b>
+            <span>{narrative(current, comparison, labels, drafts, metric)}</span>
+            {saturated && metric === "damage" && (
+              <Button variant="outline" className="callout-action" onClick={onSwitchToTtk}>
+                Switch to TTK
+              </Button>
+            )}
           </div>
         </div>
-        <div className="callout">
-          <b>Read</b>
-          <span>{narrative(current, comparison, labels, drafts, metric)}</span>
-          {saturated && metric === "damage" && (
-            <button className="callout-action" onClick={onSwitchToTtk}>
-              Switch to TTK
-            </button>
-          )}
-        </div>
-      </div>
-      <div>{children}</div>
-    </section>
+      </Panel>
+      <Panel className="dps-panel breakpoint-panel">{children}</Panel>
+    </>
   );
 }
 
@@ -180,17 +185,17 @@ export function IdenticalBuildsBand({
   onResetDefault: () => void;
 }) {
   return (
-    <section className="card band band-flat" aria-live="polite">
+    <Panel className="dps-panel band band-flat" aria-live="polite">
       <div>
-        <h1 className="question">Both builds are identical</h1>
+        <h2 data-first-answer="lab" className="question">Both builds are identical</h2>
         <p className="lede">
           Every target ties by construction, so no winner, no delta and no draft slices are shown.
           Change one item under test to ask a comparative question.
         </p>
         <div className="actions">
-          <button className="primary" onClick={onResetDefault}>
+          <Button className="primary" onClick={onResetDefault}>
             Reset to the observed default comparison
-          </button>
+          </Button>
         </div>
         {damage !== null && (
           <p className="note">
@@ -206,15 +211,15 @@ export function IdenticalBuildsBand({
             <p className="context">Try another item under test</p>
             <div className="suggestions">
               {suggestions.map((suggestion) => (
-                <button key={suggestion.id} onClick={suggestion.apply}>
+                <Button variant="outline" key={suggestion.id} onClick={suggestion.apply}>
                   <strong>{suggestion.label}</strong>
                   <span>{suggestion.detail}</span>
-                </button>
+                </Button>
               ))}
             </div>
           </>
         )}
       </div>
-    </section>
+    </Panel>
   );
 }

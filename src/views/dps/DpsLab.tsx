@@ -1,3 +1,5 @@
+import { Panel } from "../../components/ui/panel.tsx";
+import { Button } from "../../components/ui/button.tsx";
 import { COMBO_PRESETS, actionAvailable } from "../../browser/dps/presets.ts";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import type { ProgressionApiResponse } from "../../domains/dps/datasets.ts";
@@ -48,7 +50,7 @@ import {
 } from "../../components/dps/controls.tsx";
 import { EnemySlices } from "../../components/dps/slices.tsx";
 import { HeadToHead } from "../../components/dps/head-to-head.tsx";
-import { OptimizerPanel } from "../../components/dps/optimizer.tsx";
+import { OptimizerPanel, OptimizerResults } from "../../components/dps/optimizer.tsx";
 import { EvidenceFold, LimitsFold, TraceFold } from "../../components/dps/panels.tsx";
 import type { CohortPayload, DraftRow, LabDataset, LabResult } from "../../components/dps/types.ts";
 import { IdenticalBuildsBand, VerdictBand } from "../../components/dps/verdict.tsx";
@@ -117,6 +119,7 @@ export default function Home() {
   const optimizerSlotEditedRef = useRef(false);
   const optimizerInputKeyRef = useRef<string | null>(null);
   const requestIdRef = useRef(0);
+  const railRef = useRef<HTMLElement | null>(null);
   const autoRunTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cohortRef = useRef<{ key: string; payload: CohortPayload } | null>(null);
   const progressionCacheRef = useRef(new Map<number, ProgressionApiResponse>());
@@ -705,20 +708,18 @@ export default function Home() {
   );
 
   return (
-    <div className="page">
+    <main className="page">
       <header className="top">
         <div className="top-in">
-          <span className="logo" aria-hidden>
-            Δ
-          </span>
-          <strong>DPS lab</strong>
+          <div>
+            <h1 className="lab-title">DPS lab</h1>
+            <p className="note">Compare Yunara builds against the selected targets.</p>
+          </div>
           <div className="top-right">
-            <span className="pill pill-gold">
-              Patch {PATCH} · {DATA_VERSION}
-            </span>
+            <span className="pill">Patch {PATCH} · {DATA_VERSION}</span>
             {dataset && (
               <span className={dataset.provenance === "riot" ? "pill pill-riot" : "pill pill-demo"}>
-                {dataset.provenance === "riot" ? "Riot snapshots" : "Fixture / demo data"}
+                {dataset.provenance === "riot" ? "Riot snapshots" : "⚠ Fixture / demo data"}
               </span>
             )}
           </div>
@@ -726,93 +727,16 @@ export default function Home() {
       </header>
 
       <div className="lab">
-        <aside className="rail" aria-label="Simulation setup">
-          <AttackerCard
-            level={level}
-            ranks={ranks}
-            rankNotice={rankNotice}
-            yunTalStacks={yunTalStacks}
-            onLevel={setLevel}
-            onAdjustRank={adjustRank}
-            onYunTalStacks={setYunTalStacks}
-          />
-          <OpenerCard
-            actions={actions}
-            level={level}
-            continueAutos={continueAutos}
-            duration={duration}
-            onPreset={applyComboPreset}
-            onAddAction={(action) => {
-              if (!actionAvailable(action, level)) return;
-              comboEditedRef.current = true;
-              setActions((current) => [...current, action]);
-            }}
-            onRemoveAction={(index) => {
-              comboEditedRef.current = true;
-              setActions((current) => current.filter((_, position) => position !== index));
-            }}
-            onMoveAction={(index, direction) => {
-              comboEditedRef.current = true;
-              setActions((current) => moveItem(current, index, direction));
-            }}
-            onContinueAutos={setContinueAutos}
-            onDuration={(seconds) => setDuration(clampDuration(seconds))}
-          />
-          <TargetCard
-            targetMode={targetMode}
-            region={region}
-            rank={rank}
-            role={role}
-            phase={phase}
-            targetChampionDraft={targetChampionDraft}
-            appliedChampion={targetChampion}
-            manual={manual}
-            metric={metric}
-            snapshotCount={dataset?.count ?? null}
-            onTargetMode={setTargetMode}
-            onRegion={setRegion}
-            onRank={setRank}
-            onRole={setRole}
-            onPhase={setPhase}
-            onChampionDraft={setTargetChampionDraft}
-            onCommitChampion={commitTargetChampion}
-            onManual={setManual}
-            onMetric={setMetric}
-          />
-          <section className="card status">
-            <p>
-              <strong>Live</strong> — every change re-runs against the cached cohort. Level and
-              filter changes fetch a new one.
-            </p>
-            <button className="ghost" onClick={() => void run()} disabled={loading}>
-              {loading ? "Calculating…" : "Run again"}
-            </button>
-          </section>
-        </aside>
-
-        <main className="board">
+        <div className="board">
+          <button type="button" className="skip-setup" onClick={() => railRef.current?.focus()}>
+            Skip to setup
+          </button>
           {error && (
             <div className="error" role="alert">
               {error}
             </div>
           )}
 
-          <OptimizerPanel
-            objective={optimizerObjective}
-            slotCount={optimizerSlotCount}
-            topN={optimizerTopN}
-            running={optimizerRunning}
-            progress={optimizerProgress}
-            result={optimizerResult}
-            cohortCount={optimizerCohortCount}
-            error={optimizerError}
-            onObjective={setOptimizerObjective}
-            onSlotCount={updateOptimizerSlotCount}
-            onTopN={setOptimizerTopN}
-            onRun={() => void runOptimizer()}
-            onCancel={cancelOptimizer}
-            onUseBuild={useOptimizerBuild}
-          />
 
           {identical ? (
             <IdenticalBuildsBand
@@ -843,11 +767,11 @@ export default function Home() {
               <BreakpointHeat points={result.breakpoints} duration={duration} labels={labels} />
             </VerdictBand>
           ) : (
-            <section className="card band band-flat" aria-live="polite">
+            <Panel className="dps-panel band band-flat" aria-live="polite">
               <div>
-                <h1 className="question">
+                <h2 data-first-answer={loading ? undefined : "lab"} className="question">
                   {loading ? "Running the comparison…" : "No current comparison"}
-                </h1>
+                </h2>
                 <p className="lede">
                   {loading
                     ? "Simulating both builds against every target in the cohort."
@@ -855,8 +779,14 @@ export default function Home() {
                 </p>
               </div>
               <div />
-            </section>
+            </Panel>
           )}
+
+          <OptimizerResults
+            result={optimizerRunning ? null : optimizerResult}
+            cohortCount={optimizerCohortCount}
+            onUseBuild={useOptimizerBuild}
+          />
 
           <div className={identical ? "" : "grid2"}>
             <HeadToHead
@@ -917,7 +847,85 @@ export default function Home() {
             modelWarnings={result?.modelWarnings ?? []}
             assumptions={result?.assumptions ?? ""}
           />
-        </main>
+        </div>
+
+        <aside className="rail" aria-label="Simulation setup" ref={railRef} tabIndex={-1}>
+          <AttackerCard
+            level={level}
+            ranks={ranks}
+            rankNotice={rankNotice}
+            yunTalStacks={yunTalStacks}
+            onLevel={setLevel}
+            onAdjustRank={adjustRank}
+            onYunTalStacks={setYunTalStacks}
+          />
+          <OptimizerPanel
+            objective={optimizerObjective}
+            slotCount={optimizerSlotCount}
+            topN={optimizerTopN}
+            running={optimizerRunning}
+            progress={optimizerProgress}
+            result={optimizerResult}
+            error={optimizerError}
+            onObjective={setOptimizerObjective}
+            onSlotCount={updateOptimizerSlotCount}
+            onTopN={setOptimizerTopN}
+            onRun={() => void runOptimizer()}
+            onCancel={cancelOptimizer}
+          />
+          <OpenerCard
+            actions={actions}
+            level={level}
+            continueAutos={continueAutos}
+            duration={duration}
+            onPreset={applyComboPreset}
+            onAddAction={(action) => {
+              if (!actionAvailable(action, level)) return;
+              comboEditedRef.current = true;
+              setActions((current) => [...current, action]);
+            }}
+            onRemoveAction={(index) => {
+              comboEditedRef.current = true;
+              setActions((current) => current.filter((_, position) => position !== index));
+            }}
+            onMoveAction={(index, direction) => {
+              comboEditedRef.current = true;
+              setActions((current) => moveItem(current, index, direction));
+            }}
+            onContinueAutos={setContinueAutos}
+            onDuration={(seconds) => setDuration(clampDuration(seconds))}
+          />
+          <TargetCard
+            targetMode={targetMode}
+            region={region}
+            rank={rank}
+            role={role}
+            phase={phase}
+            targetChampionDraft={targetChampionDraft}
+            appliedChampion={targetChampion}
+            manual={manual}
+            metric={metric}
+            snapshotCount={dataset?.count ?? null}
+            onTargetMode={setTargetMode}
+            onRegion={setRegion}
+            onRank={setRank}
+            onRole={setRole}
+            onPhase={setPhase}
+            onChampionDraft={setTargetChampionDraft}
+            onCommitChampion={commitTargetChampion}
+            onManual={setManual}
+            onMetric={setMetric}
+          />
+          <Panel className="dps-panel status">
+            <p>
+              <strong>Automatic rerun.</strong> Every change re-runs against the cached cohort. Level and
+              filter changes fetch a new one.
+            </p>
+            <Button variant="outline" className="ghost" onClick={() => void run()} disabled={loading}>
+              {loading ? "Calculating…" : "Run again"}
+            </Button>
+          </Panel>
+        </aside>
       </div>
 
       <footer>
@@ -925,7 +933,7 @@ export default function Home() {
         involved in producing or managing League of Legends. League of Legends and Riot Games are
         trademarks or registered trademarks of Riot Games, Inc.
       </footer>
-    </div>
+    </main>
   );
 }
 

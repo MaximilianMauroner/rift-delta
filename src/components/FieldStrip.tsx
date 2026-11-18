@@ -1,15 +1,7 @@
 import { useId, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
-import { fieldPlace, type FieldPosition, type FieldStanding } from '../domains/rankings/field-statistics'
+import { fieldPlace, type FieldPosition } from '../domains/rankings/field-statistics'
 import { cn } from '../shared/utils'
 import { ordinal, standingLabel } from './fieldFormat'
-
-/** The colour of a place, so the place itself says how good it is. */
-const STANDING_TONE: Record<FieldStanding, string> = {
-  top: 'text-[var(--rank-gold)]',
-  above: 'text-[var(--win)]',
-  close: 'text-muted-foreground',
-  below: 'text-[var(--loss)]',
-}
 
 /**
  * One measure of one subject against its field. The place leads, coloured by how
@@ -45,7 +37,6 @@ export function FieldStrip({
   /** A caveat next to the value, such as games the average skips. */
   note?: string
 }) {
-  const [explained, setExplained] = useState(false)
   const hintId = useId()
   const { value, field, mean, place, better, standing } = position
   const values = field.map((entry) => entry.value)
@@ -84,39 +75,27 @@ export function FieldStrip({
         }${spread ? `. Range ${show(low)} to ${show(high)}` : ''}. ${verdict}.`
   return (
     <li className="grid min-w-0 grid-cols-[4rem_minmax(0,1fr)] gap-x-3 py-3">
-      <span className="grid content-start justify-items-center pt-0.5 text-center leading-none" title={verdict}>
-        <span className={cn('text-xl font-extrabold tabular-nums', shown && standing ? STANDING_TONE[standing] : 'text-[var(--faint)]')}>
+      <span className="grid content-start justify-items-center pt-0.5 text-center leading-none">
+        <span className={cn('text-2xl font-bold tabular-nums', shown ? 'text-text' : 'text-muted')}>
           {shown ? ordinal(shown) : '–'}
         </span>
-        <span className="mt-1 text-2xs text-muted-foreground">
+        <span className="mt-1 text-xs text-muted">
           {shown ? `of ${field.length}` : value === null ? 'no data' : tooFew ? `${position.n} of ${minSamples}` : 'style'}
         </span>
+        {shown && verdict ? <span className="mt-1 text-xs leading-tight text-muted">{verdict}</span> : null}
       </span>
       <span className="grid min-w-0 gap-1">
         <span className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3">
-          {hint ? (
-            <button
-              type="button"
-              className="min-w-0 cursor-help rounded-sm text-left text-sm font-semibold text-[var(--text-strong)] underline decoration-[var(--line-strong)] decoration-dotted underline-offset-4 outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--focus)]"
-              title={hint}
-              aria-expanded={explained}
-              aria-controls={hintId}
-              onClick={() => setExplained(!explained)}
-            >
-              {label}
-            </button>
-          ) : (
-            <span className="min-w-0 text-sm font-semibold text-[var(--text-strong)]">{label}</span>
-          )}
+          <span className="min-w-0 text-sm font-semibold text-text">{label}</span>
           <span className="ml-auto grid justify-items-end gap-0.5 text-right">
-            <span className="text-base leading-none font-bold text-[var(--text-strong)] tabular-nums">
+            <span className="text-base leading-none font-bold text-text tabular-nums">
               {value === null ? '—' : show(value)}
             </span>
-            {note ? <span className="text-2xs text-muted-foreground">{note}</span> : null}
+            {note ? <span className="text-xs text-muted">{note}</span> : null}
           </span>
         </span>
         {hint ? (
-          <span id={hintId} className={explained ? 'text-xs text-muted-foreground' : 'sr-only'}>
+          <span id={hintId} className="text-xs text-muted">
             {hint}
           </span>
         ) : null}
@@ -201,7 +180,7 @@ function FieldTrack({
   }
   return (
     <span
-      className="relative mx-1.5 block h-8 min-w-0 cursor-crosshair touch-pan-y rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-[var(--focus)]"
+      className="relative mx-1.5 block h-8 min-w-0 cursor-crosshair touch-pan-y rounded-md outline-offset-4 focus-visible:outline-2 focus-visible:outline-focus"
       {...(entries.length
         ? {
             role: 'slider',
@@ -224,23 +203,23 @@ function FieldTrack({
       onKeyDown={step}
       onBlur={() => setActive(null)}
     >
-      <span className="absolute inset-x-0 top-3 border-t border-[var(--line-strong)]" />
+      <span className="absolute inset-x-0 top-3 border-t border-line" />
       {mean !== null ? (
         <span
-          className="absolute top-1 h-4 w-0.5 -translate-x-1/2 rounded-full bg-muted-foreground"
+          className="absolute top-1 h-4 w-0.5 -translate-x-1/2 rounded-full bg-muted"
           style={{ left: `${at(mean)}%` }}
         />
       ) : null}
       {current ? (
-        <span className="absolute inset-y-0 w-px -translate-x-1/2 bg-[var(--focus)] opacity-60" style={{ left: `${at(current.value)}%` }} />
+        <span className="absolute inset-y-0 w-px -translate-x-1/2 bg-focus opacity-60" style={{ left: `${at(current.value)}%` }} />
       ) : null}
       {entries.map((entry) =>
         entry.id === subjectId ? null : (
           <span
             key={entry.id}
             className={cn(
-              'absolute top-3 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground opacity-55',
-              stack.includes(entry) && 'size-2.5 bg-[var(--text-strong)] opacity-100',
+              'absolute top-3 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted opacity-55',
+              stack.includes(entry) && 'size-2.5 bg-text opacity-100',
             )}
             style={{ left: `${at(entry.value)}%` }}
           />
@@ -251,31 +230,31 @@ function FieldTrack({
         .map((entry) => (
           <span
             key={entry.id}
-            className="absolute top-3 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card bg-[var(--accent)]"
+            className="absolute top-3 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-focus"
             style={{ left: `${at(entry.value)}%` }}
           />
         ))}
       {ends ? (
-        <span className="absolute inset-x-0 top-5 flex justify-between text-2xs text-[var(--faint)] tabular-nums" aria-hidden="true">
+        <span className="absolute inset-x-0 top-5 flex justify-between text-xs text-muted tabular-nums" aria-hidden="true">
           <span className="-translate-x-2">{ends[0]}</span>
           <span className="translate-x-2">{ends[1]}</span>
         </span>
       ) : null}
       {current ? (
         <span
-          className="pointer-events-none absolute bottom-full z-20 mb-1 grid w-max max-w-56 -translate-x-1/2 gap-0.5 rounded-md border border-[var(--line-strong)] bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-[var(--shadow-pop)]"
+          className="pointer-events-none absolute bottom-full z-20 mb-1 grid w-max max-w-56 -translate-x-1/2 gap-0.5 rounded-md border border-line bg-raised px-2.5 py-1.5 text-xs text-text shadow-[var(--overlay-shadow)]"
           style={{ left: `clamp(5rem, ${at(current.value)}%, calc(100% - 5rem))` }}
           aria-hidden="true"
         >
           {stack.slice(0, 5).map((entry) => (
             <span key={entry.id} className="flex items-baseline gap-2 tabular-nums">
-              <span className="w-8 shrink-0 text-muted-foreground">{entry.place ? ordinal(entry.place) : '–'}</span>
-              <span className={cn('min-w-0 flex-1 truncate font-semibold', entry.id === subjectId && 'text-[var(--accent)]')}>{entry.name}</span>
+              <span className="w-8 shrink-0 text-muted">{entry.place ? ordinal(entry.place) : '–'}</span>
+              <span className={cn('min-w-0 flex-1 truncate font-semibold', entry.id === subjectId && 'text-focus')}>{entry.name}</span>
               <span className="font-semibold">{format(entry.value)}</span>
             </span>
           ))}
-          {stack.length > 5 ? <span className="text-muted-foreground">and {stack.length - 5} more</span> : null}
-          {stack.length === 1 ? <span className="text-2xs text-muted-foreground">{current.n} {sampleUnit}</span> : null}
+          {stack.length > 5 ? <span className="text-muted">and {stack.length - 5} more</span> : null}
+          {stack.length === 1 ? <span className="text-xs text-muted">{current.n} {sampleUnit}</span> : null}
         </span>
       ) : null}
     </span>
@@ -285,17 +264,17 @@ function FieldTrack({
 /** The legend under a list of field strips, so each row does not repeat it. */
 export function FieldStripKey({ subject, others, children }: { subject: string; others: string; children?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
       <span className="inline-flex items-center gap-1.5">
-        <i className="size-2.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+        <i className="size-2.5 rounded-full bg-focus" aria-hidden="true" />
         {subject}
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <i className="size-2 rounded-full bg-muted-foreground opacity-55" aria-hidden="true" />
+        <i className="size-2 rounded-full bg-muted opacity-55" aria-hidden="true" />
         {others}
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <i className="h-3 w-0.5 rounded-full bg-muted-foreground" aria-hidden="true" />
+        <i className="h-3 w-0.5 rounded-full bg-muted" aria-hidden="true" />
         Average
       </span>
       <span>Right is better</span>

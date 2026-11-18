@@ -14,7 +14,7 @@ const playersAddress = '#players?scope=season%3A2026'
 
 function player(name: string, team: string, role: CompactPlayer['role'], rating: number, rank: number): CompactPlayer {
   return {
-    id: `synthetic-${name}`, name, team, role, rating, rank, games: 30 + rank,
+    id: `synthetic-${name}`, name, team, region: team === 'Legacy Team' ? 'LEC' : 'LCK', role, rating, rank, games: 30 + rank,
     delta: 0, impactMultiplier: 1, ratingBasis: 'sourced-player-stats', sourceProvider: 'synthetic-fixture',
   }
 }
@@ -52,7 +52,7 @@ function fixtureBodies() {
   const original = bodies.get(playerPath)
   assert.ok(original, 'The fixture must use the normal published player artifact')
   const seasonPlayers = [
-    player('Cedar', 'Fixture Beta', 'Mid', 230, 3),
+    { ...player('Cedar', 'Fixture Beta', 'Mid', 230, 3), league: 'LPL' },
     player('Aster', 'Fixture Alpha', 'Mid', 320, 1),
     player('Beacon', 'Fixture Alpha', 'Support', 260, 2),
   ]
@@ -75,11 +75,13 @@ function fixtureBodies() {
 
 async function expectPlayers(page: Page, names: string[]) {
   await page.waitForFunction((expected) => {
-    const actual = [...document.querySelectorAll('table[aria-label="Player rankings"] tbody tr td:nth-child(2)')]
+    const table = document.querySelector('table[aria-label="Player rankings"]')
+    if (!table?.getClientRects().length) return false
+    const actual = [...document.querySelectorAll('table[aria-label="Player rankings"] tbody tr [data-player-profile]')]
       .map((cell) => cell.textContent)
     return JSON.stringify(actual) === JSON.stringify(expected)
   }, names, { timeout: 5_000 })
-  assert.deepEqual(await page.getByRole('table', { name: 'Player rankings' }).locator('tbody tr td:nth-child(2)').allTextContents(), names)
+  assert.deepEqual(await page.getByRole('table', { name: 'Player rankings' }).locator('tbody tr [data-player-profile]').allTextContents(), names)
 }
 
 test('Players supports navigation, exact seasons, score order, addressed filters and explicit artifact states', { timeout: 90_000 }, async () => {
@@ -149,14 +151,35 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await navigation.getByRole('link', { name: 'Players', exact: true }).click()
     await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
     assert.equal(requests.filter((path) => path === playerPath).length, 1, 'Leaving Players must keep its pending directory load')
-    assert.deepEqual(await rows.locator('td:nth-child(5)').allTextContents(), ['320', '260', '230'])
-    assert.deepEqual(await rows.locator('td:nth-child(6)').allTextContents(), ['31', '32', '33'])
-    assert.equal(await page.getByRole('link', { name: 'Scouting report for Cedar', exact: true }).getAttribute('href'), '#scouting?player=synthetic-Cedar%7CMid', 'Each row links to its scouting report by player id and role')
+    const leagueFilter = page.getByRole('navigation', { name: 'League filter' })
+    await leagueFilter.getByRole('link', { name: 'LEC', exact: true }).click()
+    await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('region') === 'LEC')
+    await page.waitForFunction(() => document.querySelectorAll('table[aria-label="Player rankings"] tbody tr').length === 0)
+    await leagueFilter.getByRole('link', { name: 'LCK', exact: true }).click()
+    await expectPlayers(page, ['Aster', 'Beacon'])
+    await page.reload()
+    await expectPlayers(page, ['Aster', 'Beacon'])
+    assert.equal(await leagueFilter.getByRole('link', { name: 'LCK', exact: true }).getAttribute('aria-current'), 'true')
+    await leagueFilter.getByRole('link', { name: 'LPL', exact: true }).click()
+    await expectPlayers(page, ['Cedar'])
+    await page.reload()
+    await expectPlayers(page, ['Cedar'])
+    await page.goBack()
+    await expectPlayers(page, ['Aster', 'Beacon'])
+    await page.goForward()
+    await expectPlayers(page, ['Cedar'])
+    await leagueFilter.getByRole('link', { name: 'All leagues', exact: true }).click()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    assert.deepEqual(await rows.locator('.player-col-score').allTextContents(), ['320', '260', '230'])
+    assert.deepEqual(await rows.locator('[data-player-stat="games"]').allTextContents(), ['31', '32', '33'])
+    assert.equal(await page.locator('a[aria-label="Scouting report for Cedar"]').getAttribute('href'), '#scouting?player=synthetic-Cedar%7CMid', 'Each row links to its scouting report by player id and role')
     await page.getByRole('status').filter({ hasText: 'These are not official LoL Esports rankings.' }).waitFor()
     await page.getByText(/Source synthetic-fixture/).waitFor()
     await page.getByText(/Role Power uses model .+ includes individual stats, results, opponent strength and event context/).waitFor()
     assert.equal(await page.getByText(/Stats Power stats-power-v3 scores/).count(), 0, 'Role Power rows must not claim Stats Power')
-    await page.getByRole('columnheader', { name: 'Season team', exact: true }).waitFor({ timeout: 2_000 })
+    await rows.first().locator('summary').click()
+    await rows.first().getByText('Season team', { exact: true }).waitFor()
+    await rows.first().locator('summary').click()
     assert.equal(await page.getByText(/Stats Power ranks role stats/).count(), 0, 'The shell must not claim Stats Power for a Role Power-only scope')
     await page.getByText('Method', { exact: true }).click()
     assert.equal(await page.locator('.players-method').getByText(/90-day half-life/).count(), 0, 'Role Power must not claim the Stats Power recency policy')
@@ -170,7 +193,9 @@ test('Players supports navigation, exact seasons, score order, addressed filters
 
     await setHash('#players?scope=all')
     await expectPlayers(page, ['Other-season only', 'Aster', 'Beacon', 'Cedar'])
-    await page.getByRole('columnheader', { name: 'Latest team', exact: true }).waitFor()
+    await rows.first().locator('summary').click()
+    await rows.first().getByText('Latest team', { exact: true }).waitFor()
+    await rows.first().locator('summary').click()
     await page.getByText('Method', { exact: true }).click()
     await page.locator('.players-method').getByText(/Latest team is the latest observed team across all seasons/).waitFor()
     await page.getByText('Method', { exact: true }).click()
@@ -283,21 +308,23 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.getByRole('heading', { name: 'No players match these filters', exact: true }).waitFor()
     await page.getByRole('button', { name: 'Clear filters', exact: true }).click()
     await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
-    await page.getByRole('combobox', { name: 'Season', exact: true }).selectOption('2025')
+    await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2025', exact: true }).click()
     await expectPlayers(page, ['Echo', 'Foxtrot', 'Delta'])
     assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '2', '3'], 'Different full-precision scores have different ranks even when the displayed scores match')
-    assert.deepEqual(await rows.locator('td:nth-child(5) .player-score-figure').allTextContents(), ['104.5', '104.5', '101.2'])
+    assert.deepEqual(await rows.locator('.player-score-figure').allTextContents(), ['104.5', '104.5', '101.2'])
     assert.equal(await rows.first().getByText('Through Jul 1, 2025').count(), 1)
+    await rows.first().locator('summary').click()
     await page.setViewportSize({ width: 320, height: 900 })
     assert.equal(await rows.first().evaluate((row) => {
-      const score = row.querySelector('.player-col-score')!.getBoundingClientRect()
+      const score = row.querySelector('.r8-player-row-details')!.getBoundingClientRect()
       const date = row.querySelector('.player-score-evidence')!.getBoundingClientRect()
       return date.left >= score.left && date.right <= score.right
     }), true, 'The evidence date fits inside the score cell on mobile')
     await page.setViewportSize({ width: 1280, height: 900 })
-    assert.deepEqual(await rows.locator('td:nth-child(6)').allTextContents(), ['22', '25', '18'], 'Stat games stay separate from games')
-    assert.deepEqual(await rows.locator('td:nth-child(7)').allTextContents(), ['300', '200', '400'], 'Role Power stays visible')
-    assert.deepEqual(await rows.locator('td:nth-child(8)').allTextContents(), ['12', '13', '11'], 'Credited-team games stay separate from raw stat games')
+    await rows.first().locator('summary').click()
+    assert.deepEqual(await rows.locator('[data-player-stat="stat-games"]').allTextContents(), ['22', '25', '18'], 'Stat games stay separate from games')
+    assert.deepEqual(await rows.locator('[data-player-stat="role-power"]').allTextContents(), ['300', '200', '400'], 'Role Power stays visible')
+    assert.deepEqual(await rows.locator('[data-player-stat="games"]').allTextContents(), ['12', '13', '11'], 'Credited-team games stay separate from raw stat games')
     await page.getByRole('columnheader', { name: 'Stats Power', exact: true }).waitFor()
     await page.getByText(/Stats Power stats-power-v3 scores lane leads/).waitFor()
     await page.getByText('Method', { exact: true }).click()
@@ -313,7 +340,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.reload()
     await expectPlayers(page, ['Echo', 'Foxtrot', 'Delta'])
     assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '1', '3'], 'Equal full-precision Stats Power scores share a rank')
-    await page.getByRole('combobox', { name: 'Season', exact: true }).selectOption('2024')
+    await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2024', exact: true }).click()
     await page.getByRole('heading', { name: 'No ranked players in this scope', exact: true }).waitFor()
     assert.equal(await rows.count(), 0, 'An empty exact season must not borrow all-season players')
 
@@ -325,15 +352,15 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.reload()
     await expectPlayers(page, ['Echo', 'Foxtrot', 'Delta', 'Hotel', 'Golf'])
     assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '1', '3', '—Unranked', '—Unranked'], 'Only observed Stats Power gets a rank')
-    assert.deepEqual(await rows.locator('td:nth-child(5) .player-score-figure').allTextContents(), ['104.5', '104.5', '101.2', '—', '—'], 'Unavailable scores show a dash, not Role Power or the league anchor')
+    assert.deepEqual(await rows.locator('.player-score-figure').allTextContents(), ['104.5', '104.5', '101.2', '—', '—'], 'Unavailable scores show a dash, not Role Power or the league anchor')
     assert.deepEqual(await rows.locator('.player-score-unranked').allTextContents(), ['Unranked. No stat games.', 'Unranked. No Stats Power.'])
     assert.deepEqual(await rows.locator('.player-score-evidence').allTextContents(), ['Through Jul 1, 2025', 'Through Jul 1, 2025', 'Through Jul 1, 2025'], 'Only ranked scores carry an evidence date')
-    assert.equal(await rows.locator('.player-score-position i').count(), 3, 'Unranked rows get no score-range marker')
-    assert.deepEqual(await rows.locator('.player-score-position').evaluateAll((tracks) => tracks.map((track) => getComputedStyle(track).visibility)), ['visible', 'visible', 'visible', 'hidden', 'hidden'], 'Unranked rows show no score-range track')
-    assert.deepEqual(await rows.locator('td:nth-child(6)').allTextContents(), ['22', '25', '18', '0', '—'])
-    assert.deepEqual(await rows.locator('td:nth-child(7)').allTextContents(), ['300', '200', '400', '800', '999'], 'Role Power stays visible in its own column')
+    assert.equal(await rows.locator('.power-lane').count(), 3, 'Unranked rows get no score-range marker')
+    assert.deepEqual(await rows.evaluateAll(elements => elements.map(row => row.querySelector('.power-lane') !== null)), [true, true, true, false, false], 'Only ranked players get a score-range track')
+    assert.deepEqual(await rows.locator('[data-player-stat="stat-games"]').allTextContents(), ['22', '25', '18', '0', '—'])
+    assert.deepEqual(await rows.locator('[data-player-stat="role-power"]').allTextContents(), ['300', '200', '400', '800', '999'], 'Role Power stays visible in its own column')
     await page.getByText('3 ranked by Stats Power. 2 unranked without a usable Stats Power score.', { exact: true }).waitFor()
-    assert.equal(await page.locator('.player-score-key').innerText(), 'Scores run from 101.2 to 104.5', 'The score range uses ranked Stats Power only')
+    assert.equal(await page.locator('.player-score-key').innerText(), 'Scores run from 101.2 to 104.5. Filters keep this scale.', 'The score range uses ranked Stats Power only')
     await page.getByText('Method', { exact: true }).click()
     await page.locator('.players-method').getByText(/A player without stat games is unranked, because a league-anchor score is not an observation/).waitFor()
     await page.getByText('Method', { exact: true }).click()
@@ -341,7 +368,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await role.selectOption('Top')
     await expectPlayers(page, ['Delta', 'Hotel'])
     assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '—Unranked'], 'Role ranks exclude other roles and keep unranked players unranked')
-    assert.equal(await page.locator('.player-score-key').innerText(), 'Scores run from 101.2 to 104.5', 'Role filters keep the full scope score scale')
+    assert.equal(await page.locator('.player-score-key').innerText(), 'Scores run from 101.2 to 104.5. Filters keep this scale.', 'Role filters keep the full scope score scale')
     await role.selectOption('Mid')
     await expectPlayers(page, ['Echo', 'Golf'])
     assert.deepEqual(await rows.locator('td:first-child').allTextContents(), ['1', '—Unranked'], 'Role ranking keeps unranked players unranked')
@@ -360,30 +387,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     }
     await page.setViewportSize({ width: 1280, height: 900 })
 
-    await page.goto('about:blank')
-    await page.goto(`${base}${playersAddress}&player=Fixture&role=Mid`)
-    await expectPlayers(page, ['Aster', 'Cedar'])
-    assert.equal(await search.inputValue(), 'Fixture')
-    for (const width of [320, 375, 768, 1280]) {
-      await page.setViewportSize({ width, height: 900 })
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `The page must fit at ${width}px`)
-      await search.focus()
-      await search.press('Tab')
-      assert.equal(await role.evaluate((select) => select === document.activeElement), true)
-    }
-    await page.setViewportSize({ width: 320, height: 900 })
-    const table = page.getByRole('table', { name: 'Player rankings' })
-    assert.equal(await table.evaluate((element) => {
-      const viewport = element.parentElement!.getBoundingClientRect()
-      const score = element.querySelector('.player-col-score')!.getBoundingClientRect()
-      return score.left >= viewport.left && score.right <= viewport.right
-    }), true, 'The primary score is visible before scrolling')
-    await table.focus()
-    await table.press('ArrowRight')
-    await page.waitForFunction(() => (document.querySelector('table[aria-label="Player rankings"]')?.parentElement?.scrollLeft ?? 0) > 0)
-    await navigation.getByRole('link', { name: 'Rankings', exact: true }).click()
-    await page.getByRole('heading', { name: 'Team Power Index', exact: true }).waitFor()
-    await navigation.getByRole('link', { name: 'Players', exact: true }).click()
+    await setHash(playersAddress)
     await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
 
     playerStatus = 503
@@ -445,6 +449,142 @@ test('Players supports navigation, exact seasons, score order, addressed filters
     await page.getByRole('status', { name: 'Player-stat freshness', exact: true }).getByText(/Oracle's Elixir player-stat coverage is unavailable/).waitFor()
   } finally {
     pendingPlayers.splice(0).forEach((respond) => respond())
+    await browser?.close()
+    await server.close()
+  }
+})
+
+
+test('Players profile navigation keeps focus, addressed history and responsive layouts', { timeout: 90_000 }, async () => {
+  const bodies = fixtureBodies()
+  const fixture: Plugin = { name: 'synthetic-player-profile-fixture', configureServer(server) {
+    server.middlewares.use((request, response, next) => {
+      const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
+      if (!path.startsWith('/data/') && !path.startsWith('/tournament-data/')) return next()
+      response.statusCode = bodies.has(path) ? 200 : 404
+      response.setHeader('content-type', 'application/json')
+      response.setHeader('cache-control', 'no-store')
+      response.end(bodies.get(path) ?? '{}')
+    })
+  } }
+  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
+  try {
+    await server.listen()
+    const address = server.httpServer?.address()
+    assert.ok(address && typeof address !== 'string')
+    const base = `http://127.0.0.1:${address.port}/`
+    const executablePath = chromium.executablePath()
+    browser = await chromium.launch(existsSync(executablePath) ? { headless: true } : { headless: true, channel: 'chrome' })
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+    await page.addInitScript(() => {
+      window.IntersectionObserver = class extends window.IntersectionObserver { observe() {} }
+    })
+    const navigation = page.getByRole('navigation', { name: 'Primary', exact: true }).filter({ visible: true })
+    const search = page.getByRole('searchbox', { name: 'Find a player or team', exact: true })
+    const role = page.getByRole('combobox', { name: 'Role', exact: true })
+    const rows = page.getByRole('table', { name: 'Player rankings' }).locator('tbody tr')
+    await page.goto('about:blank')
+    await page.goto(`${base}${playersAddress}&player=Fixture&role=Mid`)
+    await expectPlayers(page, ['Aster', 'Cedar'])
+    assert.equal(await search.inputValue(), 'Fixture')
+    for (const width of [320, 375, 768, 1280]) {
+      await page.setViewportSize({ width, height: 900 })
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `The page must fit at ${width}px`)
+      await role.focus()
+      await role.press('Tab')
+      assert.equal(await search.evaluate((input) => input === document.activeElement), true, 'Role comes before search in keyboard order')
+    }
+    await page.setViewportSize({ width: 320, height: 900 })
+    const table = page.getByRole('table', { name: 'Player rankings' })
+    assert.equal(await table.evaluate(element => element.scrollWidth <= element.clientWidth), true, 'The table has no horizontal overflow at 320px')
+    assert.equal(await table.getAttribute('tabindex'), null, 'The table adds no keyboard stop')
+    assert.equal(await table.evaluate((element) => {
+      const viewport = element.parentElement!.getBoundingClientRect()
+      const score = element.querySelector('.player-col-score')!.getBoundingClientRect()
+      return score.left >= viewport.left && score.right <= viewport.right
+    }), true, 'The primary score is visible before scrolling')
+    await rows.first().locator('summary').focus()
+    await page.keyboard.press('Enter')
+    await rows.first().getByText('Season team', { exact: true }).waitFor()
+    await rows.first().getByRole('link', { name: 'Scouting report for Aster', exact: true }).waitFor()
+    await page.keyboard.press('Enter')
+    await rows.first().getByRole('button', { name: 'Open profile for Aster', exact: true }).click()
+    const playerProfile = page.getByRole('region', { name: 'Role profile', exact: true })
+    await playerProfile.getByRole('heading', { name: 'Aster', exact: true }).waitFor()
+    assert.equal(await playerProfile.getByRole('heading', { name: 'Aster', exact: true }).evaluate((heading) => heading === document.activeElement), true, 'Opening the default profile moves focus to its heading')
+    assert.equal(await table.isVisible(), false, 'A phone profile replaces the list')
+    assert.equal(await playerProfile.getByText('Stat games', { exact: true }).count(), 0, 'Missing Stats Power has no stat-games fact')
+    assert.equal(await page.locator('[data-player-profile="synthetic-Aster"]').getAttribute('aria-current'), 'true')
+    assert.equal(await page.locator('[data-player-profile="synthetic-Aster"]').getAttribute('aria-pressed'), null)
+    await page.reload()
+    await playerProfile.getByRole('heading', { name: 'Aster', exact: true }).waitFor()
+    await playerProfile.getByRole('button', { name: 'Next player', exact: true }).click()
+    await playerProfile.getByRole('heading', { name: 'Cedar', exact: true }).waitFor()
+    assert.equal(await playerProfile.getByRole('heading', { name: 'Cedar', exact: true }).evaluate(heading => heading === document.activeElement), false, 'Next does not focus the heading')
+    await playerProfile.getByText('2 of 2', { exact: true }).waitFor()
+    await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('profile') === 'synthetic-Cedar')
+    await page.goBack()
+    await expectPlayers(page, ['Aster', 'Cedar'])
+    assert.equal(await playerProfile.isVisible(), false)
+    await page.goForward()
+    await playerProfile.getByRole('heading', { name: 'Cedar', exact: true }).waitFor()
+    await playerProfile.getByRole('button', { name: 'Players', exact: true }).click()
+    await expectPlayers(page, ['Aster', 'Cedar'])
+    await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Open profile for Cedar')
+    await rows.last().getByRole('button', { name: 'Open profile for Cedar', exact: true }).click()
+    await playerProfile.getByRole('heading', { name: 'Cedar', exact: true }).waitFor()
+    await page.getByRole('link', { name: 'rift-delta', exact: true }).filter({ visible: true }).focus()
+    await page.keyboard.press('Escape')
+    await expectPlayers(page, ['Aster', 'Cedar'])
+    await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Open profile for Cedar')
+    await page.goto(`${base}#rankings?scope=season%3A2026&eligibility=all`)
+    await page.getByRole('heading', { name: 'Team Power Index', exact: true }).waitFor()
+    await navigation.getByRole('link', { name: 'Players', exact: true }).click()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    await rows.last().getByRole('button', { name: 'Open profile for Cedar', exact: true }).click()
+    await playerProfile.getByRole('button', { name: 'Players', exact: true }).click()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    await page.goBack()
+    await page.getByRole('heading', { name: 'Team Power Index', exact: true }).waitFor()
+    await page.goto(`${base}${playersAddress}&profile=synthetic-Cedar`)
+    await playerProfile.getByRole('heading', { name: 'Cedar', exact: true }).waitFor()
+    await playerProfile.getByRole('button', { name: 'Players', exact: true }).click()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    await page.waitForFunction(() => !new URLSearchParams(location.hash.split('?')[1]).has('profile'))
+    await page.setViewportSize({ width: 800, height: 900 })
+    await page.getByRole('combobox', { name: 'League', exact: true }).selectOption('LPL')
+    await expectPlayers(page, ['Cedar'])
+    await page.reload()
+    await expectPlayers(page, ['Cedar'])
+    await page.getByRole('button', { name: 'Clear filters', exact: true }).click()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+    await navigation.getByRole('link', { name: 'Rankings', exact: true }).click()
+    await page.getByRole('heading', { name: 'Team Power Index', exact: true }).waitFor()
+    await navigation.getByRole('link', { name: 'Players', exact: true }).click()
+    await expectPlayers(page, ['Aster', 'Beacon', 'Cedar'])
+
+
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await rows.first().getByRole('button', { name: 'Open profile for Aster', exact: true }).click()
+    assert.equal(await playerProfile.getByRole('button', { name: 'Players', exact: true }).count(), 0, 'The desktop profile has no back button')
+    const picker = playerProfile.getByRole('combobox', { name: 'Profile player', exact: true })
+    await picker.focus()
+    await picker.press('ArrowDown')
+    await playerProfile.getByRole('heading', { name: 'Beacon', exact: true }).waitFor()
+    assert.equal(await picker.evaluate(element => element === document.activeElement), true, 'ArrowDown keeps focus in the profile picker')
+    await playerProfile.getByRole('button', { name: 'Previous player', exact: true }).click()
+    await playerProfile.getByRole('heading', { name: 'Aster', exact: true }).waitFor()
+    assert.equal(await playerProfile.getByRole('heading', { name: 'Aster', exact: true }).evaluate(element => element === document.activeElement), false, 'Previous does not focus the heading')
+    await picker.focus()
+    await page.keyboard.press('Escape')
+    assert.equal(await picker.inputValue(), 'synthetic-Aster')
+    assert.equal(await page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('profile')), 'synthetic-Aster', 'Desktop Escape keeps the selected profile')
+    await page.goto(`${base}#players?scope=season%3A2025&profile=synthetic-Echo`)
+    await playerProfile.getByRole('heading', { name: 'Echo', exact: true }).waitFor()
+    assert.equal(await playerProfile.locator('.r8-player-profile-facts > div').filter({ has: page.getByText('Stat games', { exact: true }) }).locator('dd').innerText(), '22')
+    assert.equal(await playerProfile.getByText('Games', { exact: true }).count(), 1)
+  } finally {
     await browser?.close()
     await server.close()
   }

@@ -1,3 +1,4 @@
+import { TriangleAlert } from 'lucide-react'
 import {
   useTournamentReport,
   useTournamentReports,
@@ -23,12 +24,12 @@ export function PostmortemView() {
   const { state, retry } = useTournamentReports()
   return (
     <section
-      className="grid min-w-0 gap-3 px-[var(--page-x)] py-4"
+      className="grid min-w-0 gap-3 px-[var(--page-x)] pt-3 pb-5"
       aria-label="Worlds team reports"
     >
       {state.status !== 'ready' ? (
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h2 className="text-xl font-semibold">Worlds team reports</h2>
+          <h2 className="text-2xl font-semibold">Worlds team reports</h2>
           <Button variant="outline" onClick={retry}>
             Refresh reports
           </Button>
@@ -37,19 +38,19 @@ export function PostmortemView() {
       {state.status === 'loading' ? (
         <p role="status">Loading report catalog…</p>
       ) : state.status === 'unavailable' ? (
-        <Alert role="status">
+        <Alert data-first-answer="tournament-reports" role="status">
           Tournament reports are unavailable in this published generation.{' '}
           <Button variant="outline" onClick={retry}>
             Retry catalog
           </Button>
         </Alert>
       ) : state.status === 'error' ? (
-        <Alert variant="warning" role="alert">
+        <Alert data-first-answer="tournament-reports" variant="warning" role="alert"><TriangleAlert aria-hidden="true" /><div className="min-w-0">
           Report catalog could not be loaded. {state.message}{' '}
           <Button variant="outline" onClick={retry}>
             Retry catalog
           </Button>
-        </Alert>
+        </div></Alert>
       ) : (
         <ReportCatalog index={state.data} retryCatalog={retry} />
       )}
@@ -73,32 +74,34 @@ function ReportCatalog({
   const { state, retry } = useTournamentReport(index, entry)
   return (
     <>
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <label htmlFor="report-event" className="sr-only">
-            Report event
-          </label>
-          <Select
-            id="report-event"
-            value={entry?.id ?? ''}
-            onChange={(event) =>
-              selectTournamentReport({ event: event.target.value })
-            }
-          >
-            {!entry ? <option value="">Choose a report</option> : null}
-            {index.tournaments.map((event) => (
-              <option key={event.id} value={event.id}>
-                {event.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <Button variant="ghost" onClick={retryCatalog}>
-          Refresh reports
-        </Button>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <label htmlFor="report-event" className="sr-only">
+          Report event
+        </label>
+        <Select
+          id="report-event"
+          className="h-auto max-w-full border-transparent bg-transparent py-1 pl-0 text-xl font-semibold text-text sm:text-2xl"
+          value={entry?.id ?? ''}
+          onChange={(event) =>
+            selectTournamentReport({ event: event.target.value })
+          }
+        >
+          {!entry ? <option value="">Choose a report</option> : null}
+          {index.tournaments.map((event) => (
+            <option key={event.id} value={event.id}>
+              {event.label}
+            </option>
+          ))}
+        </Select>
+        {state.status === 'ready' && syntheticReport(state.data) ? (
+          <p role="status" className="min-w-[7.5rem] flex-1 text-xs leading-snug text-[var(--warn)]"><TriangleAlert aria-hidden="true" className="mr-1 inline size-4 align-text-bottom" />
+            Synthetic test fixture. These player stats and results are
+            synthetic.
+          </p>
+        ) : null}
       </div>
       {!entry ? (
-        <Alert role="status">
+        <Alert data-first-answer="tournament-reports" role="status">
           {requested !== null
             ? 'No report matches this event link.'
             : 'No Worlds reports have source-observed games in this generation.'}
@@ -106,24 +109,33 @@ function ReportCatalog({
       ) : state.status === 'loading' ? (
         <p role="status">Loading {entry.label} report…</p>
       ) : state.status === 'unavailable' ? (
-        <Alert role="status">
+        <Alert data-first-answer="tournament-reports" role="status">
           This report artifact is unavailable.{' '}
           <Button variant="outline" onClick={retry}>
             Retry report
           </Button>
         </Alert>
       ) : state.status === 'error' ? (
-        <Alert variant="warning" role="alert">
+        <Alert data-first-answer="tournament-reports" variant="warning" role="alert"><TriangleAlert aria-hidden="true" /><div className="min-w-0">
           This report could not be loaded. {state.message}{' '}
           <Button variant="outline" onClick={retry}>
             Retry report
           </Button>
-        </Alert>
+        </div></Alert>
       ) : (
         <ReportBody report={state.data} />
       )}
+      <div>
+        <Button variant="outline" size="sm" onClick={retryCatalog}>
+          Refresh reports
+        </Button>
+      </div>
     </>
   )
+}
+
+function syntheticReport(report: TournamentReport) {
+  return report.provenance.dataMode === 'seeded-sample' || report.provenance.providers.includes('seed')
 }
 
 function ReportBody({ report }: { report: TournamentReport }) {
@@ -136,33 +148,18 @@ function ReportBody({ report }: { report: TournamentReport }) {
   const players = new Set(report.teams.flatMap((team) => team.participants.map((player) => player.playerId))).size
   return (
     <>
-      <header className="grid gap-3 rounded-md border border-border bg-card p-4">
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-8 gap-y-3">
-          <div className="grid gap-1">
-            <h2 className="text-xl font-bold">{report.label}</h2>
-            <p className="text-sm text-muted-foreground">
-              {coverage.observedGames} games · {coverage.observedTeams} teams ·{' '}
-              {players} players · {coverage.since} to {coverage.through}
-            </p>
-          </div>
-        </div>
-        {report.provenance.dataMode === 'seeded-sample' ||
-        report.provenance.providers.includes('seed') ? (
-          <Alert variant="warning" role="status">
-            Synthetic test fixture. These player stats and results are
-            synthetic.
-          </Alert>
-        ) : null}
-      </header>
+      <h2 className="sr-only">{report.label}</h2>
       {report.games ? (
         <EventOverview
           report={report}
+          caption={`${coverage.observedGames} games · ${coverage.observedTeams} teams · ${players} players · ${coverage.since} to ${coverage.through}`}
           onSelectTeam={(team) =>
             selectTournamentReport({ event: report.id, team })
           }
         />
       ) : (
-        <Alert role="status">
+        <Alert data-first-answer="tournament-reports" role="status">
+          {coverage.observedGames} games · {coverage.observedTeams} teams · {players} players · {coverage.since} to {coverage.through}.
           This published report has no game records. Tournament and team
           statistics appear after the next report rebuild.
         </Alert>
@@ -192,7 +189,7 @@ function ReportBody({ report }: { report: TournamentReport }) {
         </Select>
       </div>
       {selection.kind !== 'ready' ? (
-        <Alert role="status">
+        <Alert data-first-answer="tournament-reports" role="status">
           {selection.kind === 'missing-player'
             ? 'No participant matches this player link.'
             : selection.kind === 'missing-team'
@@ -221,7 +218,7 @@ function ReportBody({ report }: { report: TournamentReport }) {
                 teams={report.teams}
               />
             ) : (
-              <Alert role="status">
+              <Alert data-first-answer="tournament-reports" role="status">
                 No player roster observations are available for this team.
               </Alert>
             )}
@@ -234,8 +231,8 @@ function ReportBody({ report }: { report: TournamentReport }) {
           ) : null}
         </div>
       ) : null}
-      <details className="min-w-0 break-words border-t border-border pt-3 text-xs text-muted-foreground">
-        <summary className="cursor-pointer font-semibold text-foreground">
+      <details className="min-w-0 break-words border-t border-line pt-3 text-xs text-muted">
+        <summary className="cursor-pointer font-semibold text-text">
           Method and source provenance
         </summary>
         <div className="mt-3 grid gap-2">

@@ -27,7 +27,7 @@ test('the lead dot keeps the line under the lead label when a weaker scoring dot
     }],
   }))
 
-  const line = html.match(/<line x1="[\d.]+" x2="[\d.]+" y1="([\d.]+)" y2="[\d.]+" stroke="var\(--line-strong\)"/)
+  const line = html.match(/<line x1="[\d.]+" x2="[\d.]+" y1="([\d.]+)" y2="[\d.]+" stroke="var\(--line\)" stroke-width="2"/)
   const label = html.match(/<text x="([\d.]+)" y="([\d.]+)"[^>]*>GEN<\/text>/)
   assert.ok(line && label)
   const lineY = Number(line[1])

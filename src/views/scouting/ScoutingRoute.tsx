@@ -98,7 +98,7 @@ export function ScoutingRoute() {
   }, [])
   const scope = readScopeFromHash() ?? currentSeasonScope()
   return <div className="flex min-h-full flex-col">
-    <a className="fixed top-[-56px] left-3 z-80 rounded-md border border-[var(--accent-line)] bg-[var(--surface-2)] px-3 py-2 text-sm font-semibold text-[var(--text-strong)] no-underline shadow-[var(--shadow-2)] focus-visible:top-3" href="#main-content" onClick={e => { e.preventDefault(); document.getElementById('main-content')?.focus(); document.getElementById('main-content')?.scrollIntoView({ block: 'start' }) }}>Skip to content</a>
+    <a className="fixed top-[-56px] left-3 z-80 rounded-md border border-focus bg-raised px-3 py-2 text-sm font-semibold text-text no-underline focus-visible:top-3" href="#main-content" onClick={e => { e.preventDefault(); document.getElementById('main-content')?.focus(); document.getElementById('main-content')?.scrollIntoView({ block: 'start' }) }}>Skip to content</a>
     <AppNavigation mode="players" scope={scope} />
     <main id="main-content" tabIndex={-1} className="min-w-0 pb-6 max-sm:pb-[calc(var(--tabbar-h)+24px)]">
       <nav className="sc-crumb" aria-label="Breadcrumb">
@@ -112,7 +112,7 @@ export function ScoutingRoute() {
             action={<Button onClick={retry}>Retry</Button>}>{state.message}</DataState></Panel></section>
             : <Report index={state.data} query={query} />}
       </RouteErrorBoundary>
-      <footer className="px-[var(--page-x)] pt-6 text-xs text-muted-foreground">{RIOT_PROJECT_NOTICE}</footer>
+      <footer className="px-[var(--page-x)] pt-6 text-xs text-muted">{RIOT_PROJECT_NOTICE}</footer>
     </main>
   </div>
 }

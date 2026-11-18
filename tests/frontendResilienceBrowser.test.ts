@@ -38,17 +38,21 @@ test('Regions and Matches recover and follow addressed state', { timeout: 60_000
       await page.goto(`${base}/#regions?scope=all`)
       const region = page.getByTitle('Open LCK region detail', { exact: true })
       await region.waitFor()
-      assert.match(await region.innerText(), /International record 0\.5–0\.5/)
+      const facts = region.locator('..').locator('details')
+      await facts.locator('summary').click()
+      assert.match(await facts.innerText(), /International record\s+0\.5–0\.5/)
       assert.equal(await page.getByText(/0\.5–0\.5 intl$/).count(), 2, 'both chart captions must keep the half-win record')
     })
 
     await t.test('an international Bo2 draw has a draw label for either region', async () => {
       await page.goto(`${base}/?draw=1#regions?scope=all&regionDetail=LCK`)
+      await page.getByText('Matches and score history', { exact: true }).click()
       const draw = page.getByRole('article').filter({ hasText: 'Synthetic international draw' })
       await draw.waitFor()
       assert.ok((await draw.innerText()).includes('Region draw'), 'the region must show a draw for a 1-1 series')
       assert.ok(!(await draw.innerText()).includes('Region loss'))
       await page.goto(`${base}/?draw=2#regions?scope=all&regionDetail=LEC`)
+      await page.getByText('Matches and score history', { exact: true }).click()
       await draw.waitFor()
       assert.ok((await draw.innerText()).includes('Region draw'))
     })
@@ -80,6 +84,39 @@ test('Regions and Matches recover and follow addressed state', { timeout: 60_000
       assert.equal(await alert.count(), 0)
     })
 
+    await t.test('the sidebar keeps minor league filters reachable by keyboard and pointer', async () => {
+      await page.goto(`${base}/#matches?scope=all`)
+      const leagues = page.getByRole('navigation', { name: 'League filter' })
+      const more = leagues.locator('summary')
+      await more.focus()
+      await more.press('Enter')
+      await leagues.getByRole('link', { name: 'MSI', exact: true }).click()
+      await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('league') === 'MSI')
+      await page.waitForFunction(() => document.querySelectorAll('table tbody tr').length === 1)
+      assert.match(await page.locator('table tbody tr').innerText(), /G2/)
+      await page.reload()
+      const selected = leagues.getByRole('link', { name: 'MSI', exact: true })
+      await selected.waitFor()
+      assert.equal(await selected.getAttribute('aria-current'), 'true')
+      assert.equal(await selected.locator('.league-dot').evaluate((dot) => getComputedStyle(dot).backgroundColor), 'rgb(154, 160, 170)')
+      await more.click()
+      assert.equal(await selected.isVisible(), false)
+      await more.click()
+      await selected.waitFor()
+      await leagues.getByRole('link', { name: 'All leagues', exact: true }).click()
+      await page.waitForFunction(() => document.querySelectorAll('table tbody tr').length === 2)
+      const touchPage = await browser!.newPage({ viewport: { width: 1280, height: 900 }, hasTouch: true })
+      try {
+        await touchPage.goto(`${base}/#matches?scope=all`)
+        const touchLeagues = touchPage.getByRole('navigation', { name: 'League filter' })
+        await touchLeagues.locator('summary').tap()
+        await touchLeagues.getByRole('link', { name: 'MSI', exact: true }).tap()
+        await touchPage.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('league') === 'MSI')
+      } finally {
+        await touchPage.close()
+      }
+    })
+
     for (const [mode, module] of [
       ['matches', 'matches/MatchesView'],
       ['regions', 'regions/RegionsView'],
@@ -91,7 +128,7 @@ test('Regions and Matches recover and follow addressed state', { timeout: 60_000
           await isolated.route(`**/src/views/${module}.tsx`, (route) => route.fulfill({ status: 503, body: 'Synthetic local chunk failure' }))
           await isolated.goto(`${base}/#${mode}?scope=all`)
           await isolated.getByRole('button', { name: 'Reload page', exact: true }).waitFor()
-          assert.equal(await isolated.getByRole('banner').count(), 1, 'a view failure must keep the header')
+          assert.equal(await isolated.getByRole('complementary', { name: 'Site sidebar' }).count(), 1, 'a view failure must keep navigation')
           const navigation = isolated.getByRole('navigation', { name: 'Primary', exact: true }).filter({ visible: true })
           await navigation.getByRole('link', { name: 'Rankings', exact: true }).click()
           await isolated.getByRole('heading', { name: 'Team Power Index', exact: true }).waitFor()
