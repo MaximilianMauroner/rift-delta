@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
 import { createGenerationManifest, prepareSemanticArtifact } from '../scripts/public-artifact-storage.mjs'
@@ -43,7 +43,7 @@ test('ranking browser bootstraps without archive history, selects a year, pages,
   let holdIndex = false
   const pendingIndex: Array<() => void> = []
   const indexPath = `/data/objects/sha256/${entries.find((entry) => entry.logicalPath === '/data/matches/index.json')!.digest}`
-  const fixture: Plugin = { name: 'ranking-archive-browser-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'ranking-archive-browser-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (!path.startsWith('/data/')) return next()
@@ -55,10 +55,9 @@ test('ranking browser bootstraps without archive history, selects a year, pages,
       response.end(response.statusCode === 200 ? body : '{}')
     })
   } }
-  const server = await createServer({ logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer!.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}`
@@ -211,7 +210,7 @@ test('Regions drawer distinguishes unavailable series contributions from zero an
   const meta = plan.manifest.artifactMeta
   assert.ok(meta)
   const manifest = createGenerationManifest({ generationId: meta.runId, rootManifest: plan.manifest, entries })
-  const fixture: Plugin = { name: 'region-contribution-browser-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'region-contribution-browser-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (!path.startsWith('/data/')) return next()
@@ -221,10 +220,9 @@ test('Regions drawer distinguishes unavailable series contributions from zero an
       response.end(body ?? '{}')
     })
   } }
-  const server = await createServer({ logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer!.address()
     assert.ok(address && typeof address !== 'string')
     const executablePath = chromium.executablePath()

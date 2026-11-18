@@ -15,10 +15,11 @@ async function waitValue(page: Page, label: string, expected: string) {
 }
 
 test('Profiles restores URL state, compares peers, excludes missing axes, filters leagues and retries, without a server', { timeout: 120_000 }, async () => {
-  console.log('Build the app bundle for the isolated Profiles journey')
-  const build = spawnSync(process.execPath, [resolve('node_modules/vite/bin/vite.js'), 'build'], { encoding: 'utf8', timeout: 100_000 })
-  assert.equal(build.status, 0, `${build.error?.message ?? ''} ${build.stdout} ${build.stderr}`)
-  const root = resolve('dist')
+  const root = process.env.RIFT_BROWSER_TEST_BUILD_DIR ?? resolve('dist')
+  if (!process.env.RIFT_BROWSER_TEST_BUILD_DIR) {
+    const build = spawnSync(process.execPath, [resolve('node_modules/vite/bin/vite.js'), 'build'], { encoding: 'utf8', timeout: 100_000 })
+    assert.equal(build.status, 0, `${build.error?.message ?? ''} ${build.stdout} ${build.stderr}`)
+  }
   const games = Array.from({ length: 20 }, (_, i) => styleGame(String(i)))
   delete games[0].teamARoster!.players[4].stats!.goldDiffAt15
   const old = styleGame('old', 2025)

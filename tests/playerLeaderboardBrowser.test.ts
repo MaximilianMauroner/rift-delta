@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium, type Page } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
 import { statsPowerPolicy } from '../src/domains/rankings/internal/policy/statsPowerPolicy.ts'
@@ -90,7 +90,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
   let holdPlayers = true
   let playerStatus = 200
   const pendingPlayers: Array<() => void> = []
-  const fixture: Plugin = { name: 'synthetic-player-leaderboard-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'synthetic-player-leaderboard-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (path.startsWith('/tournament-data/')) {
@@ -110,10 +110,9 @@ test('Players supports navigation, exact seasons, score order, addressed filters
       else respond()
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}/`
@@ -457,7 +456,7 @@ test('Players supports navigation, exact seasons, score order, addressed filters
 
 test('Players profile navigation keeps focus, addressed history and responsive layouts', { timeout: 90_000 }, async () => {
   const bodies = fixtureBodies()
-  const fixture: Plugin = { name: 'synthetic-player-profile-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'synthetic-player-profile-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (!path.startsWith('/data/') && !path.startsWith('/tournament-data/')) return next()
@@ -467,10 +466,9 @@ test('Players profile navigation keeps focus, addressed history and responsive l
       response.end(bodies.get(path) ?? '{}')
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}/`

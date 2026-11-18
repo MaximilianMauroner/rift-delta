@@ -99,7 +99,7 @@ test('native implementation evidence generation is deterministic, exact, and com
 test('generation rejects modified or uncommitted contract sources and arbitrary command claims', linuxDescriptors, async () => {
   const fixture = await createImplementationRepositoryFixture()
   try {
-    const values = await generateNativeImplementationEvidence(fixture.root, fixture.commit)
+    const values = await generatePassingImplementationEvidence(fixture.root, fixture.commit)
     const forged = structuredClone(values[0])
     forged.commands[0].argv = ['node', '--test', 'tests/invented.test.ts']
     assert.throws(() => parseImplementationEvidence(forged), /contract/)

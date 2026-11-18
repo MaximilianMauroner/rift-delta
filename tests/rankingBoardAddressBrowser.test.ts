@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium, type Page } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
 import type { MatchRecord, TeamProfile } from '../src/domains/rankings/types.ts'
@@ -57,7 +57,7 @@ test('the Rankings board follows its address after load: typed and linked hashes
   const dataRequests: string[] = []
   let holdManifest = false
   const pendingManifest: Array<() => void> = []
-  const fixture: Plugin = { name: 'ranking-board-address-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'ranking-board-address-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (path.startsWith('/tournament-data/')) {
@@ -78,10 +78,9 @@ test('the Rankings board follows its address after load: typed and linked hashes
       response.end(body ?? '{}')
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}/`
