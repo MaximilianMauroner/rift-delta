@@ -378,12 +378,13 @@ export function TeamsView({
     if (detailKey && !previous && isTeamPageWidth()) window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
     if (!detailKey && previous) {
       // A team opened from the field or by Previous and Next can be on another
-      // page of the list, so its field mark takes focus instead.
+      // page of the list, so its field mark takes focus instead. Focus scrolls
+      // only when the row is off screen, so a visible row keeps the reader's place.
       const key = CSS.escape(previous)
       const target = document.querySelector<HTMLElement>(`[data-team-key="${key}"] .team-cell__button`)
         ?? document.querySelector<HTMLElement>(`[data-field-key="${key}"]`)
       if (isTeamPageWidth()) window.scrollTo({ top: boardScroll.current, left: 0, behavior: 'auto' })
-      target?.focus({ preventScroll: true })
+      target?.focus()
     }
   }, [detailKey])
 
