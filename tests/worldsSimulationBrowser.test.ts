@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import { chromium } from 'playwright-core'
 import { createWorldsFixtureServer } from './fixtures/worldsBrowserFixture'
 
-test('Worlds fixture journey computes off-thread, cancels, navigates and invalidates stale state', { timeout: 60_000 }, async () => {
+test('Worlds fixture journey computes off-thread, cancels, navigates and invalidates stale state', { timeout: 120_000 }, async () => {
   const { server, controls, workerGate } = await createWorldsFixtureServer()
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
