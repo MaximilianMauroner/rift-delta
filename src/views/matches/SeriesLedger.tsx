@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip'
 import { TeamMark } from '../../components/TeamMark'
 import { ChampionPicks } from './ChampionPicks'
-import { deltaBarWidth, seriesRatingChange, seriesWinner, type SeriesRatingChange, type SeriesSide } from './seriesOutcome'
+import { deltaBarWidth, seriesRatingChange, seriesWinner, unresolvedSeriesNote, type SeriesRatingChange, type SeriesSide } from './seriesOutcome'
 
 export type MatchSeries = {
   id: string
@@ -82,6 +82,7 @@ function SeriesTableRows({ series, expanded, onToggle, publication }: { series: 
             <TeamName team={match.teamB} result={teamResult(winner, 'B')} align="start" mark />
           </div>
           {change.kind === 'applied' && change.upset ? <div className="mt-1 text-center"><UpsetTag change={change} match={match} /></div> : null}
+          <UnresolvedTag match={match} className="mx-auto mt-1 flex w-fit" />
         </TableCell>
         <TableCell className="whitespace-normal">
           {change.kind === 'applied' ? (
@@ -181,6 +182,7 @@ function SeriesCard({ series, expanded, onToggle, publication }: { series: Match
           ))}
         </div>
         <div className="mt-2 grid gap-1 border-t border-dotted border-line pt-2">
+          <UnresolvedTag match={match} className="w-fit" />
           {change.kind === 'applied' ? (
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <ChanceLine change={change} match={match} />
@@ -290,6 +292,12 @@ function ChanceLine({ change, match }: { change: Extract<SeriesRatingChange, { k
       {parts.join(' · ')}
     </span>
   )
+}
+
+function UnresolvedTag({ match, className }: { match: PublicMatchHistoryEntry; className?: string }) {
+  const note = unresolvedSeriesNote(match)
+  if (!note) return null
+  return <Badge variant={note === 'In progress' ? 'live' : 'warning'} className={className}>{note}</Badge>
 }
 
 function UpsetTag({ change, match }: { change: Extract<SeriesRatingChange, { kind: 'applied' }>; match: PublicMatchHistoryEntry }) {

@@ -29,6 +29,16 @@ export function seriesWinner(match: Pick<PublicMatchHistoryEntry, 'seriesWinsA' 
 }
 
 /**
+ * A level score in an odd best-of cannot be a final result. The data marks
+ * an unfinished series as ongoing; any other level score is missing a game.
+ * An even best-of can end level, so it gets no note.
+ */
+export function unresolvedSeriesNote(match: Pick<PublicMatchHistoryEntry, 'bestOf' | 'seriesState' | 'seriesWinsA' | 'seriesWinsB'>): string | undefined {
+  if (seriesWinner(match) || match.bestOf % 2 === 0) return undefined
+  return match.seriesState === 'ongoing' ? 'In progress' : 'Result incomplete'
+}
+
+/**
  * Reads the series-level rating change from the summary game. The pre-match
  * chance is reported for the winner, because that is the number an upset is
  * judged by. Series whose deltas do not reconcile report `missing`, and show no

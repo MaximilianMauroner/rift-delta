@@ -123,3 +123,17 @@ test('both ledger layouts keep missing and held impact states without a zero Pow
     }
   }
 })
+
+test('both ledger layouts mark a level best-of score that has no winner', () => {
+  const render = (match: PublicMatchHistoryEntry, layout: typeof SeriesTable) => DomUtils.textContent(parseDocument(renderToStaticMarkup(createElement(layout, {
+    series: [{ id: 's1', games: [match], summary: match }],
+    expanded: new Set<string>(), onToggle: () => {}, publication: 'Test generation',
+  }))))
+  const level = { bestOf: 5, gameNumber: 4, seriesWinsA: 2, seriesWinsB: 2, impact: { unit: 'held' } } as const
+  for (const layout of [SeriesTable, SeriesCards]) {
+    assert.match(render(series(level), layout), /Result incomplete/)
+    assert.match(render(series({ ...level, seriesState: 'ongoing' }), layout), /In progress/)
+    assert.doesNotMatch(render(series({ bestOf: 2, gameNumber: 2, seriesWinsA: 1, seriesWinsB: 1 }), layout), /Result incomplete|In progress/)
+    assert.doesNotMatch(render(series({}), layout), /Result incomplete|In progress/)
+  }
+})
