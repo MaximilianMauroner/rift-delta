@@ -255,7 +255,7 @@ export function MatchesView({ hashQuery, state, onRequestPages, searchRef, archi
         )}
 
         </div>
-        <PanelFooter>
+        {filtered.length > 0 ? <PanelFooter>
           <Pager
             label="Match history pagination"
             page={page}
@@ -268,7 +268,7 @@ export function MatchesView({ hashQuery, state, onRequestPages, searchRef, archi
             rangeLabel={`${formatNumber(first)}–${formatNumber(last)} of ${formatNumber(filtered.length)}`}
             className="w-full"
           />
-        </PanelFooter>
+        </PanelFooter> : null}
       </Panel>
     </PageShell>
   )
