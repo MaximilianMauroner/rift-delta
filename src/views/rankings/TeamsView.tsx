@@ -34,7 +34,7 @@ import { formatDate, formatDateRange, formatModelVersion, formatNumber, formatRa
 import { cn } from '../../shared/utils'
 import { ChipGroup, RegionalStrengthTeaser } from './BoardCells'
 import { rankAxisForSeries } from './boardFormat'
-import { boardHeadline } from './boardHeadline'
+import { boardHeadline, headlineScope } from './boardHeadline'
 import { boardChanges, tournamentTrajectoryInsight } from './boardHistory'
 import { BoardList } from './BoardList'
 import { DataSourcesDisclosure } from './DataSourcesDisclosure'
@@ -231,9 +231,10 @@ export function TeamsView({
   // Near ties only mean something when neighbours on screen are neighbours in
   // the ranking, so they follow the ranked order and not a Power or record sort.
   const rankedOrder = sortKey === 'rank' && sortDirection === 'ascending'
+  const tournamentLabel = activeTournamentFilter === 'All' ? undefined : universe.tournamentOptions.find((option) => option.value === activeTournamentFilter)?.label
   const headline = useMemo(
-    () => activeTournament ? undefined : boardHeadline(universe.rankedStandings, model),
-    [activeTournament, model, universe.rankedStandings],
+    () => activeTournament ? undefined : boardHeadline(board.rankedRows, model, headlineScope({ region, tier: tierFilter, search, tournament: tournamentLabel })),
+    [activeTournament, board.rankedRows, model, region, search, tierFilter, tournamentLabel],
   )
   const gapExample = useMemo(() => gameWinChanceForGap(model), [model])
 
