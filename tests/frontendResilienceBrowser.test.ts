@@ -33,6 +33,9 @@ test('Regions and Matches recover and follow addressed state', { timeout: 60_000
     await page.addInitScript(() => {
       Object.defineProperty(navigator, 'connection', { configurable: true, value: { saveData: true } })
     })
+    // The dev server compiles the app on the first load, which can outlast a 5 s step on a busy machine.
+    await page.goto(base, { timeout: 60_000 })
+    await page.locator('#main-content').waitFor({ timeout: 60_000 })
 
     await t.test('an international Bo2 draw retains half-win credits in the record', async () => {
       await page.goto(`${base}/#regions?scope=all`)
