@@ -121,13 +121,6 @@ export const REGION_PROFILE_METRICS: CompareProfileMetric<RegionStrength>[] = [
   { key: 'connectivity', label: 'Connectivity', value: (r) => r.connectivity, format: formatRatio },
 ]
 
-export const TEAM_PROFILE_METRICS: CompareProfileMetric<RankingSummaryStanding>[] = [
-  { key: 'rating', label: 'Power', value: teamScore, format: formatRating },
-  { key: 'rank', label: 'Rank', value: (t) => t.rank, format: (value) => (typeof value === 'number' ? `#${Math.round(value)}` : '—'), better: 'low' },
-  { key: 'results-rank', label: 'Rank on results alone', value: (t) => t.deservedStanding?.rank, format: (value) => (typeof value === 'number' ? `#${Math.round(value)}` : '—'), better: 'low' },
-  { key: 'winrate', label: 'Win rate', value: (t) => winRate(t.wins, t.losses), format: formatRatio },
-]
-
 export function regionKey(region: RegionStrength) {
   return region.region
 }

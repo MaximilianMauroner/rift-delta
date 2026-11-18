@@ -58,7 +58,7 @@ export function ComparePage({
           {teams.length >= 2 ? <PowerScale teams={teams} /> : null}
           <CompareTable entities={teams} columns={columns} rows={TEAM_COMPARE_ROWS} onRemove={onRemove} />
           <Suspense fallback={<LoadingState label="Loading team comparison" />}>
-            <TeamCompareAnalysis teams={teams} columns={columns} historyState={historyState} />
+            <TeamCompareAnalysis teams={teams} historyState={historyState} />
           </Suspense>
         </>
       )}
