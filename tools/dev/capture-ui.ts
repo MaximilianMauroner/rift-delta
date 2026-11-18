@@ -26,6 +26,8 @@ type Route = {
   fixedClock?: boolean
   /** The page reads data the harness made up, not the reference snapshot. */
   synthetic?: boolean
+  /** The first list row, for views where the answer sits above the list. */
+  firstRow?: string
 }
 
 const visit = (address: string) => async (page: Page, base: string) => { await page.goto(`${base}${address}`) }
@@ -36,7 +38,7 @@ async function openBoard(page: Page, base: string) {
 }
 
 const routes: Route[] = [
-  { id: 'rankings', open: visit('/#rankings?scope=all') },
+  { id: 'rankings', open: visit('/#rankings?scope=all'), firstRow: '[data-team-key]' },
   {
     id: 'team-detail',
     open: async (page, base) => {
@@ -200,8 +202,11 @@ const tournamentFeedFixture: Plugin = {
 // Bilibili Gaming" on a button that reads "Bilibili Gaming" adds nothing.
 const addsNothing = ['open', 'close', 'show', 'hide', 'view', 'see', 'go', 'select', 'choose', 'compare', 'clear', 'sort', 'expand', 'collapse', 'toggle', 'remove', 'add', 'pin', 'unpin', 'copy', 'filter', 'find', 'search', 'play', 'watch', 'visit', 'to', 'the', 'a', 'an', 'for', 'of', 'on', 'in', 'by', 'with', 'and', 'or', 'this', 'that']
 
-const measure = `(answer) => {
-  const element = [...document.querySelectorAll(answer)].find((node) => node.getClientRects().length > 0)
+const measure = `(answer, row) => {
+  const top = (selector) => {
+    const node = selector ? [...document.querySelectorAll(selector)].find((candidate) => candidate.getClientRects().length > 0) : undefined
+    return node ? Math.round(node.getBoundingClientRect().top + window.scrollY) : null
+  }
   const text = (ids) => (ids ?? '').split(/\\s+/).map((id) => document.getElementById(id)?.textContent ?? '').join(' ')
   const words = (value) => value.toLowerCase().match(/[\\p{L}\\p{N}]+/gu) ?? []
   const addsNothing = new Set(${JSON.stringify(addsNothing)})
@@ -212,7 +217,8 @@ const measure = `(answer) => {
     return title.some((word) => !addsNothing.has(word) && !explained.has(word))
   })
   return {
-    firstAnswerY: element ? Math.round(element.getBoundingClientRect().top + window.scrollY) : null,
+    firstAnswerY: top(answer),
+    firstRowY: top(row),
     scrollWidth: document.documentElement.scrollWidth,
     layoutWidth: window.innerWidth,
     titleOnlyCount: titleOnly.length,
@@ -249,8 +255,8 @@ async function capture(context: BrowserContext, base: string, route: Route, size
     failure = error instanceof Error ? error.message.split('\n')[0]! : String(error)
   }
   await page.evaluate('window.scrollTo(0, 0)')
-  const metrics = await page.evaluate(`(${measure})(${JSON.stringify(answer)})`) as {
-    firstAnswerY: number | null; scrollWidth: number; layoutWidth: number; titleOnlyCount: number; titleOnlySamples: string[]
+  const metrics = await page.evaluate(`(${measure})(${JSON.stringify(answer)}, ${JSON.stringify(route.firstRow ?? null)})`) as {
+    firstAnswerY: number | null; firstRowY: number | null; scrollWidth: number; layoutWidth: number; titleOnlyCount: number; titleOnlySamples: string[]
   }
   if (metrics.firstAnswerY === null && !failure) failure = 'The first answer disappeared before capture'
   const file = `${route.id}-${size.width}.png`
@@ -295,7 +301,7 @@ try {
     })
     for (const route of routes) {
       const result = await capture(context, base, route, size)
-      console.log(`${result.file} y=${result.firstAnswerY} overflow=${result.overflow} titleOnly=${result.titleOnlyCount} errors=${result.consoleErrors.length}${result.failure ? ` failure=${result.failure}` : ''}`)
+      console.log(`${result.file} y=${result.firstAnswerY}${result.firstRowY === null ? '' : ` row=${result.firstRowY}`} overflow=${result.overflow} titleOnly=${result.titleOnlyCount} errors=${result.consoleErrors.length}${result.failure ? ` failure=${result.failure}` : ''}`)
       captures.push(result)
     }
     await context.close()
