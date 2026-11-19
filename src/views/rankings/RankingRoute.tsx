@@ -1,5 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
-import { startTransition, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { startTransition, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { showsManifestErrorInAppShell } from '../../browser/bootstrap'
 import { currentHashQuery, hashForModeAndScope, hashParam, readModeFromHash, readScopeFromHash, readTournamentFilterFromHash, replaceHashForModeAndScope, writeNavigationHash } from '../../browser/navigation'
 import { canUseBackgroundPrefetch, scheduleIdleWork } from '../../browser/rankings/prefetch'
@@ -208,10 +208,10 @@ export function RankingRoute() {
     replaceHashForModeAndScope(mode, effectiveScope)
   }, [effectiveScope, mode])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
     if (didMountModeRef.current) {
-      requestAnimationFrame(() => mainRef.current?.focus({ preventScroll: true }))
+      mainRef.current?.focus({ preventScroll: true })
     } else {
       didMountModeRef.current = true
     }
