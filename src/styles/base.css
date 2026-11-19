@@ -589,6 +589,9 @@ body {
   .app-phone-actions a {
     text-decoration: none;
   }
+  html {
+    scroll-padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  }
   .app-tabbar {
     position: fixed;
     inset: auto 0 0;

@@ -29,6 +29,15 @@ export function seriesWinner(match: Pick<PublicMatchHistoryEntry, 'seriesWinsA' 
 }
 
 /**
+ * A level score in an odd best-of cannot be a final result. The series state
+ * comes from the score, so it cannot tell a live series from one with a
+ * missing game. An even best-of can end level.
+ */
+export function isUnresolvedSeries(match: Pick<PublicMatchHistoryEntry, 'bestOf' | 'seriesWinsA' | 'seriesWinsB'>) {
+  return !seriesWinner(match) && match.bestOf % 2 === 1
+}
+
+/**
  * Reads the series-level rating change from the summary game. The pre-match
  * chance is reported for the winner, because that is the number an upset is
  * judged by. Series whose deltas do not reconcile report `missing`, and show no

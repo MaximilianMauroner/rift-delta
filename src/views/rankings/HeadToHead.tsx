@@ -5,8 +5,8 @@ import { Lane } from '../../components/ui/lane'
 import { estimatePublicMatchup, type PublicMatchupModel } from '../../domains/rankings/read'
 import type { RankingSummaryStanding } from '../../domains/rankings/types'
 import { formatModelVersion, formatRating, teamKey } from '../../shared/display'
-import { leagueColor } from '../../shared/teamColor'
 import { cn } from '../../shared/utils'
+import { compareSeriesColors } from './compareAnalysisData'
 
 const FORMATS = ['1', '3', '5'] as const
 type Format = typeof FORMATS[number]
@@ -14,8 +14,8 @@ type Format = typeof FORMATS[number]
 const shortName = (team: RankingSummaryStanding) => team.code ?? team.team
 
 /**
- * Who would win, answered first. The bar splits in the two league colours,
- * with a gap and a label at each end so two teams from one league stay apart.
+ * Who would win, answered first. The bar splits in the same colours as the
+ * rest of the comparison, so two teams from one league get two colours.
  * The range under it is the chance's sensitivity to both evidence bands.
  */
 export function HeadToHead({ home, away, model }: { home: RankingSummaryStanding; away: RankingSummaryStanding; model?: PublicMatchupModel }) {
@@ -27,6 +27,7 @@ export function HeadToHead({ home, away, model }: { home: RankingSummaryStanding
   const band = estimate.uncertaintyBand?.homeSeriesWinProbability
   const low = band ? Math.round(band.lower * 100) : undefined
   const high = band ? Math.round(band.upper * 100) : undefined
+  const [homeColor, awayColor] = compareSeriesColors([home.league, away.league])
 
   return (
     <section data-first-answer="comparison" className="head-to-head grid gap-3" aria-label={`${home.team} against ${away.team}`}>
@@ -43,16 +44,16 @@ export function HeadToHead({ home, away, model }: { home: RankingSummaryStanding
       </div>
       <div className="grid gap-1.5">
         <span className="flex h-2.5 gap-1" aria-hidden="true">
-          <span className="rounded-l-full" style={{ width: `${homeChance}%`, background: leagueColor(home.league) }} />
-          <span className="rounded-r-full" style={{ width: `${awayChance}%`, background: leagueColor(away.league) }} />
+          <span className="rounded-l-full" style={{ width: `${homeChance}%`, background: homeColor }} />
+          <span className="rounded-r-full" style={{ width: `${awayChance}%`, background: awayColor }} />
         </span>
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5">
-          <Chance team={home} chance={homeChance} />
+          <Chance team={home} chance={homeChance} color={homeColor} />
           <p className="col-start-2 row-start-1 pt-1.5 text-center text-xs leading-[1.45] text-muted max-sm:col-span-3 max-sm:col-start-1 max-sm:row-start-2 max-sm:pt-0 max-sm:text-left">
             {shortName(home)} wins a Bo{bestOf} {homeChance}% of the time.
             {low !== undefined && high !== undefined ? ` Range ${low}% to ${high}%,` : ''} neutral side, model {formatModelVersion(model?.version)}.
           </p>
-          <Chance team={away} chance={awayChance} end />
+          <Chance team={away} chance={awayChance} color={awayColor} end />
         </div>
       </div>
     </section>
@@ -71,10 +72,10 @@ function MatchSide({ team, end = false }: { team: RankingSummaryStanding; end?: 
   )
 }
 
-function Chance({ team, chance, end = false }: { team: RankingSummaryStanding; chance: number; end?: boolean }) {
+function Chance({ team, chance, color, end = false }: { team: RankingSummaryStanding; chance: number; color: string; end?: boolean }) {
   return (
     <span className={cn('col-start-1 row-start-1 grid leading-none', end && 'col-start-3 justify-items-end')}>
-      <b className="text-3xl font-bold tabular-nums" style={{ color: leagueColor(team.league) }}>{chance}%</b>
+      <b className="text-3xl font-bold tabular-nums" style={{ color }}>{chance}%</b>
       <small className="mt-1 text-xs text-muted">{shortName(team)}</small>
     </span>
   )
@@ -96,16 +97,18 @@ export function PowerScale({ teams }: { teams: readonly RankingSummaryStanding[]
   const max = highest + pad
   const [first, second] = lanes
   const overlap = lanes.length === 2 && first.low <= second.high && second.low <= first.high
+  const colors = compareSeriesColors(teams.map((team) => team.league))
 
   return (
     <section className="power-scale grid gap-2.5 rounded-[10px] border border-line bg-surface px-4 py-3.5" aria-label="On one Power scale">
       <h2 className="text-sm font-semibold text-text">On one Power scale</h2>
       <ul className="grid gap-2">
-        {lanes.map(({ team, low, high }) => (
-          <li key={teamKey(team)} className="grid grid-cols-[minmax(3.5rem,auto)_minmax(0,1fr)_auto] items-center gap-3 text-sm" style={{ '--league-color': leagueColor(team.league) } as CSSProperties}>
+        {lanes.map(({ team, low, high }, index) => (
+          <li key={teamKey(team)} className="grid grid-cols-[minmax(3.5rem,auto)_minmax(0,1fr)_auto] items-center gap-3 text-sm" style={{ '--league-color': colors[index] } as CSSProperties}>
             <b className="truncate font-semibold text-text">{shortName(team)}</b>
             <Lane
               league={team.league}
+              color={colors[index]}
               value={team.rating}
               low={low}
               high={high}

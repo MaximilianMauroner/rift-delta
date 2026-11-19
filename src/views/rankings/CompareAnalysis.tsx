@@ -5,7 +5,6 @@ import { isRegionPowerTeam, type RegionStrength } from '../../domains/rankings/r
 import type { CompareColumn } from './CompareDrawer'
 import {
   REGION_PROFILE_METRICS,
-  TEAM_PROFILE_METRICS,
   type CompareProfileMetric,
   regionKey,
   compareSeriesColors,
@@ -63,23 +62,6 @@ export function RegionCompareAnalysis({
     <>
       <CompareProfileChart title="Region power profile" entities={regions} columns={columns} metrics={REGION_PROFILE_METRICS} />
       <RegionTrendChart regions={regions} standings={standings} historyState={historyState} regionHistoryState={regionHistoryState} regionHistory={regionHistory} />
-    </>
-  )
-}
-
-export function TeamCompareAnalysis({
-  teams,
-  columns,
-  historyState,
-}: {
-  teams: RankingSummaryStanding[]
-  columns: CompareColumn[]
-  historyState: TeamHistoryArtifactState
-}) {
-  return (
-    <>
-      <CompareProfileChart title="Team profile" entities={teams} columns={columns} metrics={TEAM_PROFILE_METRICS} />
-      <TeamCompareChart teams={teams} historyState={historyState} />
     </>
   )
 }
@@ -444,7 +426,7 @@ function collectRegionTrendEvents(
   return events
 }
 
-function TeamCompareChart({
+export function TeamCompareAnalysis({
   teams,
   historyState,
 }: {

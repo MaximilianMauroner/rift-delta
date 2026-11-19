@@ -307,7 +307,7 @@ test('Matches event choices and addressed pages survive catalog loading and real
       }
       await navigate('#matches?scope=all&matchesYear=2025&team=Nobody&page=7')
       await page.getByText('No series match these filters', { exact: true }).waitFor()
-      await pager.getByText('Page 1 of 1', { exact: true }).waitFor()
+      assert.equal(await pager.count(), 0, 'an empty result shows no pager')
       await page.waitForFunction(() => !new URLSearchParams(location.hash.split('?')[1]).has('page'))
     })
 
