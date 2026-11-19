@@ -333,7 +333,10 @@ export default function Home() {
   }, [cancelOptimizer, optimizerInputKey]);
 
   const loadCohort = useCallback(
-    async (overrides: { targetChampion?: string } = {}): Promise<CohortPayload> => {
+    async (
+      overrides: { targetChampion?: string } = {},
+      isStale?: () => boolean,
+    ): Promise<CohortPayload> => {
       const committedChampion = overrides.targetChampion ?? targetChampion;
       const key = cohortRequestKey({
         targetMode,
@@ -367,6 +370,7 @@ export default function Home() {
         if (!response.ok) throw new Error(body.error ?? "Cohort retrieval failed");
         payload = body;
       }
+      if (isStale?.()) return payload;
       const targets = payload.dataset.targets;
       if (targets.length && !targets.some((target) => target.id === selectedTargetId)) {
         setSelectedTargetId(targets[Math.floor(targets.length / 2)]!.id);
@@ -481,7 +485,7 @@ export default function Home() {
             `A build repeats ${uniqueStrings(duplicates.map(itemLabel)).join(", ")}. Remove the duplicate completed item before simulating.`,
           );
         }
-        const cohort = await loadCohort(overrides);
+        const cohort = await loadCohort(overrides, superseded);
         if (superseded()) return;
         const dataset = cohort.dataset;
         const targets = dataset.targets;

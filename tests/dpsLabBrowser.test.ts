@@ -50,9 +50,15 @@ test('DPS lab keeps the newest simulation when an older cohort request finishes 
     await held.get(14)!()
     await until('the level 14 result', async () => (await shownLevel()) === '14')
 
+    await page.locator('summary').filter({ hasText: 'Damage trace' }).click()
+    const target = page.getByLabel('Selected target', { exact: true })
+    const selected = await target.selectOption({ index: 1 })
+    assert.equal(selected.length, 1)
+
     await held.get(13)!()
     await new Promise((resolve) => setTimeout(resolve, 150))
     assert.equal(await shownLevel(), '14', 'An older level 13 run replaced the level 14 result')
+    assert.equal(await target.inputValue(), selected[0], 'An older level 13 cohort changed the selected target')
     assert.deepEqual(pageErrors, [])
   } finally {
     await browser?.close()
