@@ -119,6 +119,7 @@ export default function Home() {
   const optimizerSlotEditedRef = useRef(false);
   const optimizerInputKeyRef = useRef<string | null>(null);
   const requestIdRef = useRef(0);
+  const runTokenRef = useRef(0);
   const railRef = useRef<HTMLElement | null>(null);
   const autoRunTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cohortRef = useRef<{ key: string; payload: CohortPayload } | null>(null);
@@ -332,7 +333,10 @@ export default function Home() {
   }, [cancelOptimizer, optimizerInputKey]);
 
   const loadCohort = useCallback(
-    async (overrides: { targetChampion?: string } = {}): Promise<CohortPayload> => {
+    async (
+      overrides: { targetChampion?: string } = {},
+      isStale?: () => boolean,
+    ): Promise<CohortPayload> => {
       const committedChampion = overrides.targetChampion ?? targetChampion;
       const key = cohortRequestKey({
         targetMode,
@@ -366,6 +370,7 @@ export default function Home() {
         if (!response.ok) throw new Error(body.error ?? "Cohort retrieval failed");
         payload = body;
       }
+      if (isStale?.()) return payload;
       const targets = payload.dataset.targets;
       if (targets.length && !targets.some((target) => target.id === selectedTargetId)) {
         setSelectedTargetId(targets[Math.floor(targets.length / 2)]!.id);
@@ -461,6 +466,8 @@ export default function Home() {
         clearTimeout(autoRunTimerRef.current);
         autoRunTimerRef.current = null;
       }
+      const runToken = ++runTokenRef.current;
+      const superseded = () => runToken !== runTokenRef.current;
       setLoading(true);
       setError("");
       try {
@@ -478,7 +485,8 @@ export default function Home() {
             `A build repeats ${uniqueStrings(duplicates.map(itemLabel)).join(", ")}. Remove the duplicate completed item before simulating.`,
           );
         }
-        const cohort = await loadCohort(overrides);
+        const cohort = await loadCohort(overrides, superseded);
+        if (superseded()) return;
         const dataset = cohort.dataset;
         const targets = dataset.targets;
         if (!targets.length) throw new Error("No target snapshots matched these filters.");
@@ -502,6 +510,7 @@ export default function Home() {
           selectedTargetId: overrides.selectedTargetId ?? selectedTargetId,
           metric,
         });
+        if (superseded()) return;
         setResult({
           dataset,
           target: main.representative.target,
@@ -545,15 +554,17 @@ export default function Home() {
             nextId: () => ++requestIdRef.current,
           }),
         ]);
+        if (superseded()) return;
         setWindowSummaries(summaries);
         setDrafts(draftRows);
       } catch (caught) {
+        if (superseded()) return;
         setResult(null);
         setWindowSummaries([]);
         setDrafts([]);
         setError(caught instanceof Error ? caught.message : "Simulation failed");
       } finally {
-        setLoading(false);
+        if (!superseded()) setLoading(false);
       }
     },
     [
