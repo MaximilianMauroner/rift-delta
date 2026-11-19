@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan, publicMatchHistoryShardPath } from '../src/domains/rankings/internal/published/writePlan.ts'
 import { createGenerationManifest, prepareSemanticArtifact } from '../scripts/public-artifact-storage.mjs'
@@ -43,7 +43,7 @@ test('Match year controls publish reloadable addresses before archive nodes arri
   let hold2025 = false
   const pending: Array<() => void> = []
   const release = () => { hold2025 = false; pending.splice(0).forEach((respond) => respond()) }
-  const fixture: Plugin = { name: 'matches-year-address-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'matches-year-address-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (!path.startsWith('/data/')) return next()
@@ -54,10 +54,9 @@ test('Match year controls publish reloadable addresses before archive nodes arri
       response.end(body ?? '{}')
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer!.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}`
@@ -196,7 +195,7 @@ test('Matches event choices and addressed pages survive catalog loading and real
   const pendingCatalog: Array<() => void> = []
   let holdSnapshot = false
   const pendingSnapshot: Array<() => void> = []
-  const fixture: Plugin = { name: 'matches-address-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'matches-address-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (!path.startsWith('/data/')) return next()
@@ -208,10 +207,9 @@ test('Matches event choices and addressed pages survive catalog loading and real
       response.end(body ?? '{}')
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer!.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}`
