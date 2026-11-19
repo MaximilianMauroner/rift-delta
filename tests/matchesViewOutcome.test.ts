@@ -132,8 +132,8 @@ test('both ledger layouts mark a level best-of score that has no winner', () => 
   const level = { bestOf: 5, gameNumber: 4, seriesWinsA: 2, seriesWinsB: 2, impact: { unit: 'held' } } as const
   for (const layout of [SeriesTable, SeriesCards]) {
     assert.match(render(series(level), layout), /Result incomplete/)
-    assert.match(render(series({ ...level, seriesState: 'ongoing' }), layout), /In progress/)
-    assert.doesNotMatch(render(series({ bestOf: 2, gameNumber: 2, seriesWinsA: 1, seriesWinsB: 1 }), layout), /Result incomplete|In progress/)
-    assert.doesNotMatch(render(series({}), layout), /Result incomplete|In progress/)
+    assert.match(render(series({ ...level, seriesState: 'ongoing' }), layout), /Result incomplete/, 'a score-derived state cannot prove a series is live')
+    assert.doesNotMatch(render(series({ bestOf: 2, gameNumber: 2, seriesWinsA: 1, seriesWinsB: 1 }), layout), /Result incomplete/)
+    assert.doesNotMatch(render(series({}), layout), /Result incomplete/)
   }
 })

@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip'
 import { TeamMark } from '../../components/TeamMark'
 import { ChampionPicks } from './ChampionPicks'
-import { deltaBarWidth, seriesRatingChange, seriesWinner, unresolvedSeriesNote, type SeriesRatingChange, type SeriesSide } from './seriesOutcome'
+import { deltaBarWidth, seriesRatingChange, seriesWinner, isUnresolvedSeries, type SeriesRatingChange, type SeriesSide } from './seriesOutcome'
 
 export type MatchSeries = {
   id: string
@@ -295,9 +295,8 @@ function ChanceLine({ change, match }: { change: Extract<SeriesRatingChange, { k
 }
 
 function UnresolvedTag({ match, className }: { match: PublicMatchHistoryEntry; className?: string }) {
-  const note = unresolvedSeriesNote(match)
-  if (!note) return null
-  return <Badge variant={note === 'In progress' ? 'live' : 'warning'} className={className}>{note}</Badge>
+  if (!isUnresolvedSeries(match)) return null
+  return <Badge variant="warning" className={className}>Result incomplete</Badge>
 }
 
 function UpsetTag({ change, match }: { change: Extract<SeriesRatingChange, { kind: 'applied' }>; match: PublicMatchHistoryEntry }) {
