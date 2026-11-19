@@ -299,6 +299,38 @@ test('the Rankings board follows its address after load: typed and linked hashes
       return label.left >= box.left && label.right <= box.right
     })), true, 'every tab label fits at 320px')
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+
+    await page.setViewportSize({ width: 1280, height: 900 })
+    const focusAfterNavigation = await page.evaluate(async () => {
+      const original = window.requestAnimationFrame
+      const callbacks: FrameRequestCallback[] = []
+      window.requestAnimationFrame = (callback) => { callbacks.push(callback); return callbacks.length }
+      try {
+        location.hash = '#regions?scope=all'
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => { observer.disconnect(); reject(new Error('Regions route did not render')) }, 5000)
+          const observer = new MutationObserver(() => {
+            if (document.querySelector('nav[aria-label="Primary"] a[href*="#regions"][aria-current="page"]')) {
+              observer.disconnect()
+              clearTimeout(timeout)
+              const link = document.querySelector<HTMLElement>('nav[aria-label="Primary"] a[href*="#rankings"]')
+              if (!link) { reject(new Error('Rankings navigation link is missing')); return }
+              link.focus()
+              resolve()
+            }
+          })
+          observer.observe(document.body, { attributes: true, childList: true, subtree: true })
+        })
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        const link = document.querySelector<HTMLElement>('nav[aria-label="Primary"] a[href*="#rankings"]')
+        if (!link) throw new Error('Rankings navigation link is missing')
+        callbacks.splice(0).forEach((callback) => callback(performance.now()))
+        return document.activeElement === link
+      } finally {
+        window.requestAnimationFrame = original
+      }
+    })
+    assert.equal(focusAfterNavigation, true, 'A delayed navigation frame does not steal focus from a later user action')
   } finally {
     pendingManifest.splice(0).forEach((respond) => respond())
     await browser?.close()
