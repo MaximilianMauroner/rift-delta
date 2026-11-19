@@ -1,15 +1,22 @@
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import test from 'node:test'
 import { chromium } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import type { Manifest } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { frontendResilienceFixture } from './fixtures/frontendResilienceFixture'
 
 test('Regions and Matches recover and follow addressed state', { timeout: 60_000 }, async (t) => {
   const { bodies, pagePaths } = frontendResilienceFixture()
   assert.ok(pagePaths.size > 0)
+  const outDir = process.env.RIFT_BROWSER_TEST_BUILD_DIR
+  const manifest: Manifest | undefined = outDir
+    ? JSON.parse(await readFile(join(outDir, '.vite', 'manifest.json'), 'utf8'))
+    : undefined
   let failPages = false
-  const fixture: Plugin = { name: 'frontend-resilience-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'frontend-resilience-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (!path.startsWith('/data/')) return next()
@@ -19,10 +26,9 @@ test('Regions and Matches recover and follow addressed state', { timeout: 60_000
       response.end(body ?? '{}')
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer!.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}`
@@ -127,9 +133,12 @@ test('Regions and Matches recover and follow addressed state', { timeout: 60_000
       ['tournaments', 'tournaments/TournamentsView'],
     ]) {
       await t.test(`a failed ${mode} chunk keeps the shell and other routes usable`, async () => {
+        const source = `src/views/${module}.tsx`
+        const chunk = manifest ? manifest[source]?.file : source
+        assert.ok(chunk, `No browser build chunk for ${source}`)
         const isolated = await browser!.newPage()
         try {
-          await isolated.route(`**/src/views/${module}.tsx`, (route) => route.fulfill({ status: 503, body: 'Synthetic local chunk failure' }))
+          await isolated.route((url) => url.pathname === `/${chunk}`, (route) => route.fulfill({ status: 503, body: 'Synthetic local chunk failure' }))
           await isolated.goto(`${base}/#${mode}?scope=all`)
           await isolated.getByRole('button', { name: 'Reload page', exact: true }).waitFor()
           assert.equal(await isolated.getByRole('complementary', { name: 'Site sidebar' }).count(), 1, 'a view failure must keep navigation')
