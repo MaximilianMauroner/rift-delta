@@ -1,5 +1,5 @@
 import { TriangleAlert } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { TeamMark } from '../../components/TeamMark'
 import { leagueColor } from '../../shared/teamColor'
 import { teamIdentityFor } from '../../domains/rankings/evidence'
@@ -69,8 +69,10 @@ export function WorldsTournamentPanel({ event, forecast, fixtureFeed }: { event:
     }
   }, [event, fixtureFeed, basis, seriesSource, run])
 
-  const names = new Map(event.series.flatMap((series) => series.teams.filter((team) => team.id).map((team) => [team.id!, team.name ?? team.id!])))
-  const name = (id: string) => names.get(id) ?? id
+  const name = useMemo(() => {
+    const names = new Map(event.series.flatMap((series) => series.teams.filter((team) => team.id).map((team) => [team.id!, team.name ?? team.id!])))
+    return (id: string) => names.get(id) ?? id
+  }, [event])
   return <Card className="min-w-0 border-dashed border-[var(--forecast)]" aria-label="Worlds simulation">
     <CardHeader><CardTitle role="heading" aria-level={3} className="flex flex-wrap items-center gap-2">Worlds outlook <Badge variant="preview">Forecast</Badge></CardTitle></CardHeader>
     <CardContent className="grid min-w-0 gap-3">
@@ -88,7 +90,7 @@ export function WorldsTournamentPanel({ event, forecast, fixtureFeed }: { event:
   </Card>
 }
 
-function WorldsReportView({ report, name }: { report: WorldsReport; name: (id: string) => string }) {
+const WorldsReportView = memo(function WorldsReportView({ report, name }: { report: WorldsReport; name: (id: string) => string }) {
   const championChances = report.teams.flatMap((team) =>
     team.stages.champion === null || team.stages.champion <= 0 || team.deterministicStages.champion
       ? [] : [{ id: team.id, probability: team.stages.champion }],
@@ -160,7 +162,7 @@ function WorldsReportView({ report, name }: { report: WorldsReport; name: (id: s
       </div>
     </details>
   </>
-}
+})
 function HistoricalGroupView({ result, name, asOf }: { result: GroupReplayResult; name: (id: string) => string; asOf: string }) {
   if (result.status === 'unsupported') return <Alert variant="warning"><TriangleAlert aria-hidden="true" /><div className="min-w-0">Historical group replay unavailable: {result.detail}. Historical forecasts require as-of ratings; current ratings are not used.</div></Alert>
   return <div className="grid gap-2"><h3 className="text-sm font-semibold">Worlds 2022 · Group {result.groupId} · Observed results</h3>
