@@ -112,6 +112,7 @@ test('Players reveals further results without losing filters or profile navigati
     assert.equal(await rows.count(), 25)
     await page.getByRole('button', { name: /Show more players/ }).click()
     assert.equal(await rows.count(), 30)
+    await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Open profile for Player 26')
     await rows.last().getByRole('button', { name: 'Open profile for Player 30' }).click()
     await page.getByRole('heading', { name: 'Player 30', exact: true }).waitFor()
     await page.getByRole('button', { name: 'Players', exact: true }).click()

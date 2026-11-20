@@ -45,6 +45,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
   const list = useRef<HTMLDivElement>(null)
   const pushedProfile = useRef(false)
   const returnFocus = useRef<string | null>(null)
+  const firstNewPlayer = useRef<string | null>(null)
   const [appliedQuery, setAppliedQuery] = useState(hashQuery)
   if (hashQuery !== appliedQuery) {
     setAppliedQuery(hashQuery)
@@ -93,6 +94,13 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
     target?.focus({ preventScroll: true })
     target?.scrollIntoView({ block: 'nearest' })
   }, [profileOpen, searchRef])
+
+  useEffect(() => {
+    const player = firstNewPlayer.current
+    if (!player) return
+    firstNewPlayer.current = null
+    list.current?.querySelector<HTMLButtonElement>(`[data-player-profile="${CSS.escape(player)}"]`)?.focus()
+  }, [visibleCount])
 
   function selectProfile(profile: string) {
     if (!profileOpen) pushedProfile.current = true
@@ -293,7 +301,10 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                   </Table>
                   {visibleCount < visible.length ? (
                     <div className="p-3">
-                      <Button variant="outline" onClick={() => setBatch({ filterKey, count: visibleCount + PLAYER_BATCH_SIZE })}>
+                      <Button variant="outline" onClick={() => {
+                        firstNewPlayer.current = visible[visibleCount].id
+                        setBatch({ filterKey, count: visibleCount + PLAYER_BATCH_SIZE })
+                      }}>
                         Show more players ({formatNumber(Math.min(visibleCount, visible.length))} of {formatNumber(visible.length)} shown)
                       </Button>
                     </div>

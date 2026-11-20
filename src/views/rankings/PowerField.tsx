@@ -99,85 +99,85 @@ export function PowerField({
   return (
     <section ref={fieldRef} className={cn('power-field', strip && 'is-strip')} data-first-answer="rankings" aria-label="Power field">
       <details open={!strip}>
-      <summary className="power-field__summary">Power field</summary>
-      <div
-        ref={plotRef}
-        className="power-field__plot"
-        style={{ height: size.height }}
-        role={strip ? undefined : 'group'}
-        aria-hidden={strip || undefined}
-        aria-label={`${formatNumber(teams.length)} teams on one Power axis, from ${formatRating(byPower.at(-1)?.rating ?? axis.min)} to ${formatRating(byPower[0]?.rating ?? axis.max)}. Arrow keys move between teams. Select a team to open it.`}
-        onKeyDown={move}
-      >
-        {zones.map((zone) => (
-          <span
-            key={zone.tier}
-            className="power-field__zone"
-            style={{ left: xFor(zone.from), width: xFor(zone.to) - xFor(zone.from), '--tier-color': `var(--tier-${zone.tier.toLowerCase()})` } as CSSProperties}
-            aria-hidden="true"
-          >
-            {zone.tier} tier
-          </span>
-        ))}
-        {strip ? null : axis.ticks.map((tick) => (
-          <span key={tick} className="power-field__tick" style={{ left: xFor(tick) }} aria-hidden="true" />
-        ))}
-        {marks.map(({ team, key, disc, radius, x, y }) => {
-          const tier = tierFor(team)
-          return (
-            <button
-              key={key}
-              type="button"
-              disabled={strip}
-              data-field-key={key}
-              className={cn('power-field__mark', disc && 'is-disc', key === selectedKey && 'is-selected')}
-              style={{ left: x - radius, top: y - radius, width: radius * 2, height: radius * 2, '--league-color': leagueColor(team.league) } as CSSProperties}
-              tabIndex={key === activeKey ? 0 : -1}
-              aria-current={key === selectedKey ? 'true' : undefined}
-              aria-label={`${team.eligibility?.eligible === false || team.rank == null ? 'Unranked' : `Rank ${team.rank}`}, ${team.team}, ${team.league}, Power ${formatRating(team.rating)}${tier ? `, ${tier} tier` : ''}`}
-              onFocus={() => {
-                setActive(key)
-                onPrepare()
-              }}
-              onPointerEnter={onPrepare}
-              onClick={() => onOpen(team)}
+        <summary className="power-field__summary">Power field</summary>
+        <div
+          ref={plotRef}
+          className="power-field__plot"
+          style={{ height: size.height }}
+          role={strip ? undefined : 'group'}
+          aria-hidden={strip || undefined}
+          aria-label={`${formatNumber(teams.length)} teams on one Power axis, from ${formatRating(byPower.at(-1)?.rating ?? axis.min)} to ${formatRating(byPower[0]?.rating ?? axis.max)}. Arrow keys move between teams. Select a team to open it.`}
+          onKeyDown={move}
+        >
+          {zones.map((zone) => (
+            <span
+              key={zone.tier}
+              className="power-field__zone"
+              style={{ left: xFor(zone.from), width: xFor(zone.to) - xFor(zone.from), '--tier-color': `var(--tier-${zone.tier.toLowerCase()})` } as CSSProperties}
+              aria-hidden="true"
             >
-              {disc ? <TeamMark team={team.team} code={team.code} fallback="initial" className="size-6 rounded-full border-0 bg-transparent" /> : null}
-            </button>
-          )
-        })}
-      </div>
-      {strip ? (
-        <label className="power-field__selector">
-          Open a team
-          <Select aria-label="Open a team from the Power field" value={selectedKey ?? ''} onChange={(event) => {
-            const team = byPower.find((entry) => teamKey(entry) === event.target.value)
-            if (team) onOpen(team)
-          }} onFocus={onPrepare}>
-            <option value="">Choose team</option>
-            {byPower.map((team) => <option key={teamKey(team)} value={teamKey(team)}>{team.team} · {team.league} · {formatRating(team.rating)}</option>)}
-          </Select>
-        </label>
-      ) : null}
-      <div className="power-field__axis" aria-hidden="true">
+              {zone.tier} tier
+            </span>
+          ))}
+          {strip ? null : axis.ticks.map((tick) => (
+            <span key={tick} className="power-field__tick" style={{ left: xFor(tick) }} aria-hidden="true" />
+          ))}
+          {marks.map(({ team, key, disc, radius, x, y }) => {
+            const tier = tierFor(team)
+            return (
+              <button
+                key={key}
+                type="button"
+                disabled={strip}
+                data-field-key={key}
+                className={cn('power-field__mark', disc && 'is-disc', key === selectedKey && 'is-selected')}
+                style={{ left: x - radius, top: y - radius, width: radius * 2, height: radius * 2, '--league-color': leagueColor(team.league) } as CSSProperties}
+                tabIndex={key === activeKey ? 0 : -1}
+                aria-current={key === selectedKey ? 'true' : undefined}
+                aria-label={`${team.eligibility?.eligible === false || team.rank == null ? 'Unranked' : `Rank ${team.rank}`}, ${team.team}, ${team.league}, Power ${formatRating(team.rating)}${tier ? `, ${tier} tier` : ''}`}
+                onFocus={() => {
+                  setActive(key)
+                  onPrepare()
+                }}
+                onPointerEnter={onPrepare}
+                onClick={() => onOpen(team)}
+              >
+                {disc ? <TeamMark team={team.team} code={team.code} fallback="initial" className="size-6 rounded-full border-0 bg-transparent" /> : null}
+              </button>
+            )
+          })}
+        </div>
         {strip ? (
-          <>
-            <span>{formatRating(axis.min)}</span>
-            <span>{formatRating(axis.max)} Power</span>
-          </>
-        ) : axis.ticks.map((tick) => (
-          <span key={tick} style={{ left: xFor(tick) }}>{formatRating(tick)}</span>
-        ))}
-      </div>
-      <p className="power-field__caption">
-        Every team on one Power scale, higher to the right. {strip ? 'Dots' : 'Logos are the top eight; dots'} are coloured by league.{' '}
-        <b className="font-semibold text-text">100 Power ≈ {gapExample}% per game.</b>
-      </p>
-      <div className="power-field__leagues" aria-label="League colours">
-        {[...new Set(byPower.map((team) => team.league))].sort().map((league) => (
-          <span key={league}><i style={{ background: leagueColor(league) }} aria-hidden="true" />{league}</span>
-        ))}
-      </div>
+          <label className="power-field__selector">
+            Open a team
+            <Select aria-label="Open a team from the Power field" value={selectedKey ?? ''} onChange={(event) => {
+              const team = byPower.find((entry) => teamKey(entry) === event.target.value)
+              if (team) onOpen(team)
+            }} onFocus={onPrepare}>
+              <option value="">Choose team</option>
+              {byPower.map((team) => <option key={teamKey(team)} value={teamKey(team)}>{team.team} · {team.league} · {formatRating(team.rating)}</option>)}
+            </Select>
+          </label>
+        ) : null}
+        <div className="power-field__axis" aria-hidden="true">
+          {strip ? (
+            <>
+              <span>{formatRating(axis.min)}</span>
+              <span>{formatRating(axis.max)} Power</span>
+            </>
+          ) : axis.ticks.map((tick) => (
+            <span key={tick} style={{ left: xFor(tick) }}>{formatRating(tick)}</span>
+          ))}
+        </div>
+        <p className="power-field__caption">
+          Every team on one Power scale, higher to the right. {strip ? 'Dots' : 'Logos are the top eight; dots'} are coloured by league.{' '}
+          <b className="font-semibold text-text">100 Power ≈ {gapExample}% per game.</b>
+        </p>
+        <div className="power-field__leagues" aria-label="League colours">
+          {[...new Set(byPower.map((team) => team.league))].sort().map((league) => (
+            <span key={league}><i style={{ background: leagueColor(league) }} aria-hidden="true" />{league}</span>
+          ))}
+        </div>
       </details>
     </section>
   )
