@@ -46,7 +46,9 @@ test('a missing Players stylesheet reloads the addressed page once and falls bac
       })
       if (persistent) {
         const url = `${base}#players?scope=all&player=Chovy`
+        const retryCss = page.waitForResponse((response) => failures === 2 && /PlayersView-.*\.css$/.test(response.url()) && response.status() === 404)
         await page.goto(url, { waitUntil: 'commit' })
+        await retryCss
         await page.getByRole('button', { name: 'Reload page' }).waitFor()
         assert.equal(failures, 2)
         assert.equal(page.url(), url)
