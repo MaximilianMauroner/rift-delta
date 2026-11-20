@@ -88,15 +88,15 @@ test('ranking browser bootstraps without archive history, selects a year, pages,
     assert.equal(requests.filter((path) => path === indexPath).length, 1)
     requests.length = 0
     await page.goto(`${base}/#matches?scope=all&matchesYear=2026`)
-    await page.getByLabel('Match history year').waitFor()
-    assert.equal(await page.getByLabel('Match history year').inputValue(), '2026')
+    await page.getByLabel('Calendar year played').waitFor()
+    assert.equal(await page.getByLabel('Calendar year played').inputValue(), '2026')
     await page.locator('table').getByText('Sample 2026', { exact: true }).first().waitFor()
     assert.ok((nodesByYear.get('2025')?.size ?? 0) > 0)
     // Catalog loading for the selected year must not hydrate old-year nodes.
     assert.ok(requests.every((path) => !nodesByYear.get('2025')?.has(path)))
     holdIndex = true
     const pendingRequest = page.waitForRequest((request) => Boolean(nodesByYear.get('2025')?.has(new URL(request.url()).pathname)))
-    await page.getByLabel('Match history year').selectOption('2025')
+    await page.getByLabel('Calendar year played').selectOption('2025')
     await pendingRequest
     await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('matchesYear') === '2025')
     holdIndex = false
@@ -106,7 +106,7 @@ test('ranking browser bootstraps without archive history, selects a year, pages,
     await page.getByText('Page 3 of 3', { exact: true }).waitFor()
     await page.locator('table').getByText('Sample 2025', { exact: true }).first().waitFor()
     await page.getByRole('button', { name: 'First page', exact: true }).click()
-    await page.getByLabel('Match history year').selectOption('All')
+    await page.getByLabel('Calendar year played').selectOption('All')
     await page.locator('table').getByText('Sample 2026', { exact: true }).first().waitFor()
     await page.getByRole('button', { name: 'Next page', exact: true }).click()
     await page.getByText('Page 2 of 5', { exact: true }).waitFor()
@@ -125,7 +125,7 @@ test('ranking browser bootstraps without archive history, selects a year, pages,
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
     const requestsBeforeReturn = requests.length
     failObjects = true
-    await page.getByLabel('Match history year').selectOption('2025')
+    await page.getByLabel('Calendar year played').selectOption('2025')
     await page.getByText('Sample 2025', { exact: true }).filter({ visible: true }).first().waitFor()
     assert.equal(requests.length, requestsBeforeReturn, 'a cached year remains usable when the network is unavailable')
     // A fresh document still reports a missing object and permits an explicit retry.
@@ -133,7 +133,7 @@ test('ranking browser bootstraps without archive history, selects a year, pages,
     await page.getByRole('button', { name: 'Retry', exact: true }).first().waitFor()
     failObjects = false
     await page.getByRole('button', { name: 'Retry', exact: true }).first().click()
-    await page.getByLabel('Match history year').waitFor()
+    await page.getByLabel('Calendar year played').waitFor()
     await page.setViewportSize({ width: 1280, height: 720 })
     await page.goto(base)
     await page.getByRole('heading', { name: 'Power over time', exact: true }).hover()

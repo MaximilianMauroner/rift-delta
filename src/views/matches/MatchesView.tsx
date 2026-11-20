@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
-import { Globe2, History, Search, Trophy } from 'lucide-react'
+import { History, Search } from 'lucide-react'
 import type { PublicMatchHistoryEntry, PublicMatchHistorySeriesRef } from '../../domains/rankings/types'
 import type { MatchHistoryState } from '../../browser/rankings/usePublicArtifacts'
 import { formatNumber } from '../../shared/display'
@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { DataState } from '../../components/ui'
 import { Input } from '../../components/ui/input'
-import { PageShell, StatCell, StatRibbon } from '../../components/ui/page-shell'
+import { PageShell } from '../../components/ui/page-shell'
 import { Pager } from '../../components/ui/pager'
 import { canUseBackgroundPrefetch, scheduleIdleWork } from '../../browser/rankings/prefetch'
 import { Panel, PanelFooter } from '../../components/ui/panel'
@@ -187,20 +187,15 @@ export function MatchesView({ hashQuery, state, onRequestPages, searchRef, archi
   const last = pageStart + visibleRefs.length
 
   return (
-    <PageShell
-      aria-label="Match history results"
-      className="matches-view"
-      ribbon={
-        <StatRibbon label="Match ledger summary" className="matches-summary">
-          <StatCell icon={<History aria-hidden="true" />} label="Series" value={formatNumber(filtered.length)} detail={`${formatNumber(filteredGameCount)} games`} />
-          <StatCell icon={<Globe2 aria-hidden="true" />} label="Leagues" value={formatNumber(filteredLeagueCount)} />
-          <StatCell icon={<Trophy aria-hidden="true" />} label="Events" value={formatNumber(filteredEventCount)} />
-        </StatRibbon>
-      }
-    >
-      <h2 id={headingId} className="matches-heading">Series ledger</h2>
+    <PageShell aria-label="Match history results" className="matches-view">
+      <div className="matches-ledger-heading">
+        <h2 id={headingId} className="matches-heading">Series ledger</h2>
+        <p className="text-xs text-muted">
+          {formatNumber(filtered.length)} series · {formatNumber(filteredGameCount)} games · {formatNumber(filteredLeagueCount)} leagues · {formatNumber(filteredEventCount)} events
+        </p>
+      </div>
       <div className="matches-filters">
-        {archiveYears.length > 1 && onYearChange ? <label className="grid min-w-0 gap-1"><span className="text-xs text-muted">Archive year</span><Select aria-label="Match history year" className="w-full max-w-none" value={archiveYear ?? 'All'} onChange={(event) => onYearChange(event.target.value)}><option value="All">All years</option>{archiveYears.map((year) => <option key={year} value={year}>{year}</option>)}</Select></label> : null}
+        {archiveYears.length > 1 && onYearChange ? <label className="grid min-w-0 gap-1"><span className="text-xs text-muted">Calendar year played</span><Select aria-label="Calendar year played" aria-describedby={`${headingId}-year-note`} className="w-full max-w-none" value={archiveYear ?? 'All'} onChange={(event) => onYearChange(event.target.value)}><option value="All">All years</option>{archiveYears.map((year) => <option key={year} value={year}>{year}</option>)}</Select></label> : null}
         <label className="matches-search grid min-w-0 gap-1">
           <span className="text-xs text-muted">Find a team</span>
           <span className="relative">
@@ -222,10 +217,7 @@ export function MatchesView({ hashQuery, state, onRequestPages, searchRef, archi
         </label>
         {filtersActive ? <Button className="matches-clear" variant="ghost" onClick={clearFilters}>Clear filters</Button> : null}
         {archiveYears.length > 1 && onYearChange ? (
-          <details className="matches-archive-note">
-            <summary>Archive year and season</summary>
-            <p>The season and period above set the scope. Archive year shows complete series played in that calendar year.</p>
-          </details>
+          <p id={`${headingId}-year-note`} className="matches-archive-note">Calendar year narrows the selected season and split.</p>
         ) : null}
       </div>
 

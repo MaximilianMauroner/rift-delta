@@ -164,14 +164,14 @@ export function RegionsView({
                           {region.topTeams.slice(0, 3).map((team) => (
                             <span className="regions-top-team" key={team.team}>
                               <TeamMark team={team.team} code={team.code} className="size-5 border-0 bg-transparent" imageClassName="p-0" />
-                              <span>{team.code ?? team.team}</span>
-                              <span className="sr-only">{team.team}, Power {formatRating(team.rating)}</span>
+                              <span>{team.team}</span>
+                              <span className="sr-only">, Power {formatRating(team.rating)}</span>
                             </span>
                           ))}
                         </span>
                       </Button>
                       <details className="regions-row-facts">
-                        <summary>{region.teamCount} flagship teams, record and depth</summary>
+                        <summary>View teams and record ({region.teamCount} teams)</summary>
                         <dl>
                           <div><dt>International record</dt><dd>{formatRecord(region.internationalWins, region.internationalLosses)} · {formatRatio(region.internationalWinRate)}</dd></div>
                           <div><dt>Wins vs expected</dt><dd>{formatSignedDecimal(region.winsOverExpected)}</dd></div>
@@ -180,7 +180,7 @@ export function RegionsView({
                           <div><dt>All-team average</dt><dd>{formatRating(displayRegionTotalTeamRating(region))}</dd></div>
                         </dl>
                         <ul>
-                          {region.topTeams.slice(0, 3).map((team) => <li key={team.team}>{team.team} · {team.code ?? team.team} · Power {formatRating(team.rating)}</li>)}
+                          {region.topTeams.slice(0, 3).map((team) => <li key={team.team}>{team.team} · Power {formatRating(team.rating)}</li>)}
                         </ul>
                       </details>
                     </TableCell>
