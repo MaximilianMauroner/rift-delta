@@ -193,6 +193,7 @@ test('tournament forecasts are available by default and keep published odds thro
   await results.getByText('Historical forecasts are unavailable for this schedule source.', { exact: true }).waitFor()
   assert.equal(await results.getByText(/^Historical forecasts/).count(), 1)
   assert.equal(await results.getByText(/^Forecast unavailable:/).count(), 0)
+  assert.equal(await results.getByText('Conditional Power preview', { exact: true }).count(), 0)
   assert.equal(await results.getByText('T1 3–1 Gen.G').count(), 2)
   assert.equal(await page.getByText('Published pre-match forecast', { exact: true }).count(), 0)
   assert.equal(await page.getByText(/Score-conditioned series odds:/).count(), 0)

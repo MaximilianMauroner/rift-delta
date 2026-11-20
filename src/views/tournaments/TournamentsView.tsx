@@ -231,10 +231,10 @@ function SeriesRow({ series, timezone, now, seriesSource, forecasts }: ScheduleP
       {winningTeam?.name ? <span className="min-w-0 font-semibold text-text">Winner: {winningTeam.name}</span> : null}
       {series.vodUrls.map((url) => <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="underline">Watch VOD</a>)}
     </p>
-    <div className="grid min-w-0 gap-2 sm:col-start-2 lg:col-span-2">
-      {forecast && (!historical || forecast.status === 'ready') ? <SeriesForecast series={series} forecast={forecast} timezone={timezone} seriesSource={seriesSource} /> : null}
+    {!historical || forecast?.status === 'ready' ? <div className="grid min-w-0 gap-2 sm:col-start-2 lg:col-span-2">
+      {forecast ? <SeriesForecast series={series} forecast={forecast} timezone={timezone} seriesSource={seriesSource} /> : null}
       <ConditionalPowerPreview key={JSON.stringify([series, forecast, forecasts.powerPreviews])} series={series} forecast={forecast} now={now} basis={forecasts.basis} powerPreviews={forecasts.powerPreviews} />
-    </div>
+    </div> : null}
   </li>
 }
 
