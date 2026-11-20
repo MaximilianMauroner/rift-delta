@@ -71,9 +71,12 @@ export function PowerField({
       return { team, key: teamKey(team), disc, radius, x }
     })
     const offsets = swarmOffsets(items)
-    const halfBand = Math.max((size.height - size.top) / 2, ...items.map(({ radius }, index) => Math.abs(offsets[index]) + radius))
+    const minHalfBand = (size.height - size.top) / 2
+    const packedHalfBand = Math.max(minHalfBand, ...items.map(({ radius }, index) => Math.abs(offsets[index]) + radius))
+    const halfBand = strip ? minHalfBand : packedHalfBand
+    const offsetScale = strip ? (halfBand - size.dot) / (packedHalfBand - size.dot) : 1
     return {
-      marks: items.map((item, index) => ({ ...item, y: size.top + halfBand + offsets[index] })),
+      marks: items.map((item, index) => ({ ...item, y: size.top + halfBand + offsets[index] * offsetScale })),
       height: size.top + 2 * halfBand,
     }
   }, [axis, byPower, size, strip, width])
