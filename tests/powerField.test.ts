@@ -22,10 +22,14 @@ test('tiers whose Power ranges overlap get no zones, so a band never claims a te
   assert.deepEqual(tierZones(teams, (entry) => tiers[entry.teamId], axis), [])
 })
 
-test('swarm marks at one Power value stack apart without overlap inside the height', () => {
-  const items = Array.from({ length: 5 }, () => ({ x: 100, radius: 6 }))
-  const offsets = swarmOffsets(items, 80)
-  const sorted = [...offsets].sort((left, right) => left - right)
-  for (let index = 1; index < sorted.length; index += 1) assert.ok(sorted[index] - sorted[index - 1] >= 12, `gap at ${index}`)
-  assert.ok(offsets.every((offset) => Math.abs(offset) <= 34))
+test('clustered Power marks keep their rectangular click targets apart', () => {
+  const items = [0, 7, 17, 21, 21, 28, 31, 48].map((x, index) => ({ x, radius: index < 4 ? 16 : 12 }))
+  const offsets = swarmOffsets(items)
+  assert.equal(offsets[0], 0)
+  for (const [index, item] of items.entries()) {
+    for (let earlier = 0; earlier < index; earlier += 1) {
+      const clearance = item.radius + items[earlier].radius + 2
+      assert.ok(Math.abs(item.x - items[earlier].x) >= clearance || Math.abs(offsets[index] - offsets[earlier]) >= clearance)
+    }
+  }
 })

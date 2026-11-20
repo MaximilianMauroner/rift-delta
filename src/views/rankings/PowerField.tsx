@@ -12,7 +12,7 @@ const DISC_COUNT = 8
 /** Below this width the field is a thin strip of dots, as on phones. */
 const STRIP_BELOW = 600
 /** `top` keeps the tier names clear of the marks. */
-const WIDE = { height: 148, top: 18, inset: 18, disc: 16, dot: 6 }
+const WIDE = { height: 148, top: 18, inset: 18, disc: 16, dot: 12 }
 const STRIP = { height: 48, top: 0, inset: 5, dot: 4 }
 
 /**
@@ -62,19 +62,26 @@ export function PowerField({
   const axis = useMemo(() => fieldAxis(byPower.map((team) => team.rating)), [byPower])
   const zones = useMemo(() => strip ? [] : tierZones(ranked, tierFor, axis), [axis, ranked, strip, tierFor])
   const xFor = (rating: number) => size.inset + ((rating - axis.min) / (axis.max - axis.min)) * Math.max(0, width - 2 * size.inset)
-  const marks = useMemo(() => {
-    if (width === 0) return []
+  const { marks, height } = useMemo(() => {
+    if (width === 0) return { marks: [], height: size.height }
     const items = byPower.map((team, index) => {
       const disc = !strip && index < DISC_COUNT
       const radius = disc ? WIDE.disc : strip ? STRIP.dot : WIDE.dot
       const x = size.inset + ((team.rating - axis.min) / (axis.max - axis.min)) * Math.max(0, width - 2 * size.inset)
       return { team, key: teamKey(team), disc, radius, x }
     })
-    const band = size.height - size.top
-    const offsets = swarmOffsets(items, band)
-    return items.map((item, index) => ({ ...item, y: size.top + band / 2 + offsets[index] }))
+    const offsets = swarmOffsets(items)
+    const minHalfBand = (size.height - size.top) / 2
+    const packedHalfBand = Math.max(minHalfBand, ...items.map(({ radius }, index) => Math.abs(offsets[index]) + radius))
+    const halfBand = strip ? minHalfBand : packedHalfBand
+    const offsetScale = strip ? (halfBand - size.dot) / (packedHalfBand - size.dot) : 1
+    return {
+      marks: items.map((item, index) => ({ ...item, y: size.top + halfBand + offsets[index] * offsetScale })),
+      height: size.top + 2 * halfBand,
+    }
   }, [axis, byPower, size, strip, width])
 
+  const selectedTeam = byPower.find((team) => teamKey(team) === selectedKey)
   const [active, setActive] = useState<string>()
   const keys = byPower.map(teamKey)
   const activeKey = active && keys.includes(active) ? active : selectedKey && keys.includes(selectedKey) ? selectedKey : keys[0]
@@ -103,7 +110,7 @@ export function PowerField({
         <div
           ref={plotRef}
           className="power-field__plot"
-          style={{ height: size.height }}
+          style={{ height }}
           role={strip ? undefined : 'group'}
           aria-hidden={strip || undefined}
           aria-label={`${formatNumber(teams.length)} teams on one Power axis, from ${formatRating(byPower.at(-1)?.rating ?? axis.min)} to ${formatRating(byPower[0]?.rating ?? axis.max)}. Arrow keys move between teams. Select a team to open it.`}
@@ -169,6 +176,7 @@ export function PowerField({
             <span key={tick} style={{ left: xFor(tick) }}>{formatRating(tick)}</span>
           ))}
         </div>
+        {!strip && selectedTeam ? <p className="power-field__caption">Selected team: <strong>{selectedTeam.team}</strong></p> : null}
         <p className="power-field__caption">
           Every team on one Power scale, higher to the right. {strip ? 'Dots' : 'Logos are the top eight; dots'} are coloured by league.{' '}
           <b className="font-semibold text-text">100 Power ≈ {gapExample}% per game.</b>

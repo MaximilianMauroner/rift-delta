@@ -664,9 +664,6 @@ table.ranking-table.board-grid col.board-col-action { width: 104px; }
   background: var(--line);
   pointer-events: none;
 }
-/* Marks keep their drawn size under the 44px touch rule. Each team also
-   has a full-size row button in the list, the equivalent control that
-   WCAG 2.5.8 accepts. */
 .power-field__mark {
   min-width: 0;
   min-height: 0;
@@ -674,13 +671,20 @@ table.ranking-table.board-grid col.board-col-action { width: 104px; }
   display: grid;
   place-items: center;
   padding: 0;
-  border: 2px solid var(--surface);
+  border: 0;
   border-radius: 999px;
-  background: var(--league-color);
+  background: transparent;
   cursor: pointer;
 }
+.power-field__mark:not(.is-disc)::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--league-color);
+}
 .power-field__mark.is-disc {
-  border-color: var(--league-color);
+  border: 2px solid var(--league-color);
   background: var(--surface);
 }
 .power-field__mark:hover { z-index: 1; filter: brightness(1.15); }
