@@ -12,6 +12,7 @@
 .r8-player-list { min-width: 0; }
 .r8-player-table { width: 100%; table-layout: fixed; font-size: 14px; }
 .r8-player-table th { background: var(--surface); }
+.r8-player-table tbody tr { cursor: pointer; }
 .r8-player-table :is(th, td) { padding: 10px 8px; }
 .r8-player-table .player-col-rank { width: 44px; text-align: center; color: var(--text); }
 .r8-player-table .player-col-name { width: auto; white-space: normal; }

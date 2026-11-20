@@ -564,7 +564,13 @@ test('Players profile navigation keeps focus, addressed history and responsive l
 
 
     await page.setViewportSize({ width: 1280, height: 900 })
-    await rows.first().getByRole('button', { name: 'Open profile for Aster', exact: true }).click()
+    await rows.last().locator('.player-col-score').click()
+    await playerProfile.getByRole('heading', { name: 'Cedar', exact: true }).waitFor()
+    await rows.first().locator('.player-col-rank').click()
+    await playerProfile.getByRole('heading', { name: 'Aster', exact: true }).waitFor()
+    await rows.last().locator('summary').click()
+    assert.equal(await rows.last().locator('details').getAttribute('open') !== null, true)
+    assert.equal(await playerProfile.getByRole('heading', { name: 'Aster', exact: true }).isVisible(), true, 'The disclosure does not select its row')
     assert.equal(await playerProfile.getByRole('button', { name: 'Players', exact: true }).count(), 0, 'The desktop profile has no back button')
     const picker = playerProfile.getByRole('combobox', { name: 'Profile player', exact: true })
     await picker.focus()
