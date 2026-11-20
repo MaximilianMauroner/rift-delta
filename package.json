@@ -43,7 +43,7 @@
     "benchmark:incremental:gate": "node --expose-gc --import tsx scripts/benchmark-incremental-ranking.ts --enforce-targets",
     "release:check": "pnpm run data:freshness && pnpm run data:crunch && pnpm run test:release && pnpm run typecheck && pnpm run lint && pnpm run benchmark:incremental:gate && pnpm run build",
     "verify": "node tools/dev/verify.mjs",
-    "verify:full": "pnpm run --parallel \"/^(typecheck|lint)$/\" && node tools/dev/check-layout.mjs && pnpm test",
+    "verify:full": "pnpm run --parallel \"/^(typecheck|lint)$/\" && node tools/dev/check-layout.mjs",
     "railway:build": "pnpm run data:pull && pnpm run typecheck && pnpm run lint && pnpm run bundle",
     "preview": "vite preview",
     "railway:start": "node scripts/railway-server.mjs",

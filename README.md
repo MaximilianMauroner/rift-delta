@@ -32,13 +32,15 @@ Tests read this cache directly and leave your local `public/data/` tree intact.
 
 ```sh
 pnpm verify
+pnpm test
 pnpm build
 pnpm ranking:baseline
 ```
 
-`verify` checks types, source ownership, style, tracked-file hygiene, and tests.
+`verify` checks types, source ownership, style, and tracked-file hygiene.
+`test` runs the test suites separately.
 On a clean local checkout, it can reuse a successful run with matching inputs.
-Use `pnpm verify --fresh` to run all checks again. CI always runs all checks.
+Use `pnpm verify --fresh` to run the checks again. CI runs both checks and tests.
 `build` bundles the local payload. `ranking:baseline` checks the committed safety
 receipt without network access or bucket mutation. On a shared coding VM, run
 heavy checks one at a time through `heavy-check`.
