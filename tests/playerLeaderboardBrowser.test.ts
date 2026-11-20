@@ -84,6 +84,46 @@ async function expectPlayers(page: Page, names: string[]) {
   assert.deepEqual(await page.getByRole('table', { name: 'Player rankings' }).locator('tbody tr [data-player-profile]').allTextContents(), names)
 }
 
+test('Players reveals further results without losing filters or profile navigation', { timeout: 60_000 }, async () => {
+  const bodies = fixtureBodies()
+  const directory = JSON.parse(bodies.get(playerPath)!) as PublicPlayerDirectory
+  assert.ok(directory.scopedPlayers)
+  directory.scopedPlayers['2026__All__All'] = Array.from({ length: 30 }, (_, index) =>
+    player(`Player ${String(index + 1).padStart(2, '0')}`, 'Fixture Alpha', 'Mid', 500 - index, index + 1))
+  bodies.set(playerPath, JSON.stringify(directory))
+  const server = await startBrowserFixture({ name: 'player-batches', configureServer(server) {
+    server.middlewares.use((request, response, next) => {
+      const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
+      if (!path.startsWith('/data/') && !path.startsWith('/tournament-data/')) return next()
+      response.statusCode = bodies.has(path) ? 200 : 404
+      response.setHeader('content-type', 'application/json')
+      response.end(bodies.get(path) ?? '{}')
+    })
+  } })
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
+  try {
+    const address = server.httpServer?.address()
+    assert.ok(address && typeof address !== 'string')
+    browser = await chromium.launch(existsSync(chromium.executablePath()) ? { headless: true } : { headless: true, channel: 'chrome' })
+    const page = await browser.newPage({ viewport: { width: 375, height: 900 } })
+    await page.goto(`http://127.0.0.1:${address.port}/${playersAddress}`)
+    const rows = page.getByRole('table', { name: 'Player rankings' }).locator('tbody tr')
+    await rows.first().waitFor()
+    assert.equal(await rows.count(), 25)
+    await page.getByRole('button', { name: /Show more players/ }).click()
+    assert.equal(await rows.count(), 30)
+    await rows.last().getByRole('button', { name: 'Open profile for Player 30' }).click()
+    await page.getByRole('heading', { name: 'Player 30', exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Players', exact: true }).click()
+    await page.getByRole('searchbox', { name: 'Find a player or team' }).fill('Player 30')
+    assert.equal(await rows.count(), 1)
+    assert.equal(await page.getByRole('button', { name: /Show more players/ }).count(), 0)
+  } finally {
+    await browser?.close()
+    await server.close()
+  }
+})
+
 test('Players supports navigation, exact seasons, score order, addressed filters and explicit artifact states', { timeout: 90_000 }, async () => {
   const bodies = fixtureBodies()
   const requests: string[] = []

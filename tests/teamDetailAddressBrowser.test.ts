@@ -346,3 +346,19 @@ test('the Power field keeps one mark in the tab order, moves with the arrow keys
     assert.equal(await field.locator('button[aria-current="true"]').getAttribute('aria-label'), moved)
   })
 })
+
+test('the phone Power field offers a team and league selector', { timeout: 60_000 }, async () => {
+  await withFixture(async (page, base) => {
+    await page.setViewportSize({ width: 375, height: 900 })
+    await page.goto(`${base}${board('2026')}`)
+    await page.getByText('Power field', { exact: true }).click()
+    const selector = page.getByRole('combobox', { name: 'Open a team from the Power field' })
+    await selector.waitFor()
+    const options = await selector.locator('option').allTextContents()
+    assert.ok(options.some((option) => option.includes('Synthetic') && option.includes(' · ')))
+    const value = await selector.locator('option').nth(1).getAttribute('value')
+    assert.ok(value)
+    await selector.selectOption(value)
+    await page.getByRole('heading', { name: /Synthetic/ }).last().waitFor()
+  })
+})

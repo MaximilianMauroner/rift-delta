@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { TeamMark } from '../../components/TeamMark'
+import { Select } from '../../components/ui/select'
 import type { RankingTierLabel } from '../../domains/rankings/read'
 import type { RankingSummaryStanding } from '../../domains/rankings/types'
 import { formatNumber, formatRating, teamKey } from '../../shared/display'
@@ -40,11 +41,15 @@ export function PowerField({
   onPrepare: () => void
 }) {
   const plotRef = useRef<HTMLDivElement | null>(null)
+  const fieldRef = useRef<HTMLElement | null>(null)
   const [width, setWidth] = useState(0)
   useLayoutEffect(() => {
-    const plot = plotRef.current
+    const plot = fieldRef.current
     if (!plot) return
-    const measure = () => setWidth(plot.clientWidth)
+    const measure = () => {
+      const style = getComputedStyle(plot)
+      setWidth(plot.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight))
+    }
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(plot)
@@ -92,12 +97,15 @@ export function PowerField({
   }
 
   return (
-    <section className={cn('power-field', strip && 'is-strip')} data-first-answer="rankings" aria-label="Power field">
+    <section ref={fieldRef} className={cn('power-field', strip && 'is-strip')} data-first-answer="rankings" aria-label="Power field">
+      <details open={!strip}>
+      <summary className="power-field__summary">Power field</summary>
       <div
         ref={plotRef}
         className="power-field__plot"
         style={{ height: size.height }}
-        role="group"
+        role={strip ? undefined : 'group'}
+        aria-hidden={strip || undefined}
         aria-label={`${formatNumber(teams.length)} teams on one Power axis, from ${formatRating(byPower.at(-1)?.rating ?? axis.min)} to ${formatRating(byPower[0]?.rating ?? axis.max)}. Arrow keys move between teams. Select a team to open it.`}
         onKeyDown={move}
       >
@@ -120,6 +128,7 @@ export function PowerField({
             <button
               key={key}
               type="button"
+              disabled={strip}
               data-field-key={key}
               className={cn('power-field__mark', disc && 'is-disc', key === selectedKey && 'is-selected')}
               style={{ left: x - radius, top: y - radius, width: radius * 2, height: radius * 2, '--league-color': leagueColor(team.league) } as CSSProperties}
@@ -138,6 +147,18 @@ export function PowerField({
           )
         })}
       </div>
+      {strip ? (
+        <label className="power-field__selector">
+          Open a team
+          <Select aria-label="Open a team from the Power field" value={selectedKey ?? ''} onChange={(event) => {
+            const team = byPower.find((entry) => teamKey(entry) === event.target.value)
+            if (team) onOpen(team)
+          }} onFocus={onPrepare}>
+            <option value="">Choose team</option>
+            {byPower.map((team) => <option key={teamKey(team)} value={teamKey(team)}>{team.team} · {team.league} · {formatRating(team.rating)}</option>)}
+          </Select>
+        </label>
+      ) : null}
       <div className="power-field__axis" aria-hidden="true">
         {strip ? (
           <>
@@ -152,6 +173,12 @@ export function PowerField({
         Every team on one Power scale, higher to the right. {strip ? 'Dots' : 'Logos are the top eight; dots'} are coloured by league.{' '}
         <b className="font-semibold text-text">100 Power ≈ {gapExample}% per game.</b>
       </p>
+      <div className="power-field__leagues" aria-label="League colours">
+        {[...new Set(byPower.map((team) => team.league))].sort().map((league) => (
+          <span key={league}><i style={{ background: leagueColor(league) }} aria-hidden="true" />{league}</span>
+        ))}
+      </div>
+      </details>
     </section>
   )
 }

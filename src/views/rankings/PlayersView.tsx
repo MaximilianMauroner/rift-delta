@@ -22,6 +22,7 @@ import './players.css'
 
 const ROLES: readonly Role[] = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
 const ROLE_FILTERS = ['All', ...ROLES] as const
+const PLAYER_BATCH_SIZE = 25
 function readFilters(query: URLSearchParams) {
   return {
     search: hashParam('player', query) ?? '',
@@ -40,6 +41,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
   searchRef?: RefObject<HTMLInputElement | null>
 }) {
   const [filters, setFilters] = useState(() => readFilters(currentHashQuery()))
+  const [batch, setBatch] = useState({ filterKey: '', count: PLAYER_BATCH_SIZE })
   const list = useRef<HTMLDivElement>(null)
   const pushedProfile = useRef(false)
   const returnFocus = useRef<string | null>(null)
@@ -77,6 +79,8 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
     (filters.region === 'All' || playerLeague(player) === filters.region) &&
     (!search || [player.name, player.team, player.teamCode ?? ''].some((value) => value.toLowerCase().includes(search))),
   )
+  const filterKey = JSON.stringify([filter, filters.search, filters.role, filters.region])
+  const visibleCount = batch.filterKey === filterKey ? batch.count : PLAYER_BATCH_SIZE
 
   const profilePlayer = selectedPlayers.find((player) => player.id === filters.profile) ?? visible[0]
   const profileOpen = Boolean(filters.profile && selectedPlayers.some((player) => player.id === filters.profile))
@@ -208,7 +212,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                       </TableRow>
                     </TableHeader>
                     <TableBody role="rowgroup">
-                      {visible.map((player) => {
+                      {visible.slice(0, visibleCount).map((player) => {
                         const league = playerLeague(player)
                         const score = player.leaderboardScore
                         const scoreValue = score.status === 'ranked' ? score.value : undefined
@@ -217,7 +221,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                         const decimalIndex = scoreText.lastIndexOf('.')
                         return (
                           <TableRow data-first-answer="players" role="row" key={player.id} league={league} data-selected={profilePlayer?.id === player.id} onClick={(event) => {
-                            if (!(event.target as HTMLElement).closest('button, summary, a')) selectProfile(player.id)
+                            if (!(event.target as HTMLElement).closest('button, details, a')) selectProfile(player.id)
                           }}>
                             <TableCell role="cell" className="player-col-rank pl-4 text-muted tabular-nums">
                               {player.leaderboardRank ?? <><span aria-hidden="true">—</span><span className="sr-only">Unranked</span></>}
@@ -243,7 +247,7 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                                 </div>
                               </div>
                               <details className="r8-player-row-details">
-                                <summary>Stats and report</summary>
+                                <summary>More stats and scouting report</summary>
                                 <dl>
                                   <div><dt>{teamLabel}</dt><dd data-player-stat="team">{player.team}</dd></div>
                                   <div><dt>Role</dt><dd data-player-stat="role">{player.role}</dd></div>
@@ -283,6 +287,13 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                       })}
                     </TableBody>
                   </Table>
+                  {visibleCount < visible.length ? (
+                    <div className="p-3">
+                      <Button variant="outline" onClick={() => setBatch({ filterKey, count: visibleCount + PLAYER_BATCH_SIZE })}>
+                        Show more players ({formatNumber(Math.min(visibleCount, visible.length))} of {formatNumber(visible.length)} shown)
+                      </Button>
+                    </div>
+                  ) : null}
                 </Card>
               )}
             </div>

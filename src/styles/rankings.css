@@ -638,6 +638,9 @@ table.ranking-table.board-grid col.board-col-action { width: 104px; }
   position: relative;
   min-width: 0;
 }
+.power-field__summary { display: none; }
+.power-field.is-strip .power-field__summary { display: list-item; min-height: 32px; cursor: pointer; font-weight: 600; }
+.power-field details[open] > :not(summary) { margin-top: 6px; }
 .power-field__zone {
   position: absolute;
   top: 0;
@@ -713,6 +716,12 @@ table.ranking-table.board-grid col.board-col-action { width: 104px; }
   transform: none;
 }
 .power-field.is-strip { padding: 8px 12px; }
+.power-field__selector { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.power-field__selector > span { flex: 1; }
+.power-field__selector select { width: 100%; max-width: none; }
+.power-field__leagues { display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--muted); font-size: 12px; }
+.power-field__leagues span { display: inline-flex; align-items: center; gap: 4px; }
+.power-field__leagues i { width: 8px; height: 8px; border-radius: 50%; }
 .power-field__caption {
   color: var(--muted);
   font-size: 0.75rem;

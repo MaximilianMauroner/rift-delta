@@ -22,7 +22,7 @@
 .r8-player-identity button { width: fit-content; min-height: 20px; text-align: left; font-weight: 600; color: var(--text); overflow-wrap: anywhere; cursor: pointer; }
 .r8-player-affiliation { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; color: var(--muted); font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
 .r8-player-row-details { margin: 0 0 0 38px; color: var(--muted); font-size: 12px; }
-.r8-player-row-details summary { min-height: 20px; cursor: pointer; }
+.r8-player-row-details summary { min-height: 32px; padding-block: 6px; cursor: pointer; }
 .r8-player-row-details dl { display: grid; gap: 5px; padding-block: 8px; }
 .r8-player-row-details dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; }
 .r8-player-row-details dd { color: var(--text); }
