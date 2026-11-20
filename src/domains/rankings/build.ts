@@ -81,3 +81,12 @@ export type { SeriesPassCapture, SeriesPassFrame, SeriesPassExpectation, SeriesP
 
 export { createReplayEvidence } from './internal/projections/replayEvidence.ts'
 export { summarizePredictions } from './internal/projections/predictionModel.ts'
+
+export {
+  buildTournamentReports,
+  retainTournamentReportInput,
+  tournamentReportFamily,
+  TOURNAMENT_REPORT_INDEX_PATH,
+  TOURNAMENT_REPORT_SHARD_DIR,
+  type TournamentReportInput,
+} from './internal/reports/tournamentReports.ts'

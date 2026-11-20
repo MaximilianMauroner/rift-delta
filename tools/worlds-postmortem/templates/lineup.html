@@ -1,0 +1,2913 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Post-Worlds team report</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --page-max: 60rem;
+        --page-gutter: clamp(12px, 3vw, 32px);
+        --l-text: #16203a;
+        --l-muted: #5b6479;
+        --l-card: #eef2f8;
+        --l-border: #d3dae6;
+        --l-primary: #2a5fc4;
+        --l-on-pri: #fff;
+        --blue: #2a5fc4;
+        --blue-soft: #2a5fc41f;
+        --gold: #9a6f06;
+        --gold-soft: #c99a2e26;
+        --low: #a24a35;
+        --low-soft: #a24a3520;
+        --font:
+          "IBM Plex Sans", var(--font-sans, system-ui), "Segoe UI", Roboto,
+          "Liberation Sans", Arial, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --l-text: #e7ecf6;
+          --l-muted: #9aa5bd;
+          --l-card: #17213a;
+          --l-border: #2c3a5a;
+          --l-primary: #6b9bf0;
+          --l-on-pri: #0d1a33;
+          --blue: #6b9bf0;
+          --blue-soft: #6b9bf029;
+          --gold: #e0b850;
+          --gold-soft: #e0b85024;
+          --low: #e58c72;
+          --low-soft: #e58c7224;
+        }
+      }
+      :root:has(style#t3-theme) {
+        --page-max: none;
+        --page-gutter: 4px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: var(--page-gutter);
+        font-family: var(--font);
+        color: var(--fg);
+        line-height: 1.45;
+        font-size: 15px;
+      }
+      .page {
+        --fg: var(--foreground, var(--l-text));
+        --mut: var(--muted-foreground, var(--l-muted));
+        --surface: var(--card, var(--l-card));
+        --bd: var(--border, var(--l-border));
+        --pri: var(--primary, var(--l-primary));
+        max-width: var(--page-max);
+        margin-inline: auto;
+        container-type: inline-size;
+        color: var(--fg);
+      }
+      a {
+        color: inherit;
+      }
+      :focus-visible {
+        outline: 2px solid var(--pri);
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+      .num {
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+      }
+      .sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+      }
+      .flag {
+        font-style: normal;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 0.05rem 0.45rem;
+        border-radius: 3px;
+        white-space: nowrap;
+        letter-spacing: 0.01em;
+      }
+      .flag.mvp {
+        background: var(--gold);
+        color: #fff;
+      }
+      @media (prefers-color-scheme: dark) {
+        .flag.mvp {
+          color: #1a1405;
+        }
+      }
+      .flag.best {
+        background: var(--blue-soft);
+        color: var(--blue);
+      }
+      .flag.low {
+        background: var(--low-soft);
+        color: var(--low);
+      }
+
+      .mast {
+        display: grid;
+        gap: 0.8rem;
+        padding-bottom: 0.9rem;
+        border-bottom: 3px solid var(--fg);
+      }
+      @container (min-width:640px) {
+        .mast {
+          grid-template-columns: 1.25fr 1fr;
+          align-items: stretch;
+        }
+        .mast h1 {
+          grid-column: 1/-1;
+        }
+      }
+      .mast h1 {
+        margin: 0;
+        font-size: clamp(1.9rem, 6cqi, 2.9rem);
+        line-height: 1;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .mast h1 small {
+        display: block;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: var(--mut);
+        letter-spacing: 0;
+        margin-top: 0.45rem;
+      }
+      .disclaim {
+        margin: 0;
+        padding: 0.6rem 0.8rem;
+        border-left: 4px solid var(--gold);
+        background: var(--gold-soft);
+        font-size: 0.88rem;
+        max-width: 62ch;
+      }
+      .disclaim strong {
+        display: block;
+      }
+      .mvpline {
+        display: grid;
+        align-content: center;
+        justify-items: start;
+        gap: 0.15rem;
+        margin: 0;
+        padding: 0.6rem 0.8rem;
+        border-left: 4px solid var(--gold);
+      }
+      .mvpline .flag {
+        font-size: 0.8rem;
+      }
+      .mvpline a {
+        font-size: 1.9rem;
+        line-height: 1.05;
+        font-weight: 700;
+        text-decoration: none;
+        border-bottom: 2px solid var(--gold);
+      }
+      .mvpline span {
+        color: var(--mut);
+        font-size: 0.9rem;
+      }
+
+      .switch {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        margin: 1rem 0 0;
+        border: 1px solid var(--bd);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .switch a {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0 0.6rem;
+        padding: 0.55rem 0.9rem;
+        text-decoration: none;
+        background: transparent;
+      }
+      .switch a + a {
+        border-left: 1px solid var(--bd);
+      }
+      .switch b {
+        font-size: 1.15rem;
+      }
+      .switch span {
+        font-size: 0.82rem;
+        color: var(--mut);
+      }
+      .switch a[aria-selected="true"] {
+        background: var(--pri);
+        color: var(--primary-foreground, var(--l-on-pri));
+      }
+      .switch a[aria-selected="true"] span {
+        color: inherit;
+        opacity: 0.85;
+      }
+      .js .switch a:not([aria-selected="true"]):hover {
+        background: var(--surface);
+      }
+
+      .team {
+        padding-top: 1rem;
+      }
+      .team + .team {
+        margin-top: 2rem;
+        border-top: 1px solid var(--bd);
+      }
+      .calls {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+        margin-bottom: 1rem;
+      }
+      .tname {
+        margin: 0;
+        font-size: 1.6rem;
+        line-height: 1.1;
+        letter-spacing: -0.01em;
+      }
+      .tname span {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--mut);
+        letter-spacing: 0;
+        margin-top: 0.25rem;
+      }
+      .call {
+        margin: 0;
+        display: grid;
+        padding: 0.55rem 0.8rem;
+        border-radius: 6px;
+        background: var(--surface);
+        border-top: 3px solid var(--blue);
+      }
+      .call.low {
+        border-top-color: var(--low);
+      }
+      .call span {
+        font-size: 0.8rem;
+        color: var(--mut);
+      }
+      .call a {
+        font-size: 1.45rem;
+        font-weight: 700;
+        text-decoration: none;
+        line-height: 1.15;
+      }
+      .call a:hover {
+        text-decoration: underline;
+      }
+      .call small {
+        color: var(--mut);
+        font-size: 0.82rem;
+      }
+      @container (min-width:600px) {
+        .calls {
+          grid-template-columns: 1.3fr 1fr 1fr;
+          align-items: end;
+        }
+      }
+
+      .lineup {
+        --cols: 4.2rem minmax(5rem, 1fr) minmax(0, 1.6fr) 2.6rem;
+      }
+      .lhead,
+      .row {
+        display: grid;
+        grid-template-columns: var(--cols);
+        align-items: center;
+        gap: 0.6rem;
+      }
+      .lhead {
+        font-size: 0.74rem;
+        color: var(--mut);
+        padding: 0 0.6rem 0.3rem;
+      }
+      .lhead .axis {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.3rem;
+      }
+      .st {
+        display: none;
+      }
+      @container (min-width:640px) {
+        .lineup {
+          --cols: 4.4rem minmax(7rem, 1.1fr) minmax(9rem, 1.8fr) 2.8rem 3.4rem
+            2.6rem 3rem 3.3rem;
+        }
+        .st {
+          display: block;
+        }
+      }
+      .rows {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border-top: 1px solid var(--bd);
+      }
+      .rows li {
+        border-bottom: 1px solid var(--bd);
+      }
+      .row {
+        position: relative;
+        padding: 0.55rem 0.6rem;
+        text-decoration: none;
+        min-height: 3rem;
+      }
+      .row:hover {
+        background: var(--surface);
+      }
+      .row[aria-current="true"] {
+        background: var(--blue-soft);
+        box-shadow: inset 4px 0 0 var(--pri);
+      }
+      .role {
+        font-size: 0.8rem;
+        color: var(--mut);
+      }
+      .who {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.15rem 0.45rem;
+        min-width: 0;
+      }
+      .who strong {
+        font-size: 1.12rem;
+        letter-spacing: -0.01em;
+      }
+      .score {
+        font-size: 1.2rem;
+        font-weight: 700;
+      }
+      .is-mvp .score {
+        color: var(--gold);
+      }
+      .is-low .score {
+        color: var(--low);
+      }
+      .gd.neg {
+        color: var(--low);
+      }
+      .rail {
+        position: relative;
+        height: 1.4rem;
+        display: block;
+        background: linear-gradient(
+          to right,
+          transparent calc(50% - 0.5px),
+          var(--bd) calc(50% - 0.5px),
+          var(--bd) calc(50% + 0.5px),
+          transparent calc(50% + 0.5px)
+        );
+      }
+      .rail::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: 1px;
+        background: var(--bd);
+      }
+      .rail .span {
+        position: absolute;
+        top: calc(50% - 5px);
+        height: 10px;
+        border-radius: 5px;
+        background: var(--blue-soft);
+      }
+      .rail i {
+        position: absolute;
+        top: calc(50% - 6px);
+        width: 2px;
+        height: 12px;
+        margin-left: -1px;
+        background: var(--blue);
+        opacity: 0.55;
+      }
+      .rail b {
+        position: absolute;
+        top: calc(50% - 9px);
+        width: 4px;
+        height: 18px;
+        margin-left: -2px;
+        background: var(--fg);
+        border-radius: 1px;
+      }
+      .is-mvp .rail .span {
+        background: var(--gold-soft);
+      }
+      .is-mvp .rail i {
+        background: var(--gold);
+        opacity: 0.8;
+      }
+      .is-low .rail .span {
+        background: var(--low-soft);
+      }
+      .is-low .rail i {
+        background: var(--low);
+      }
+      .legend {
+        font-size: 0.78rem;
+        color: var(--mut);
+        margin: 0.45rem 0.6rem 0;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.2rem 1rem;
+      }
+      .lg-tick,
+      .lg-mark {
+        display: inline-block;
+        width: 2px;
+        height: 12px;
+        background: var(--blue);
+        opacity: 0.6;
+        vertical-align: -2px;
+      }
+      .lg-mark {
+        width: 4px;
+        height: 16px;
+        background: var(--fg);
+        opacity: 1;
+      }
+
+      .reports {
+        margin-top: 1rem;
+      }
+      .report {
+        padding: 1rem;
+        border-radius: 8px;
+        background: var(--surface);
+        border-top: 4px solid var(--blue);
+      }
+      .report + .report {
+        margin-top: 1rem;
+      }
+      .report.is-mvp {
+        border-top-color: var(--gold);
+      }
+      .report.is-low {
+        border-top-color: var(--low);
+      }
+      .rh {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+      .rh h3 {
+        margin: 0.1rem 0 0.2rem;
+        font-size: clamp(2rem, 8cqi, 2.8rem);
+        line-height: 1;
+        letter-spacing: -0.025em;
+      }
+      .rmeta {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--mut);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        align-items: center;
+      }
+      .note {
+        margin: 0.3rem 0 0;
+        max-width: 44ch;
+      }
+      .big {
+        margin: 0;
+        text-align: right;
+        display: grid;
+        justify-items: end;
+      }
+      .big .num {
+        font-size: 3rem;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: -0.03em;
+      }
+      .is-mvp .big .num {
+        color: var(--gold);
+      }
+      .is-low .big .num {
+        color: var(--low);
+      }
+      .big small {
+        font-size: 0.78rem;
+        color: var(--mut);
+        line-height: 1.3;
+      }
+      .rbody {
+        display: grid;
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+      @container (min-width:640px) {
+        .rbody {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+          align-items: start;
+        }
+      }
+      .spark {
+        margin: 0;
+      }
+      .spark svg {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        display: block;
+        overflow: visible;
+      }
+      .spark text {
+        font-size: 9px;
+        fill: var(--mut);
+        font-family: var(--font);
+      }
+      .spark .ax {
+        font-size: 9.5px;
+      }
+      .spark .g {
+        stroke: var(--bd);
+        stroke-width: 1;
+      }
+      .spark .avg {
+        stroke: var(--fg);
+        stroke-dasharray: 4 3;
+        stroke-width: 1;
+        opacity: 0.6;
+      }
+      .spark .ln {
+        fill: none;
+        stroke: var(--blue);
+        stroke-width: 2;
+      }
+      .spark circle {
+        fill: var(--blue);
+      }
+      .is-mvp .spark .ln {
+        stroke: var(--gold);
+      }
+      .is-mvp .spark circle {
+        fill: var(--gold);
+      }
+      .is-low .spark .ln {
+        stroke: var(--low);
+      }
+      .is-low .spark circle {
+        fill: var(--low);
+      }
+      .spark figcaption {
+        font-size: 0.78rem;
+        color: var(--mut);
+        margin-top: 0.2rem;
+      }
+      .vs {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+      }
+      .vs caption {
+        text-align: left;
+        font-size: 0.8rem;
+        color: var(--mut);
+        padding-bottom: 0.35rem;
+      }
+      .vs th,
+      .vs td {
+        padding: 0.35rem 0.25rem;
+        border-bottom: 1px solid var(--bd);
+        text-align: left;
+        font-weight: 500;
+      }
+      .vs thead th {
+        font-size: 0.75rem;
+        color: var(--mut);
+        font-weight: 500;
+      }
+      .vs tbody th {
+        font-weight: 500;
+      }
+      .vs td.num {
+        font-weight: 700;
+        text-align: right;
+        white-space: nowrap;
+      }
+      .vs thead th.num {
+        text-align: right;
+      }
+      .vs .dim {
+        font-weight: 500 !important;
+        color: var(--mut);
+      }
+      .vs .bars {
+        width: 34%;
+        min-width: 4.5rem;
+      }
+      .hbar,
+      .dbar {
+        position: relative;
+        display: block;
+        height: 6px;
+        margin: 3px 0;
+        border-radius: 3px;
+        background: color-mix(in srgb, var(--bd) 60%, transparent);
+      }
+      .hbar span {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+      }
+      .me {
+        background: var(--blue);
+      }
+      .them {
+        background: var(--mut);
+        opacity: 0.6;
+      }
+      .dbar::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: -2px;
+        bottom: -2px;
+        width: 1px;
+        background: var(--mut);
+      }
+      .db {
+        position: absolute;
+        top: 0;
+        height: 100%;
+        border-radius: 3px;
+      }
+      .why {
+        margin: 1rem 0 0;
+        padding: 0.7rem 0 0 1.1rem;
+        border-top: 1px solid var(--bd);
+        font-size: 0.88rem;
+        display: grid;
+        gap: 0.25rem;
+      }
+
+      .method {
+        margin-top: 1.5rem;
+        padding-top: 0.9rem;
+        border-top: 3px solid var(--fg);
+        display: grid;
+        gap: 1rem;
+        font-size: 0.88rem;
+      }
+      .method h2 {
+        margin: 0;
+        font-size: 1.15rem;
+      }
+      .method h3 {
+        margin: 0 0 0.3rem;
+        font-size: 0.95rem;
+      }
+      .method p,
+      .method ul {
+        margin: 0;
+      }
+      .method ul {
+        padding-left: 1.1rem;
+        display: grid;
+        gap: 0.1rem;
+      }
+      @container (min-width:640px) {
+        .method {
+          grid-template-columns: 1fr 1fr;
+        }
+        .method h2 {
+          grid-column: 1/-1;
+        }
+      }
+
+      .js .team[hidden],
+      .js .report[hidden] {
+        display: none;
+      }
+      .js .team + .team {
+        margin-top: 0;
+        border-top: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="mast">
+        <h1>
+          Post-Worlds team report<small
+            >Two teams, 20 games, every player scored and explained</small
+          >
+        </h1>
+        <p class="disclaim">
+          <strong>Illustrative data</strong>All teams, players, results and
+          scores here are fictional and only show the layout. No source was
+          fetched. Scores are set by hand and not validated. Sample MVP is not
+          an official award.
+        </p>
+        <p class="mvpline">
+          <em class="flag mvp">Sample MVP</em
+          ><a href="#p-nova" data-player="nova">Nova</a
+          ><span
+            >Aurora mid. Score 94 over 10 games, highest of all 10
+            players.</span
+          >
+        </p>
+      </header>
+      <nav class="switch" role="tablist" aria-label="Team">
+        <a
+          role="tab"
+          href="#team-aurora"
+          data-team="aurora"
+          aria-selected="true"
+          ><b>Aurora</b><span>Sample champion</span></a
+        ><a
+          role="tab"
+          href="#team-vanguard"
+          data-team="vanguard"
+          aria-selected="false"
+          ><b>Vanguard</b><span>Sample runner-up</span></a
+        >
+      </nav>
+      <section
+        class="team"
+        id="team-aurora"
+        data-team="aurora"
+        aria-labelledby="th-aurora"
+      >
+        <div class="calls">
+          <h2 id="th-aurora" class="tname">
+            Aurora<span>8 wins, 2 losses. Team score 82/100.</span>
+          </h2>
+          <p class="call best">
+            <span>Best on team</span
+            ><a href="#p-nova" data-player="nova">Nova</a
+            ><small>Mid, 94 over 10 games</small>
+          </p>
+          <p class="call low">
+            <span>Lowest observed</span
+            ><a href="#p-vale" data-player="vale">Vale</a
+            ><small>Support, 63 over 10 games</small>
+          </p>
+        </div>
+        <div class="lineup">
+          <div class="lhead" aria-hidden="true">
+            <span>Role</span><span>Player</span
+            ><span class="axis"
+              ><span>50</span><span>Game scores</span><span>100</span></span
+            ><span class="num">Score</span><span class="num st">Gold 15</span
+            ><span class="num st">KP</span><span class="num st">DPM</span
+            ><span class="num st">Vis/min</span>
+          </div>
+          <ol class="rows">
+            <li>
+              <a class="row" href="#p-crest" data-player="crest">
+                <span class="role">Top</span>
+                <span class="who"><strong>Crest</strong></span>
+                <span
+                  class="rail"
+                  role="img"
+                  aria-label="Game scores 70 to 85, sample score 78"
+                >
+                  <span class="span" style="left: 40%; width: 30%"></span
+                  ><i style="left: 40%"></i><i style="left: 50%"></i
+                  ><i style="left: 60%"></i><i style="left: 46%"></i
+                  ><i style="left: 64%"></i><i style="left: 70%"></i
+                  ><i style="left: 58%"></i><i style="left: 52%"></i
+                  ><i style="left: 64%"></i><i style="left: 56%"></i>
+                  <b style="left: 56%"></b
+                ></span>
+                <span class="num score">78</span>
+                <span class="num st gd">+140</span>
+                <span class="num st">61%</span>
+                <span class="num st">510</span>
+                <span class="num st">1.1</span>
+              </a>
+            </li>
+            <li>
+              <a class="row" href="#p-drift" data-player="drift">
+                <span class="role">Jungle</span>
+                <span class="who"><strong>Drift</strong></span>
+                <span
+                  class="rail"
+                  role="img"
+                  aria-label="Game scores 78 to 90, sample score 84"
+                >
+                  <span class="span" style="left: 56%; width: 24%"></span
+                  ><i style="left: 56%"></i><i style="left: 66%"></i
+                  ><i style="left: 64%"></i><i style="left: 72%"></i
+                  ><i style="left: 68%"></i><i style="left: 80%"></i
+                  ><i style="left: 62%"></i><i style="left: 70%"></i
+                  ><i style="left: 76%"></i><i style="left: 66%"></i>
+                  <b style="left: 68%"></b
+                ></span>
+                <span class="num score">84</span>
+                <span class="num st gd">+210</span>
+                <span class="num st">74%</span>
+                <span class="num st">390</span>
+                <span class="num st">1.8</span>
+              </a>
+            </li>
+            <li>
+              <a class="row is-mvp" href="#p-nova" data-player="nova">
+                <span class="role">Mid</span>
+                <span class="who"
+                  ><strong>Nova</strong
+                  ><em class="flag mvp">Sample MVP</em></span
+                >
+                <span
+                  class="rail"
+                  role="img"
+                  aria-label="Game scores 88 to 98, sample score 94"
+                >
+                  <span class="span" style="left: 76%; width: 20%"></span
+                  ><i style="left: 76%"></i><i style="left: 84%"></i
+                  ><i style="left: 92%"></i><i style="left: 80%"></i
+                  ><i style="left: 90%"></i><i style="left: 96%"></i
+                  ><i style="left: 86%"></i><i style="left: 92%"></i
+                  ><i style="left: 94%"></i><i style="left: 90%"></i>
+                  <b style="left: 88%"></b
+                ></span>
+                <span class="num score">94</span>
+                <span class="num st gd">+420</span>
+                <span class="num st">76%</span>
+                <span class="num st">740</span>
+                <span class="num st">1.0</span>
+              </a>
+            </li>
+            <li>
+              <a class="row" href="#p-arrow" data-player="arrow">
+                <span class="role">Bot</span>
+                <span class="who"><strong>Arrow</strong></span>
+                <span
+                  class="rail"
+                  role="img"
+                  aria-label="Game scores 81 to 92, sample score 87"
+                >
+                  <span class="span" style="left: 62%; width: 22%"></span
+                  ><i style="left: 62%"></i><i style="left: 70%"></i
+                  ><i style="left: 80%"></i><i style="left: 66%"></i
+                  ><i style="left: 76%"></i><i style="left: 84%"></i
+                  ><i style="left: 72%"></i><i style="left: 78%"></i
+                  ><i style="left: 82%"></i><i style="left: 70%"></i>
+                  <b style="left: 74%"></b
+                ></span>
+                <span class="num score">87</span>
+                <span class="num st gd">+260</span>
+                <span class="num st">71%</span>
+                <span class="num st">790</span>
+                <span class="num st">0.8</span>
+              </a>
+            </li>
+            <li>
+              <a class="row is-low" href="#p-vale" data-player="vale">
+                <span class="role">Support</span>
+                <span class="who"
+                  ><strong>Vale</strong
+                  ><em class="flag low">Lowest observed</em></span
+                >
+                <span
+                  class="rail"
+                  role="img"
+                  aria-label="Game scores 57 to 71, sample score 63"
+                >
+                  <span class="span" style="left: 14%; width: 28%"></span
+                  ><i style="left: 42%"></i><i style="left: 32%"></i
+                  ><i style="left: 20%"></i><i style="left: 34%"></i
+                  ><i style="left: 16%"></i><i style="left: 28%"></i
+                  ><i style="left: 14%"></i><i style="left: 30%"></i
+                  ><i style="left: 22%"></i><i style="left: 22%"></i>
+                  <b style="left: 26%"></b
+                ></span>
+                <span class="num score">63</span>
+                <span class="num st gd neg">−80</span>
+                <span class="num st">58%</span>
+                <span class="num st">140</span>
+                <span class="num st">2.1</span>
+              </a>
+            </li>
+          </ol>
+          <p class="legend">
+            <span><span class="lg-tick"></span> One game</span
+            ><span><span class="lg-mark"></span> Sample score</span
+            ><span>Select a player to open the report.</span>
+          </p>
+        </div>
+        <div class="reports">
+          <article
+            class="report"
+            id="p-crest"
+            data-report="crest"
+            aria-labelledby="h-crest"
+          >
+            <header class="rh">
+              <div>
+                <p class="rmeta">Aurora top with 10 games</p>
+                <h3 id="h-crest">Crest</h3>
+                <p class="note">
+                  Steady lane lead. Low fight participation limits the score.
+                </p>
+              </div>
+              <p class="big">
+                <span class="num">78</span
+                ><small>sample score<br />range 70 to 85</small>
+              </p>
+            </header>
+            <div class="rbody">
+              <figure class="spark">
+                <svg
+                  viewBox="0 0 300 120"
+                  role="img"
+                  aria-labelledby="sp-crest"
+                >
+                  <title id="sp-crest">
+                    Crest game scores, games 1 to 10: 70, 75, 80, 73, 82, 85,
+                    79, 76, 82, 78
+                  </title>
+                  <line x1="30" x2="292" y1="94" y2="94" class="g" />
+                  <text x="24" y="98" text-anchor="end">50</text>
+                  <line x1="30" x2="292" y1="51" y2="51" class="g" />
+                  <text x="24" y="55" text-anchor="end">75</text>
+                  <line x1="30" x2="292" y1="8" y2="8" class="g" />
+                  <text x="24" y="12" text-anchor="end">100</text>
+                  <line x1="30" x2="292" y1="45.84" y2="45.84" class="avg" />
+                  <polyline
+                    points="30.0,59.6 59.1,51.0 88.2,42.4 117.3,54.4 146.4,39.0 175.6,33.8 204.7,44.1 233.8,49.3 262.9,39.0 292.0,45.8"
+                    class="ln"
+                  />
+                  <circle cx="30.0" cy="59.6" r="3">
+                    <title>Game 1: 70</title>
+                  </circle>
+                  <circle cx="59.1" cy="51.0" r="3">
+                    <title>Game 2: 75</title>
+                  </circle>
+                  <circle cx="88.2" cy="42.4" r="3">
+                    <title>Game 3: 80</title>
+                  </circle>
+                  <circle cx="117.3" cy="54.4" r="3">
+                    <title>Game 4: 73</title>
+                  </circle>
+                  <circle cx="146.4" cy="39.0" r="3">
+                    <title>Game 5: 82</title>
+                  </circle>
+                  <circle cx="175.6" cy="33.8" r="3">
+                    <title>Game 6: 85</title>
+                  </circle>
+                  <circle cx="204.7" cy="44.1" r="3">
+                    <title>Game 7: 79</title>
+                  </circle>
+                  <circle cx="233.8" cy="49.3" r="3">
+                    <title>Game 8: 76</title>
+                  </circle>
+                  <circle cx="262.9" cy="39.0" r="3">
+                    <title>Game 9: 82</title>
+                  </circle>
+                  <circle cx="292.0" cy="45.8" r="3">
+                    <title>Game 10: 78</title>
+                  </circle>
+                  <text x="30.0" y="108" text-anchor="middle">1</text>
+                  <text x="59.1" y="108" text-anchor="middle">2</text>
+                  <text x="88.2" y="108" text-anchor="middle">3</text>
+                  <text x="117.3" y="108" text-anchor="middle">4</text>
+                  <text x="146.4" y="108" text-anchor="middle">5</text>
+                  <text x="175.6" y="108" text-anchor="middle">6</text>
+                  <text x="204.7" y="108" text-anchor="middle">7</text>
+                  <text x="233.8" y="108" text-anchor="middle">8</text>
+                  <text x="262.9" y="108" text-anchor="middle">9</text>
+                  <text x="292.0" y="108" text-anchor="middle">10</text>
+                  <text x="161" y="119" text-anchor="middle" class="ax">
+                    Game number
+                  </text>
+                  <text
+                    x="9"
+                    y="51"
+                    text-anchor="middle"
+                    class="ax"
+                    transform="rotate(-90 9 51)"
+                  >
+                    Score
+                  </text>
+                </svg>
+                <figcaption>Dashed line is the sample score, 78.</figcaption>
+              </figure>
+              <table class="vs">
+                <caption>
+                  Against Flint, Vanguard top, same role, 10 games each
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Stat</th>
+                    <th scope="col" class="num">Crest</th>
+                    <th scope="col"><span class="sr">Comparison bars</span></th>
+                    <th scope="col" class="num">Flint</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="ahead">
+                    <th scope="row">Gold at 15</th>
+                    <td class="num">+140</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="dbar"
+                        ><span
+                          class="db me"
+                          style="left: 50%; width: 15.6%"
+                        ></span></span
+                      ><span class="dbar"
+                        ><span
+                          class="db them"
+                          style="left: 50%; width: 7.8%"
+                        ></span
+                      ></span>
+                    </td>
+                    <td class="num dim">+70</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Kill participation</th>
+                    <td class="num">61%</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 87.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">59%</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Damage per minute</th>
+                    <td class="num">510</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 85.6%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">480</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Vision per minute</th>
+                    <td class="num">1.1</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 82.6%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">1.0</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ul class="why">
+              <li>Score 78 against 75 for Flint, the other sample top.</li>
+            </ul>
+          </article>
+          <article
+            class="report"
+            id="p-drift"
+            data-report="drift"
+            aria-labelledby="h-drift"
+          >
+            <header class="rh">
+              <div>
+                <p class="rmeta">Aurora jungle with 10 games</p>
+                <h3 id="h-drift">Drift</h3>
+                <p class="note">
+                  Joined most team kills and built early gold leads.
+                </p>
+              </div>
+              <p class="big">
+                <span class="num">84</span
+                ><small>sample score<br />range 78 to 90</small>
+              </p>
+            </header>
+            <div class="rbody">
+              <figure class="spark">
+                <svg
+                  viewBox="0 0 300 120"
+                  role="img"
+                  aria-labelledby="sp-drift"
+                >
+                  <title id="sp-drift">
+                    Drift game scores, games 1 to 10: 78, 83, 82, 86, 84, 90,
+                    81, 85, 88, 83
+                  </title>
+                  <line x1="30" x2="292" y1="94" y2="94" class="g" />
+                  <text x="24" y="98" text-anchor="end">50</text>
+                  <line x1="30" x2="292" y1="51" y2="51" class="g" />
+                  <text x="24" y="55" text-anchor="end">75</text>
+                  <line x1="30" x2="292" y1="8" y2="8" class="g" />
+                  <text x="24" y="12" text-anchor="end">100</text>
+                  <line
+                    x1="30"
+                    x2="292"
+                    y1="35.519999999999996"
+                    y2="35.519999999999996"
+                    class="avg"
+                  />
+                  <polyline
+                    points="30.0,45.8 59.1,37.2 88.2,39.0 117.3,32.1 146.4,35.5 175.6,25.2 204.7,40.7 233.8,33.8 262.9,28.6 292.0,37.2"
+                    class="ln"
+                  />
+                  <circle cx="30.0" cy="45.8" r="3">
+                    <title>Game 1: 78</title>
+                  </circle>
+                  <circle cx="59.1" cy="37.2" r="3">
+                    <title>Game 2: 83</title>
+                  </circle>
+                  <circle cx="88.2" cy="39.0" r="3">
+                    <title>Game 3: 82</title>
+                  </circle>
+                  <circle cx="117.3" cy="32.1" r="3">
+                    <title>Game 4: 86</title>
+                  </circle>
+                  <circle cx="146.4" cy="35.5" r="3">
+                    <title>Game 5: 84</title>
+                  </circle>
+                  <circle cx="175.6" cy="25.2" r="3">
+                    <title>Game 6: 90</title>
+                  </circle>
+                  <circle cx="204.7" cy="40.7" r="3">
+                    <title>Game 7: 81</title>
+                  </circle>
+                  <circle cx="233.8" cy="33.8" r="3">
+                    <title>Game 8: 85</title>
+                  </circle>
+                  <circle cx="262.9" cy="28.6" r="3">
+                    <title>Game 9: 88</title>
+                  </circle>
+                  <circle cx="292.0" cy="37.2" r="3">
+                    <title>Game 10: 83</title>
+                  </circle>
+                  <text x="30.0" y="108" text-anchor="middle">1</text>
+                  <text x="59.1" y="108" text-anchor="middle">2</text>
+                  <text x="88.2" y="108" text-anchor="middle">3</text>
+                  <text x="117.3" y="108" text-anchor="middle">4</text>
+                  <text x="146.4" y="108" text-anchor="middle">5</text>
+                  <text x="175.6" y="108" text-anchor="middle">6</text>
+                  <text x="204.7" y="108" text-anchor="middle">7</text>
+                  <text x="233.8" y="108" text-anchor="middle">8</text>
+                  <text x="262.9" y="108" text-anchor="middle">9</text>
+                  <text x="292.0" y="108" text-anchor="middle">10</text>
+                  <text x="161" y="119" text-anchor="middle" class="ax">
+                    Game number
+                  </text>
+                  <text
+                    x="9"
+                    y="51"
+                    text-anchor="middle"
+                    class="ax"
+                    transform="rotate(-90 9 51)"
+                  >
+                    Score
+                  </text>
+                </svg>
+                <figcaption>Dashed line is the sample score, 84.</figcaption>
+              </figure>
+              <table class="vs">
+                <caption>
+                  Against Rush, Vanguard jungle, same role, 10 games each
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Stat</th>
+                    <th scope="col" class="num">Drift</th>
+                    <th scope="col"><span class="sr">Comparison bars</span></th>
+                    <th scope="col" class="num">Rush</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="ahead">
+                    <th scope="row">Gold at 15</th>
+                    <td class="num">+210</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="dbar"
+                        ><span
+                          class="db me"
+                          style="left: 50%; width: 23.3%"
+                        ></span></span
+                      ><span class="dbar"
+                        ><span
+                          class="db them"
+                          style="left: 32.2%; width: 17.8%"
+                        ></span
+                      ></span>
+                    </td>
+                    <td class="num dim">−160</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Kill participation</th>
+                    <td class="num">74%</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 76.2%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">62%</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Damage per minute</th>
+                    <td class="num">390</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 81.6%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">350</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Vision per minute</th>
+                    <td class="num">1.8</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 75.8%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">1.5</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ul class="why">
+              <li>Score 84 against 68 for Rush, the other sample jungle.</li>
+            </ul>
+          </article>
+          <article
+            class="report is-mvp"
+            id="p-nova"
+            data-report="nova"
+            aria-labelledby="h-nova"
+          >
+            <header class="rh">
+              <div>
+                <p class="rmeta">
+                  Aurora mid with 10 games <em class="flag mvp">Sample MVP</em>
+                </p>
+                <h3 id="h-nova">Nova</h3>
+                <p class="note">
+                  Largest lane lead and highest mid damage in this sample.
+                </p>
+              </div>
+              <p class="big">
+                <span class="num">94</span
+                ><small>sample score<br />range 88 to 98</small>
+              </p>
+            </header>
+            <div class="rbody">
+              <figure class="spark">
+                <svg viewBox="0 0 300 120" role="img" aria-labelledby="sp-nova">
+                  <title id="sp-nova">
+                    Nova game scores, games 1 to 10: 88, 92, 96, 90, 95, 98, 93,
+                    96, 97, 95
+                  </title>
+                  <line x1="30" x2="292" y1="94" y2="94" class="g" />
+                  <text x="24" y="98" text-anchor="end">50</text>
+                  <line x1="30" x2="292" y1="51" y2="51" class="g" />
+                  <text x="24" y="55" text-anchor="end">75</text>
+                  <line x1="30" x2="292" y1="8" y2="8" class="g" />
+                  <text x="24" y="12" text-anchor="end">100</text>
+                  <line x1="30" x2="292" y1="18.32" y2="18.32" class="avg" />
+                  <polyline
+                    points="30.0,28.6 59.1,21.8 88.2,14.9 117.3,25.2 146.4,16.6 175.6,11.4 204.7,20.0 233.8,14.9 262.9,13.2 292.0,16.6"
+                    class="ln"
+                  />
+                  <circle cx="30.0" cy="28.6" r="3">
+                    <title>Game 1: 88</title>
+                  </circle>
+                  <circle cx="59.1" cy="21.8" r="3">
+                    <title>Game 2: 92</title>
+                  </circle>
+                  <circle cx="88.2" cy="14.9" r="3">
+                    <title>Game 3: 96</title>
+                  </circle>
+                  <circle cx="117.3" cy="25.2" r="3">
+                    <title>Game 4: 90</title>
+                  </circle>
+                  <circle cx="146.4" cy="16.6" r="3">
+                    <title>Game 5: 95</title>
+                  </circle>
+                  <circle cx="175.6" cy="11.4" r="3">
+                    <title>Game 6: 98</title>
+                  </circle>
+                  <circle cx="204.7" cy="20.0" r="3">
+                    <title>Game 7: 93</title>
+                  </circle>
+                  <circle cx="233.8" cy="14.9" r="3">
+                    <title>Game 8: 96</title>
+                  </circle>
+                  <circle cx="262.9" cy="13.2" r="3">
+                    <title>Game 9: 97</title>
+                  </circle>
+                  <circle cx="292.0" cy="16.6" r="3">
+                    <title>Game 10: 95</title>
+                  </circle>
+                  <text x="30.0" y="108" text-anchor="middle">1</text>
+                  <text x="59.1" y="108" text-anchor="middle">2</text>
+                  <text x="88.2" y="108" text-anchor="middle">3</text>
+                  <text x="117.3" y="108" text-anchor="middle">4</text>
+                  <text x="146.4" y="108" text-anchor="middle">5</text>
+                  <text x="175.6" y="108" text-anchor="middle">6</text>
+                  <text x="204.7" y="108" text-anchor="middle">7</text>
+                  <text x="233.8" y="108" text-anchor="middle">8</text>
+                  <text x="262.9" y="108" text-anchor="middle">9</text>
+                  <text x="292.0" y="108" text-anchor="middle">10</text>
+                  <text x="161" y="119" text-anchor="middle" class="ax">
+                    Game number
+                  </text>
+                  <text
+                    x="9"
+                    y="51"
+                    text-anchor="middle"
+                    class="ax"
+                    transform="rotate(-90 9 51)"
+                  >
+                    Score
+                  </text>
+                </svg>
+                <figcaption>Dashed line is the sample score, 94.</figcaption>
+              </figure>
+              <table class="vs">
+                <caption>
+                  Against Echo, Vanguard mid, same role, 10 games each
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Stat</th>
+                    <th scope="col" class="num">Nova</th>
+                    <th scope="col"><span class="sr">Comparison bars</span></th>
+                    <th scope="col" class="num">Echo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="ahead">
+                    <th scope="row">Gold at 15</th>
+                    <td class="num">+420</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="dbar"
+                        ><span
+                          class="db me"
+                          style="left: 50%; width: 46.7%"
+                        ></span></span
+                      ><span class="dbar"
+                        ><span
+                          class="db them"
+                          style="left: 50%; width: 20%"
+                        ></span
+                      ></span>
+                    </td>
+                    <td class="num dim">+180</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Kill participation</th>
+                    <td class="num">76%</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 83.7%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">70%</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Damage per minute</th>
+                    <td class="num">740</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 81.1%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">660</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Vision per minute</th>
+                    <td class="num">1.0</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 82.6%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">1.1</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ul class="why">
+              <li>
+                Highest sample score of all 10 players. Nova scored 88 or more
+                in every game.
+              </li>
+              <li>Score 94 against 82 for Echo, the other sample mid.</li>
+            </ul>
+          </article>
+          <article
+            class="report"
+            id="p-arrow"
+            data-report="arrow"
+            aria-labelledby="h-arrow"
+          >
+            <header class="rh">
+              <div>
+                <p class="rmeta">Aurora bot with 10 games</p>
+                <h3 id="h-arrow">Arrow</h3>
+                <p class="note">
+                  Strong damage output with a smaller lane lead than Nova.
+                </p>
+              </div>
+              <p class="big">
+                <span class="num">87</span
+                ><small>sample score<br />range 81 to 92</small>
+              </p>
+            </header>
+            <div class="rbody">
+              <figure class="spark">
+                <svg
+                  viewBox="0 0 300 120"
+                  role="img"
+                  aria-labelledby="sp-arrow"
+                >
+                  <title id="sp-arrow">
+                    Arrow game scores, games 1 to 10: 81, 85, 90, 83, 88, 92,
+                    86, 89, 91, 85
+                  </title>
+                  <line x1="30" x2="292" y1="94" y2="94" class="g" />
+                  <text x="24" y="98" text-anchor="end">50</text>
+                  <line x1="30" x2="292" y1="51" y2="51" class="g" />
+                  <text x="24" y="55" text-anchor="end">75</text>
+                  <line x1="30" x2="292" y1="8" y2="8" class="g" />
+                  <text x="24" y="12" text-anchor="end">100</text>
+                  <line x1="30" x2="292" y1="30.36" y2="30.36" class="avg" />
+                  <polyline
+                    points="30.0,40.7 59.1,33.8 88.2,25.2 117.3,37.2 146.4,28.6 175.6,21.8 204.7,32.1 233.8,26.9 262.9,23.5 292.0,33.8"
+                    class="ln"
+                  />
+                  <circle cx="30.0" cy="40.7" r="3">
+                    <title>Game 1: 81</title>
+                  </circle>
+                  <circle cx="59.1" cy="33.8" r="3">
+                    <title>Game 2: 85</title>
+                  </circle>
+                  <circle cx="88.2" cy="25.2" r="3">
+                    <title>Game 3: 90</title>
+                  </circle>
+                  <circle cx="117.3" cy="37.2" r="3">
+                    <title>Game 4: 83</title>
+                  </circle>
+                  <circle cx="146.4" cy="28.6" r="3">
+                    <title>Game 5: 88</title>
+                  </circle>
+                  <circle cx="175.6" cy="21.8" r="3">
+                    <title>Game 6: 92</title>
+                  </circle>
+                  <circle cx="204.7" cy="32.1" r="3">
+                    <title>Game 7: 86</title>
+                  </circle>
+                  <circle cx="233.8" cy="26.9" r="3">
+                    <title>Game 8: 89</title>
+                  </circle>
+                  <circle cx="262.9" cy="23.5" r="3">
+                    <title>Game 9: 91</title>
+                  </circle>
+                  <circle cx="292.0" cy="33.8" r="3">
+                    <title>Game 10: 85</title>
+                  </circle>
+                  <text x="30.0" y="108" text-anchor="middle">1</text>
+                  <text x="59.1" y="108" text-anchor="middle">2</text>
+                  <text x="88.2" y="108" text-anchor="middle">3</text>
+                  <text x="117.3" y="108" text-anchor="middle">4</text>
+                  <text x="146.4" y="108" text-anchor="middle">5</text>
+                  <text x="175.6" y="108" text-anchor="middle">6</text>
+                  <text x="204.7" y="108" text-anchor="middle">7</text>
+                  <text x="233.8" y="108" text-anchor="middle">8</text>
+                  <text x="262.9" y="108" text-anchor="middle">9</text>
+                  <text x="292.0" y="108" text-anchor="middle">10</text>
+                  <text x="161" y="119" text-anchor="middle" class="ax">
+                    Game number
+                  </text>
+                  <text
+                    x="9"
+                    y="51"
+                    text-anchor="middle"
+                    class="ax"
+                    transform="rotate(-90 9 51)"
+                  >
+                    Score
+                  </text>
+                </svg>
+                <figcaption>Dashed line is the sample score, 87.</figcaption>
+              </figure>
+              <table class="vs">
+                <caption>
+                  Against Kite, Vanguard bot, same role, 10 games each
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Stat</th>
+                    <th scope="col" class="num">Arrow</th>
+                    <th scope="col"><span class="sr">Comparison bars</span></th>
+                    <th scope="col" class="num">Kite</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="behind">
+                    <th scope="row">Gold at 15</th>
+                    <td class="num">+260</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="dbar"
+                        ><span
+                          class="db me"
+                          style="left: 50%; width: 28.9%"
+                        ></span></span
+                      ><span class="dbar"
+                        ><span
+                          class="db them"
+                          style="left: 50%; width: 34.4%"
+                        ></span
+                      ></span>
+                    </td>
+                    <td class="num dim">+310</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Kill participation</th>
+                    <td class="num">71%</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 88.4%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">73%</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Damage per minute</th>
+                    <td class="num">790</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 88.1%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">815</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Vision per minute</th>
+                    <td class="num">0.8</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 80.8%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">0.9</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ul class="why">
+              <li>Score 87 against 89 for Kite, the other sample bot.</li>
+            </ul>
+          </article>
+          <article
+            class="report is-low"
+            id="p-vale"
+            data-report="vale"
+            aria-labelledby="h-vale"
+          >
+            <header class="rh">
+              <div>
+                <p class="rmeta">
+                  Aurora support with 10 games
+                  <em class="flag low">Lowest observed</em>
+                </p>
+                <h3 id="h-vale">Vale</h3>
+                <p class="note">
+                  Lowest fight participation on Aurora. Review missed fights.
+                </p>
+              </div>
+              <p class="big">
+                <span class="num">63</span
+                ><small>sample score<br />range 57 to 71</small>
+              </p>
+            </header>
+            <div class="rbody">
+              <figure class="spark">
+                <svg viewBox="0 0 300 120" role="img" aria-labelledby="sp-vale">
+                  <title id="sp-vale">
+                    Vale game scores, games 1 to 10: 71, 66, 60, 67, 58, 64, 57,
+                    65, 61, 61
+                  </title>
+                  <line x1="30" x2="292" y1="94" y2="94" class="g" />
+                  <text x="24" y="98" text-anchor="end">50</text>
+                  <line x1="30" x2="292" y1="51" y2="51" class="g" />
+                  <text x="24" y="55" text-anchor="end">75</text>
+                  <line x1="30" x2="292" y1="8" y2="8" class="g" />
+                  <text x="24" y="12" text-anchor="end">100</text>
+                  <line x1="30" x2="292" y1="71.64" y2="71.64" class="avg" />
+                  <polyline
+                    points="30.0,57.9 59.1,66.5 88.2,76.8 117.3,64.8 146.4,80.2 175.6,69.9 204.7,82.0 233.8,68.2 262.9,75.1 292.0,75.1"
+                    class="ln"
+                  />
+                  <circle cx="30.0" cy="57.9" r="3">
+                    <title>Game 1: 71</title>
+                  </circle>
+                  <circle cx="59.1" cy="66.5" r="3">
+                    <title>Game 2: 66</title>
+                  </circle>
+                  <circle cx="88.2" cy="76.8" r="3">
+                    <title>Game 3: 60</title>
+                  </circle>
+                  <circle cx="117.3" cy="64.8" r="3">
+                    <title>Game 4: 67</title>
+                  </circle>
+                  <circle cx="146.4" cy="80.2" r="3">
+                    <title>Game 5: 58</title>
+                  </circle>
+                  <circle cx="175.6" cy="69.9" r="3">
+                    <title>Game 6: 64</title>
+                  </circle>
+                  <circle cx="204.7" cy="82.0" r="3">
+                    <title>Game 7: 57</title>
+                  </circle>
+                  <circle cx="233.8" cy="68.2" r="3">
+                    <title>Game 8: 65</title>
+                  </circle>
+                  <circle cx="262.9" cy="75.1" r="3">
+                    <title>Game 9: 61</title>
+                  </circle>
+                  <circle cx="292.0" cy="75.1" r="3">
+                    <title>Game 10: 61</title>
+                  </circle>
+                  <text x="30.0" y="108" text-anchor="middle">1</text>
+                  <text x="59.1" y="108" text-anchor="middle">2</text>
+                  <text x="88.2" y="108" text-anchor="middle">3</text>
+                  <text x="117.3" y="108" text-anchor="middle">4</text>
+                  <text x="146.4" y="108" text-anchor="middle">5</text>
+                  <text x="175.6" y="108" text-anchor="middle">6</text>
+                  <text x="204.7" y="108" text-anchor="middle">7</text>
+                  <text x="233.8" y="108" text-anchor="middle">8</text>
+                  <text x="262.9" y="108" text-anchor="middle">9</text>
+                  <text x="292.0" y="108" text-anchor="middle">10</text>
+                  <text x="161" y="119" text-anchor="middle" class="ax">
+                    Game number
+                  </text>
+                  <text
+                    x="9"
+                    y="51"
+                    text-anchor="middle"
+                    class="ax"
+                    transform="rotate(-90 9 51)"
+                  >
+                    Score
+                  </text>
+                </svg>
+                <figcaption>Dashed line is the sample score, 63.</figcaption>
+              </figure>
+              <table class="vs">
+                <caption>
+                  Against Moss, Vanguard support, same role, 10 games each
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Stat</th>
+                    <th scope="col" class="num">Vale</th>
+                    <th scope="col"><span class="sr">Comparison bars</span></th>
+                    <th scope="col" class="num">Moss</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="behind">
+                    <th scope="row">Gold at 15</th>
+                    <td class="num">−80</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="dbar"
+                        ><span
+                          class="db me"
+                          style="left: 41.1%; width: 8.9%"
+                        ></span></span
+                      ><span class="dbar"
+                        ><span
+                          class="db them"
+                          style="left: 45.6%; width: 4.4%"
+                        ></span
+                      ></span>
+                    </td>
+                    <td class="num dim">−40</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Kill participation</th>
+                    <td class="num">58%</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 73.2%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">72%</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Damage per minute</th>
+                    <td class="num">140</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 81.2%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">125</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Vision per minute</th>
+                    <td class="num">2.1</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 79.5%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">2.4</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ul class="why">
+              <li>
+                Lowest sample score on Aurora. A low score does not show that
+                this player caused losses.
+              </li>
+              <li>
+                Low damage is normal for supports. It is not a reason for this
+                score.
+              </li>
+              <li>Score 63 against 77 for Moss, the other sample support.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+      <section
+        class="team"
+        id="team-vanguard"
+        data-team="vanguard"
+        aria-labelledby="th-vanguard"
+      >
+        <div class="calls">
+          <h2 id="th-vanguard" class="tname">
+            Vanguard<span>6 wins, 4 losses. Team score 76/100.</span>
+          </h2>
+          <p class="call best">
+            <span>Best on team</span
+            ><a href="#p-kite" data-player="kite">Kite</a
+            ><small>Bot, 89 over 10 games</small>
+          </p>
+          <p class="call low">
+            <span>Lowest observed</span
+            ><a href="#p-rush" data-player="rush">Rush</a
+            ><small>Jungle, 68 over 10 games</small>
+          </p>
+        </div>
+        <div class="lineup">
+          <div class="lhead" aria-hidden="true">
+            <span>Role</span><span>Player</span
+            ><span class="axis"
+              ><span>50</span><span>Game scores</span><span>100</span></span
+            ><span class="num">Score</span><span class="num st">Gold 15</span
+            ><span class="num st">KP</span><span class="num st">DPM</span
+            ><span class="num st">Vis/min</span>
+          </div>
+          <ol class="rows">
+            <li>
+              <a class="row" href="#p-flint" data-player="flint">
+                <span class="role">Top</span>
+                <span class="who"><strong>Flint</strong></span>
+                <span
+                  class="rail"
+                  role="img"
+                  aria-label="Game scores 71 to 80, sample score 75"
+                >
+                  <span class="span" style="left: 42%; width: 18%"></span
+                  ><i style="left: 46%"></i><i style="left: 56%"></i
+                  ><i style="left: 42%"></i><i style="left: 52%"></i
+                  ><i style="left: 48%"></i><i style="left: 60%"></i
+                  ><i style="left: 44%"></i><i style="left: 54%"></i
+                  ><i style="left: 50%"></i><i style="left: 48%"></i>
+                  <b style="left: 50%"></b
+                ></span>
+                <span class="num score">75</span>
+                <span class="num st gd">+70</span>
+                <span class="num st">59%</span>
+                <span class="num st">480</span>
+                <span class="num st">1.0</span>
+              </a>
+            </li>
+            <li>
+              <a class="row is-low" href="#p-rush" data-player="rush">
+                <span class="role">Jungle</span>
+                <span class="who"
+                  ><strong>Rush</strong
+                  ><em class="flag low">Lowest observed</em></span
+                >
+                <span
+                  class="rail"
+                  role="img"
+                  aria-label="Game scores 61 to 74, sample score 68"
+                >
+                  <span class="span" style="left: 22%; width: 26%"></span
+                  ><i style="left: 48%"></i><i style="left: 40%"></i
+                  ><i style="left: 34%"></i><i style="left: 42%"></i
+                  ><i style="left: 30%"></i><i style="left: 38%"></i
+                  ><i style="left: 22%"></i><i style="left: 44%"></i
+                  ><i style="left: 32%"></i><i style="left: 30%"></i>
+                  <b style="left: 36%"></b
+                ></span>
+                <span class="num score">68</span>
+                <span class="num st gd neg">−160</span>
+                <span class="num st">62%</span>
+                <span class="num st">350</span>
+                <span class="num st">1.5</span>
+              </a>
+            </li>
+            <li>
+              <a class="row" href="#p-echo" data-player="echo">
+                <span class="role">Mid</span>
+                <span class="who"><strong>Echo</strong></span>
+                <span
+                  class="rail"
+                  role="img"
+                  aria-label="Game scores 78 to 87, sample score 82"
+                >
+                  <span class="span" style="left: 56%; width: 18%"></span
+                  ><i style="left: 56%"></i><i style="left: 60%"></i
+                  ><i style="left: 70%"></i><i style="left: 58%"></i
+                  ><i style="left: 68%"></i><i style="left: 74%"></i
+                  ><i style="left: 62%"></i><i style="left: 66%"></i
+                  ><i style="left: 64%"></i><i style="left: 62%"></i>
+                  <b style="left: 64%"></b
+                ></span>
+                <span class="num score">82</span>
+                <span class="num st gd">+180</span>
+                <span class="num st">70%</span>
+                <span class="num st">660</span>
+                <span class="num st">1.1</span>
+              </a>
+            </li>
+            <li>
+              <a class="row is-best" href="#p-kite" data-player="kite">
+                <span class="role">Bot</span>
+                <span class="who"
+                  ><strong>Kite</strong
+                  ><em class="flag best">Best on team</em></span
+                >
+                <span
+                  class="rail"
+                  role="img"
+                  aria-label="Game scores 84 to 94, sample score 89"
+                >
+                  <span class="span" style="left: 68%; width: 20%"></span
+                  ><i style="left: 68%"></i><i style="left: 74%"></i
+                  ><i style="left: 84%"></i><i style="left: 70%"></i
+                  ><i style="left: 80%"></i><i style="left: 88%"></i
+                  ><i style="left: 76%"></i><i style="left: 82%"></i
+                  ><i style="left: 80%"></i><i style="left: 78%"></i>
+                  <b style="left: 78%"></b
+                ></span>
+                <span class="num score">89</span>
+                <span class="num st gd">+310</span>
+                <span class="num st">73%</span>
+                <span class="num st">815</span>
+                <span class="num st">0.9</span>
+              </a>
+            </li>
+            <li>
+              <a class="row" href="#p-moss" data-player="moss">
+                <span class="role">Support</span>
+                <span class="who"><strong>Moss</strong></span>
+                <span
+                  class="rail"
+                  role="img"
+                  aria-label="Game scores 73 to 82, sample score 77"
+                >
+                  <span class="span" style="left: 46%; width: 18%"></span
+                  ><i style="left: 48%"></i><i style="left: 52%"></i
+                  ><i style="left: 60%"></i><i style="left: 50%"></i
+                  ><i style="left: 56%"></i><i style="left: 64%"></i
+                  ><i style="left: 46%"></i><i style="left: 58%"></i
+                  ><i style="left: 54%"></i><i style="left: 52%"></i>
+                  <b style="left: 54%"></b
+                ></span>
+                <span class="num score">77</span>
+                <span class="num st gd neg">−40</span>
+                <span class="num st">72%</span>
+                <span class="num st">125</span>
+                <span class="num st">2.4</span>
+              </a>
+            </li>
+          </ol>
+          <p class="legend">
+            <span><span class="lg-tick"></span> One game</span
+            ><span><span class="lg-mark"></span> Sample score</span
+            ><span>Select a player to open the report.</span>
+          </p>
+        </div>
+        <div class="reports">
+          <article
+            class="report"
+            id="p-flint"
+            data-report="flint"
+            aria-labelledby="h-flint"
+          >
+            <header class="rh">
+              <div>
+                <p class="rmeta">Vanguard top with 10 games</p>
+                <h3 id="h-flint">Flint</h3>
+                <p class="note">Small lane lead with steady output.</p>
+              </div>
+              <p class="big">
+                <span class="num">75</span
+                ><small>sample score<br />range 71 to 80</small>
+              </p>
+            </header>
+            <div class="rbody">
+              <figure class="spark">
+                <svg
+                  viewBox="0 0 300 120"
+                  role="img"
+                  aria-labelledby="sp-flint"
+                >
+                  <title id="sp-flint">
+                    Flint game scores, games 1 to 10: 73, 78, 71, 76, 74, 80,
+                    72, 77, 75, 74
+                  </title>
+                  <line x1="30" x2="292" y1="94" y2="94" class="g" />
+                  <text x="24" y="98" text-anchor="end">50</text>
+                  <line x1="30" x2="292" y1="51" y2="51" class="g" />
+                  <text x="24" y="55" text-anchor="end">75</text>
+                  <line x1="30" x2="292" y1="8" y2="8" class="g" />
+                  <text x="24" y="12" text-anchor="end">100</text>
+                  <line x1="30" x2="292" y1="51" y2="51" class="avg" />
+                  <polyline
+                    points="30.0,54.4 59.1,45.8 88.2,57.9 117.3,49.3 146.4,52.7 175.6,42.4 204.7,56.2 233.8,47.6 262.9,51.0 292.0,52.7"
+                    class="ln"
+                  />
+                  <circle cx="30.0" cy="54.4" r="3">
+                    <title>Game 1: 73</title>
+                  </circle>
+                  <circle cx="59.1" cy="45.8" r="3">
+                    <title>Game 2: 78</title>
+                  </circle>
+                  <circle cx="88.2" cy="57.9" r="3">
+                    <title>Game 3: 71</title>
+                  </circle>
+                  <circle cx="117.3" cy="49.3" r="3">
+                    <title>Game 4: 76</title>
+                  </circle>
+                  <circle cx="146.4" cy="52.7" r="3">
+                    <title>Game 5: 74</title>
+                  </circle>
+                  <circle cx="175.6" cy="42.4" r="3">
+                    <title>Game 6: 80</title>
+                  </circle>
+                  <circle cx="204.7" cy="56.2" r="3">
+                    <title>Game 7: 72</title>
+                  </circle>
+                  <circle cx="233.8" cy="47.6" r="3">
+                    <title>Game 8: 77</title>
+                  </circle>
+                  <circle cx="262.9" cy="51.0" r="3">
+                    <title>Game 9: 75</title>
+                  </circle>
+                  <circle cx="292.0" cy="52.7" r="3">
+                    <title>Game 10: 74</title>
+                  </circle>
+                  <text x="30.0" y="108" text-anchor="middle">1</text>
+                  <text x="59.1" y="108" text-anchor="middle">2</text>
+                  <text x="88.2" y="108" text-anchor="middle">3</text>
+                  <text x="117.3" y="108" text-anchor="middle">4</text>
+                  <text x="146.4" y="108" text-anchor="middle">5</text>
+                  <text x="175.6" y="108" text-anchor="middle">6</text>
+                  <text x="204.7" y="108" text-anchor="middle">7</text>
+                  <text x="233.8" y="108" text-anchor="middle">8</text>
+                  <text x="262.9" y="108" text-anchor="middle">9</text>
+                  <text x="292.0" y="108" text-anchor="middle">10</text>
+                  <text x="161" y="119" text-anchor="middle" class="ax">
+                    Game number
+                  </text>
+                  <text
+                    x="9"
+                    y="51"
+                    text-anchor="middle"
+                    class="ax"
+                    transform="rotate(-90 9 51)"
+                  >
+                    Score
+                  </text>
+                </svg>
+                <figcaption>Dashed line is the sample score, 75.</figcaption>
+              </figure>
+              <table class="vs">
+                <caption>
+                  Against Crest, Aurora top, same role, 10 games each
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Stat</th>
+                    <th scope="col" class="num">Flint</th>
+                    <th scope="col"><span class="sr">Comparison bars</span></th>
+                    <th scope="col" class="num">Crest</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="behind">
+                    <th scope="row">Gold at 15</th>
+                    <td class="num">+70</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="dbar"
+                        ><span
+                          class="db me"
+                          style="left: 50%; width: 7.8%"
+                        ></span></span
+                      ><span class="dbar"
+                        ><span
+                          class="db them"
+                          style="left: 50%; width: 15.6%"
+                        ></span
+                      ></span>
+                    </td>
+                    <td class="num dim">+140</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Kill participation</th>
+                    <td class="num">59%</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 87.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">61%</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Damage per minute</th>
+                    <td class="num">480</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 85.6%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">510</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Vision per minute</th>
+                    <td class="num">1.0</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 82.6%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">1.1</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ul class="why">
+              <li>Score 75 against 78 for Crest, the other sample top.</li>
+            </ul>
+          </article>
+          <article
+            class="report is-low"
+            id="p-rush"
+            data-report="rush"
+            aria-labelledby="h-rush"
+          >
+            <header class="rh">
+              <div>
+                <p class="rmeta">
+                  Vanguard jungle with 10 games
+                  <em class="flag low">Lowest observed</em>
+                </p>
+                <h3 id="h-rush">Rush</h3>
+                <p class="note">
+                  Early gold deficits repeated across the sample.
+                </p>
+              </div>
+              <p class="big">
+                <span class="num">68</span
+                ><small>sample score<br />range 61 to 74</small>
+              </p>
+            </header>
+            <div class="rbody">
+              <figure class="spark">
+                <svg viewBox="0 0 300 120" role="img" aria-labelledby="sp-rush">
+                  <title id="sp-rush">
+                    Rush game scores, games 1 to 10: 74, 70, 67, 71, 65, 69, 61,
+                    72, 66, 65
+                  </title>
+                  <line x1="30" x2="292" y1="94" y2="94" class="g" />
+                  <text x="24" y="98" text-anchor="end">50</text>
+                  <line x1="30" x2="292" y1="51" y2="51" class="g" />
+                  <text x="24" y="55" text-anchor="end">75</text>
+                  <line x1="30" x2="292" y1="8" y2="8" class="g" />
+                  <text x="24" y="12" text-anchor="end">100</text>
+                  <line x1="30" x2="292" y1="63.04" y2="63.04" class="avg" />
+                  <polyline
+                    points="30.0,52.7 59.1,59.6 88.2,64.8 117.3,57.9 146.4,68.2 175.6,61.3 204.7,75.1 233.8,56.2 262.9,66.5 292.0,68.2"
+                    class="ln"
+                  />
+                  <circle cx="30.0" cy="52.7" r="3">
+                    <title>Game 1: 74</title>
+                  </circle>
+                  <circle cx="59.1" cy="59.6" r="3">
+                    <title>Game 2: 70</title>
+                  </circle>
+                  <circle cx="88.2" cy="64.8" r="3">
+                    <title>Game 3: 67</title>
+                  </circle>
+                  <circle cx="117.3" cy="57.9" r="3">
+                    <title>Game 4: 71</title>
+                  </circle>
+                  <circle cx="146.4" cy="68.2" r="3">
+                    <title>Game 5: 65</title>
+                  </circle>
+                  <circle cx="175.6" cy="61.3" r="3">
+                    <title>Game 6: 69</title>
+                  </circle>
+                  <circle cx="204.7" cy="75.1" r="3">
+                    <title>Game 7: 61</title>
+                  </circle>
+                  <circle cx="233.8" cy="56.2" r="3">
+                    <title>Game 8: 72</title>
+                  </circle>
+                  <circle cx="262.9" cy="66.5" r="3">
+                    <title>Game 9: 66</title>
+                  </circle>
+                  <circle cx="292.0" cy="68.2" r="3">
+                    <title>Game 10: 65</title>
+                  </circle>
+                  <text x="30.0" y="108" text-anchor="middle">1</text>
+                  <text x="59.1" y="108" text-anchor="middle">2</text>
+                  <text x="88.2" y="108" text-anchor="middle">3</text>
+                  <text x="117.3" y="108" text-anchor="middle">4</text>
+                  <text x="146.4" y="108" text-anchor="middle">5</text>
+                  <text x="175.6" y="108" text-anchor="middle">6</text>
+                  <text x="204.7" y="108" text-anchor="middle">7</text>
+                  <text x="233.8" y="108" text-anchor="middle">8</text>
+                  <text x="262.9" y="108" text-anchor="middle">9</text>
+                  <text x="292.0" y="108" text-anchor="middle">10</text>
+                  <text x="161" y="119" text-anchor="middle" class="ax">
+                    Game number
+                  </text>
+                  <text
+                    x="9"
+                    y="51"
+                    text-anchor="middle"
+                    class="ax"
+                    transform="rotate(-90 9 51)"
+                  >
+                    Score
+                  </text>
+                </svg>
+                <figcaption>Dashed line is the sample score, 68.</figcaption>
+              </figure>
+              <table class="vs">
+                <caption>
+                  Against Drift, Aurora jungle, same role, 10 games each
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Stat</th>
+                    <th scope="col" class="num">Rush</th>
+                    <th scope="col"><span class="sr">Comparison bars</span></th>
+                    <th scope="col" class="num">Drift</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="behind">
+                    <th scope="row">Gold at 15</th>
+                    <td class="num">−160</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="dbar"
+                        ><span
+                          class="db me"
+                          style="left: 32.2%; width: 17.8%"
+                        ></span></span
+                      ><span class="dbar"
+                        ><span
+                          class="db them"
+                          style="left: 50%; width: 23.3%"
+                        ></span
+                      ></span>
+                    </td>
+                    <td class="num dim">+210</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Kill participation</th>
+                    <td class="num">62%</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 76.2%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">74%</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Damage per minute</th>
+                    <td class="num">350</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 81.6%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">390</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Vision per minute</th>
+                    <td class="num">1.5</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 75.8%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">1.8</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ul class="why">
+              <li>
+                Lowest sample score on Vanguard. A low score does not show that
+                this player caused losses.
+              </li>
+              <li>Score 68 against 84 for Drift, the other sample jungle.</li>
+            </ul>
+          </article>
+          <article
+            class="report"
+            id="p-echo"
+            data-report="echo"
+            aria-labelledby="h-echo"
+          >
+            <header class="rh">
+              <div>
+                <p class="rmeta">Vanguard mid with 10 games</p>
+                <h3 id="h-echo">Echo</h3>
+                <p class="note">
+                  Positive lane results with good fight presence.
+                </p>
+              </div>
+              <p class="big">
+                <span class="num">82</span
+                ><small>sample score<br />range 78 to 87</small>
+              </p>
+            </header>
+            <div class="rbody">
+              <figure class="spark">
+                <svg viewBox="0 0 300 120" role="img" aria-labelledby="sp-echo">
+                  <title id="sp-echo">
+                    Echo game scores, games 1 to 10: 78, 80, 85, 79, 84, 87, 81,
+                    83, 82, 81
+                  </title>
+                  <line x1="30" x2="292" y1="94" y2="94" class="g" />
+                  <text x="24" y="98" text-anchor="end">50</text>
+                  <line x1="30" x2="292" y1="51" y2="51" class="g" />
+                  <text x="24" y="55" text-anchor="end">75</text>
+                  <line x1="30" x2="292" y1="8" y2="8" class="g" />
+                  <text x="24" y="12" text-anchor="end">100</text>
+                  <line x1="30" x2="292" y1="38.96" y2="38.96" class="avg" />
+                  <polyline
+                    points="30.0,45.8 59.1,42.4 88.2,33.8 117.3,44.1 146.4,35.5 175.6,30.4 204.7,40.7 233.8,37.2 262.9,39.0 292.0,40.7"
+                    class="ln"
+                  />
+                  <circle cx="30.0" cy="45.8" r="3">
+                    <title>Game 1: 78</title>
+                  </circle>
+                  <circle cx="59.1" cy="42.4" r="3">
+                    <title>Game 2: 80</title>
+                  </circle>
+                  <circle cx="88.2" cy="33.8" r="3">
+                    <title>Game 3: 85</title>
+                  </circle>
+                  <circle cx="117.3" cy="44.1" r="3">
+                    <title>Game 4: 79</title>
+                  </circle>
+                  <circle cx="146.4" cy="35.5" r="3">
+                    <title>Game 5: 84</title>
+                  </circle>
+                  <circle cx="175.6" cy="30.4" r="3">
+                    <title>Game 6: 87</title>
+                  </circle>
+                  <circle cx="204.7" cy="40.7" r="3">
+                    <title>Game 7: 81</title>
+                  </circle>
+                  <circle cx="233.8" cy="37.2" r="3">
+                    <title>Game 8: 83</title>
+                  </circle>
+                  <circle cx="262.9" cy="39.0" r="3">
+                    <title>Game 9: 82</title>
+                  </circle>
+                  <circle cx="292.0" cy="40.7" r="3">
+                    <title>Game 10: 81</title>
+                  </circle>
+                  <text x="30.0" y="108" text-anchor="middle">1</text>
+                  <text x="59.1" y="108" text-anchor="middle">2</text>
+                  <text x="88.2" y="108" text-anchor="middle">3</text>
+                  <text x="117.3" y="108" text-anchor="middle">4</text>
+                  <text x="146.4" y="108" text-anchor="middle">5</text>
+                  <text x="175.6" y="108" text-anchor="middle">6</text>
+                  <text x="204.7" y="108" text-anchor="middle">7</text>
+                  <text x="233.8" y="108" text-anchor="middle">8</text>
+                  <text x="262.9" y="108" text-anchor="middle">9</text>
+                  <text x="292.0" y="108" text-anchor="middle">10</text>
+                  <text x="161" y="119" text-anchor="middle" class="ax">
+                    Game number
+                  </text>
+                  <text
+                    x="9"
+                    y="51"
+                    text-anchor="middle"
+                    class="ax"
+                    transform="rotate(-90 9 51)"
+                  >
+                    Score
+                  </text>
+                </svg>
+                <figcaption>Dashed line is the sample score, 82.</figcaption>
+              </figure>
+              <table class="vs">
+                <caption>
+                  Against Nova, Aurora mid, same role, 10 games each
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Stat</th>
+                    <th scope="col" class="num">Echo</th>
+                    <th scope="col"><span class="sr">Comparison bars</span></th>
+                    <th scope="col" class="num">Nova</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="behind">
+                    <th scope="row">Gold at 15</th>
+                    <td class="num">+180</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="dbar"
+                        ><span
+                          class="db me"
+                          style="left: 50%; width: 20%"
+                        ></span></span
+                      ><span class="dbar"
+                        ><span
+                          class="db them"
+                          style="left: 50%; width: 46.7%"
+                        ></span
+                      ></span>
+                    </td>
+                    <td class="num dim">+420</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Kill participation</th>
+                    <td class="num">70%</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 83.7%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">76%</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Damage per minute</th>
+                    <td class="num">660</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 81.1%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">740</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Vision per minute</th>
+                    <td class="num">1.1</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 82.6%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">1.0</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ul class="why">
+              <li>Score 82 against 94 for Nova, the other sample mid.</li>
+            </ul>
+          </article>
+          <article
+            class="report is-best"
+            id="p-kite"
+            data-report="kite"
+            aria-labelledby="h-kite"
+          >
+            <header class="rh">
+              <div>
+                <p class="rmeta">
+                  Vanguard bot with 10 games
+                  <em class="flag best">Best on team</em>
+                </p>
+                <h3 id="h-kite">Kite</h3>
+                <p class="note">
+                  Strongest Vanguard player. High damage and a clear lane lead.
+                </p>
+              </div>
+              <p class="big">
+                <span class="num">89</span
+                ><small>sample score<br />range 84 to 94</small>
+              </p>
+            </header>
+            <div class="rbody">
+              <figure class="spark">
+                <svg viewBox="0 0 300 120" role="img" aria-labelledby="sp-kite">
+                  <title id="sp-kite">
+                    Kite game scores, games 1 to 10: 84, 87, 92, 85, 90, 94, 88,
+                    91, 90, 89
+                  </title>
+                  <line x1="30" x2="292" y1="94" y2="94" class="g" />
+                  <text x="24" y="98" text-anchor="end">50</text>
+                  <line x1="30" x2="292" y1="51" y2="51" class="g" />
+                  <text x="24" y="55" text-anchor="end">75</text>
+                  <line x1="30" x2="292" y1="8" y2="8" class="g" />
+                  <text x="24" y="12" text-anchor="end">100</text>
+                  <line x1="30" x2="292" y1="26.92" y2="26.92" class="avg" />
+                  <polyline
+                    points="30.0,35.5 59.1,30.4 88.2,21.8 117.3,33.8 146.4,25.2 175.6,18.3 204.7,28.6 233.8,23.5 262.9,25.2 292.0,26.9"
+                    class="ln"
+                  />
+                  <circle cx="30.0" cy="35.5" r="3">
+                    <title>Game 1: 84</title>
+                  </circle>
+                  <circle cx="59.1" cy="30.4" r="3">
+                    <title>Game 2: 87</title>
+                  </circle>
+                  <circle cx="88.2" cy="21.8" r="3">
+                    <title>Game 3: 92</title>
+                  </circle>
+                  <circle cx="117.3" cy="33.8" r="3">
+                    <title>Game 4: 85</title>
+                  </circle>
+                  <circle cx="146.4" cy="25.2" r="3">
+                    <title>Game 5: 90</title>
+                  </circle>
+                  <circle cx="175.6" cy="18.3" r="3">
+                    <title>Game 6: 94</title>
+                  </circle>
+                  <circle cx="204.7" cy="28.6" r="3">
+                    <title>Game 7: 88</title>
+                  </circle>
+                  <circle cx="233.8" cy="23.5" r="3">
+                    <title>Game 8: 91</title>
+                  </circle>
+                  <circle cx="262.9" cy="25.2" r="3">
+                    <title>Game 9: 90</title>
+                  </circle>
+                  <circle cx="292.0" cy="26.9" r="3">
+                    <title>Game 10: 89</title>
+                  </circle>
+                  <text x="30.0" y="108" text-anchor="middle">1</text>
+                  <text x="59.1" y="108" text-anchor="middle">2</text>
+                  <text x="88.2" y="108" text-anchor="middle">3</text>
+                  <text x="117.3" y="108" text-anchor="middle">4</text>
+                  <text x="146.4" y="108" text-anchor="middle">5</text>
+                  <text x="175.6" y="108" text-anchor="middle">6</text>
+                  <text x="204.7" y="108" text-anchor="middle">7</text>
+                  <text x="233.8" y="108" text-anchor="middle">8</text>
+                  <text x="262.9" y="108" text-anchor="middle">9</text>
+                  <text x="292.0" y="108" text-anchor="middle">10</text>
+                  <text x="161" y="119" text-anchor="middle" class="ax">
+                    Game number
+                  </text>
+                  <text
+                    x="9"
+                    y="51"
+                    text-anchor="middle"
+                    class="ax"
+                    transform="rotate(-90 9 51)"
+                  >
+                    Score
+                  </text>
+                </svg>
+                <figcaption>Dashed line is the sample score, 89.</figcaption>
+              </figure>
+              <table class="vs">
+                <caption>
+                  Against Arrow, Aurora bot, same role, 10 games each
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Stat</th>
+                    <th scope="col" class="num">Kite</th>
+                    <th scope="col"><span class="sr">Comparison bars</span></th>
+                    <th scope="col" class="num">Arrow</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="ahead">
+                    <th scope="row">Gold at 15</th>
+                    <td class="num">+310</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="dbar"
+                        ><span
+                          class="db me"
+                          style="left: 50%; width: 34.4%"
+                        ></span></span
+                      ><span class="dbar"
+                        ><span
+                          class="db them"
+                          style="left: 50%; width: 28.9%"
+                        ></span
+                      ></span>
+                    </td>
+                    <td class="num dim">+260</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Kill participation</th>
+                    <td class="num">73%</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 88.4%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">71%</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Damage per minute</th>
+                    <td class="num">815</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 88.1%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">790</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Vision per minute</th>
+                    <td class="num">0.9</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 80.8%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">0.8</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ul class="why">
+              <li>
+                Highest sample score on Vanguard. Tournament high is Nova at 94.
+              </li>
+              <li>Score 89 against 87 for Arrow, the other sample bot.</li>
+            </ul>
+          </article>
+          <article
+            class="report"
+            id="p-moss"
+            data-report="moss"
+            aria-labelledby="h-moss"
+          >
+            <header class="rh">
+              <div>
+                <p class="rmeta">Vanguard support with 10 games</p>
+                <h3 id="h-moss">Moss</h3>
+                <p class="note">Good fight presence and vision output.</p>
+              </div>
+              <p class="big">
+                <span class="num">77</span
+                ><small>sample score<br />range 73 to 82</small>
+              </p>
+            </header>
+            <div class="rbody">
+              <figure class="spark">
+                <svg viewBox="0 0 300 120" role="img" aria-labelledby="sp-moss">
+                  <title id="sp-moss">
+                    Moss game scores, games 1 to 10: 74, 76, 80, 75, 78, 82, 73,
+                    79, 77, 76
+                  </title>
+                  <line x1="30" x2="292" y1="94" y2="94" class="g" />
+                  <text x="24" y="98" text-anchor="end">50</text>
+                  <line x1="30" x2="292" y1="51" y2="51" class="g" />
+                  <text x="24" y="55" text-anchor="end">75</text>
+                  <line x1="30" x2="292" y1="8" y2="8" class="g" />
+                  <text x="24" y="12" text-anchor="end">100</text>
+                  <line x1="30" x2="292" y1="47.56" y2="47.56" class="avg" />
+                  <polyline
+                    points="30.0,52.7 59.1,49.3 88.2,42.4 117.3,51.0 146.4,45.8 175.6,39.0 204.7,54.4 233.8,44.1 262.9,47.6 292.0,49.3"
+                    class="ln"
+                  />
+                  <circle cx="30.0" cy="52.7" r="3">
+                    <title>Game 1: 74</title>
+                  </circle>
+                  <circle cx="59.1" cy="49.3" r="3">
+                    <title>Game 2: 76</title>
+                  </circle>
+                  <circle cx="88.2" cy="42.4" r="3">
+                    <title>Game 3: 80</title>
+                  </circle>
+                  <circle cx="117.3" cy="51.0" r="3">
+                    <title>Game 4: 75</title>
+                  </circle>
+                  <circle cx="146.4" cy="45.8" r="3">
+                    <title>Game 5: 78</title>
+                  </circle>
+                  <circle cx="175.6" cy="39.0" r="3">
+                    <title>Game 6: 82</title>
+                  </circle>
+                  <circle cx="204.7" cy="54.4" r="3">
+                    <title>Game 7: 73</title>
+                  </circle>
+                  <circle cx="233.8" cy="44.1" r="3">
+                    <title>Game 8: 79</title>
+                  </circle>
+                  <circle cx="262.9" cy="47.6" r="3">
+                    <title>Game 9: 77</title>
+                  </circle>
+                  <circle cx="292.0" cy="49.3" r="3">
+                    <title>Game 10: 76</title>
+                  </circle>
+                  <text x="30.0" y="108" text-anchor="middle">1</text>
+                  <text x="59.1" y="108" text-anchor="middle">2</text>
+                  <text x="88.2" y="108" text-anchor="middle">3</text>
+                  <text x="117.3" y="108" text-anchor="middle">4</text>
+                  <text x="146.4" y="108" text-anchor="middle">5</text>
+                  <text x="175.6" y="108" text-anchor="middle">6</text>
+                  <text x="204.7" y="108" text-anchor="middle">7</text>
+                  <text x="233.8" y="108" text-anchor="middle">8</text>
+                  <text x="262.9" y="108" text-anchor="middle">9</text>
+                  <text x="292.0" y="108" text-anchor="middle">10</text>
+                  <text x="161" y="119" text-anchor="middle" class="ax">
+                    Game number
+                  </text>
+                  <text
+                    x="9"
+                    y="51"
+                    text-anchor="middle"
+                    class="ax"
+                    transform="rotate(-90 9 51)"
+                  >
+                    Score
+                  </text>
+                </svg>
+                <figcaption>Dashed line is the sample score, 77.</figcaption>
+              </figure>
+              <table class="vs">
+                <caption>
+                  Against Vale, Aurora support, same role, 10 games each
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Stat</th>
+                    <th scope="col" class="num">Moss</th>
+                    <th scope="col"><span class="sr">Comparison bars</span></th>
+                    <th scope="col" class="num">Vale</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="ahead">
+                    <th scope="row">Gold at 15</th>
+                    <td class="num">−40</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="dbar"
+                        ><span
+                          class="db me"
+                          style="left: 45.6%; width: 4.4%"
+                        ></span></span
+                      ><span class="dbar"
+                        ><span
+                          class="db them"
+                          style="left: 41.1%; width: 8.9%"
+                        ></span
+                      ></span>
+                    </td>
+                    <td class="num dim">−80</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Kill participation</th>
+                    <td class="num">72%</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 73.2%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">58%</td>
+                  </tr>
+                  <tr class="behind">
+                    <th scope="row">Damage per minute</th>
+                    <td class="num">125</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 81.2%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 90.9%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">140</td>
+                  </tr>
+                  <tr class="ahead">
+                    <th scope="row">Vision per minute</th>
+                    <td class="num">2.4</td>
+                    <td class="bars" aria-hidden="true">
+                      <span class="hbar"
+                        ><span class="me" style="width: 90.9%"></span></span
+                      ><span class="hbar"
+                        ><span class="them" style="width: 79.5%"></span
+                      ></span>
+                    </td>
+                    <td class="num dim">2.1</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ul class="why">
+              <li>
+                Low damage is normal for supports. It is not a reason for this
+                score.
+              </li>
+              <li>Score 77 against 63 for Vale, the other sample support.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+      <section class="method" aria-labelledby="mh">
+        <h2 id="mh">How to read this sample</h2>
+        <div>
+          <h3>Scores</h3>
+          <ul>
+            <li>Sample impact score, 0 to 100. Higher is better.</li>
+            <li>
+              Player and team scores are set by hand for this design. No formula
+              computes them.
+            </li>
+            <li>
+              Best on team and lowest observed compare one team. Sample MVP is
+              the top score of all 10 players.
+            </li>
+            <li>
+              A low score shows weaker numbers. It does not show who caused a
+              loss.
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h3>Proposed for the real report</h3>
+          <ul>
+            <li>Compare each player only with players in the same role.</li>
+            <li>Account for champion, patch and opponent strength.</li>
+            <li>
+              Weight Worlds games more than regular season games when events are
+              pooled.
+            </li>
+            <li>Show uncertainty and game coverage next to every score.</li>
+            <li>
+              Use Oracle's Elixir for game and player stats. Use Leaguepedia or
+              official LoL Esports records for rosters and results.
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+    <script>
+      (function () {
+        var root = document.querySelector("main.page");
+        root.classList.add("js");
+        var teams = [].slice.call(root.querySelectorAll("section.team"));
+        var tabs = [].slice.call(root.querySelectorAll(".switch a"));
+        var state = {
+          team: "aurora",
+          player: { aurora: "nova", vanguard: "kite" },
+        };
+        var teamOf = {
+          crest: "aurora",
+          drift: "aurora",
+          nova: "aurora",
+          arrow: "aurora",
+          vale: "aurora",
+          flint: "vanguard",
+          rush: "vanguard",
+          echo: "vanguard",
+          kite: "vanguard",
+          moss: "vanguard",
+        };
+        function render() {
+          teams.forEach(function (s) {
+            var on = s.dataset.team === state.team;
+            s.hidden = !on;
+            var pid = state.player[s.dataset.team];
+            s.querySelectorAll(".report").forEach(function (r) {
+              r.hidden = r.dataset.report !== pid;
+            });
+            s.querySelectorAll(".row").forEach(function (r) {
+              r.setAttribute(
+                "aria-current",
+                r.dataset.player === pid ? "true" : "false",
+              );
+            });
+          });
+          tabs.forEach(function (t) {
+            var on = t.dataset.team === state.team;
+            t.setAttribute("aria-selected", on);
+            t.tabIndex = on ? 0 : -1;
+          });
+        }
+        tabs.forEach(function (t, i) {
+          t.addEventListener("click", function (e) {
+            e.preventDefault();
+            state.team = t.dataset.team;
+            render();
+          });
+          t.addEventListener("keydown", function (e) {
+            if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+            e.preventDefault();
+            var n =
+              tabs[
+                (i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) %
+                  tabs.length
+              ];
+            n.focus();
+            n.click();
+          });
+        });
+        root.addEventListener("click", function (e) {
+          var a = e.target.closest("a[data-player]");
+          if (!a) return;
+          e.preventDefault();
+          var pid = a.dataset.player,
+            tid = teamOf[pid];
+          var changed = state.team !== tid || state.player[tid] !== pid;
+          state.team = tid;
+          state.player[tid] = pid;
+          render();
+          if (!a.classList.contains("row") || changed) {
+            var r = root.querySelector("#p-" + pid);
+            if (r && !a.classList.contains("row"))
+              r.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          }
+        });
+        render();
+      })();
+    </script>
+  </body>
+</html>

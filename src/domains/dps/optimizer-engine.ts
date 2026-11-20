@@ -126,9 +126,6 @@ export function rankOptimizerBuilds(
   };
 }
 
-export const optimizeBuilds = rankOptimizerBuilds;
-export const rankOptimizerCandidates = rankOptimizerBuilds;
-
 /** Sorts complete evaluations using only deterministic, objective-aware keys. */
 export function compareOptimizerEvaluations(
   left: OptimizerBuildEvaluation,

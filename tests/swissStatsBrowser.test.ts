@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 import { chromium } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { fixtureFeed, mainId, rankingArtifacts, swissSeries, team } from './fixtures/swissPreviewFixtures'
 
 test('on-demand hypothetical stats load, cancel, retry, and replace changed scenarios without stale estimates', { timeout: 120_000 }, async () => {
@@ -17,7 +15,7 @@ test('on-demand hypothetical stats load, cancel, retry, and replace changed scen
   let ratingsAvailable = true
   let holdRatings = false
   let releaseRatings: (() => void) | undefined
-  const plugin: Plugin = {
+  const plugin: BrowserFixture = {
     name: 'swiss-stats-fixture',
     configureServer(server) {
       server.middlewares.use(async (request, response, next) => {
@@ -34,14 +32,9 @@ test('on-demand hypothetical stats load, cancel, retry, and replace changed scen
       })
     },
   }
-  const server = await createServer({ configFile: false, logLevel: 'silent',
-    define: { 'import.meta.env.VITE_TOURNAMENT_FORECASTS_ENABLED': JSON.stringify('0') },
-    resolve: { alias: { '@': new URL('../src', import.meta.url).pathname } },
-    server: { host: '127.0.0.1', port: 0 }, plugins: [plugin, react(), tailwindcss()],
-  })
+  const server = await startBrowserFixture(plugin)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}`
@@ -54,12 +47,19 @@ test('on-demand hypothetical stats load, cancel, retry, and replace changed scen
       if (route.request().url().startsWith(base)) return route.continue()
       external.push(route.request().url()); return route.abort()
     })
+    await page.addInitScript(() => {
+      new MutationObserver(() => {
+        const current = document.querySelector('nav[aria-label="Tournament views"] [aria-current="page"]')
+        if (current?.textContent?.trim() === 'Bracket') Object.assign(window, { sawBracketTab: true })
+      }).observe(document, { subtree: true, childList: true, attributes: true })
+    })
     await page.goto(`${base}/#tournaments?event=${encodeURIComponent(mainId)}&view=swiss`)
     const panel = page.getByRole('region', { name: 'Swiss stats', exact: true })
     const details = page.getByRole('region', { name: 'Advancement estimates', exact: true })
     const bracket = page.getByRole('region', { name: 'Swiss bracket', exact: true })
     const tables = page.getByRole('table', { name: 'Team advancement', exact: true })
     await panel.getByRole('button', { name: 'Preview stats', exact: true }).waitFor()
+    assert.equal(await page.evaluate(() => 'sawBracketTab' in window), false, 'A cold Swiss link never shows Bracket as the current tab')
     assert.deepEqual(requests.filter((request) => request.includes('/data/')), [])
     assert.doesNotMatch(await panel.innerText(), /\d+(\.\d+)?%/)
     assert.doesNotMatch(await bracket.innerText(), /\d+(\.\d+)?%/)
@@ -111,14 +111,16 @@ test('on-demand hypothetical stats load, cancel, retry, and replace changed scen
     assert.match(await details.innerText(), /sampling error, not model confidence/)
     assert.match(await details.innerText(), /uniform-legal-v1/)
     assert.match(await details.innerText(), /Snapshot .*Model .*Config /)
-    const odds = bracket.locator('[title^="Advances in"]')
-    const oddsTeams = () => odds.evaluateAll((chips) => chips.map((chip) => chip.parentElement!.closest('[title]')!.getAttribute('title')))
+    const odds = bracket.locator('[data-advance-odds]')
+    const oddsTeams = () => odds.evaluateAll((chips) => chips.map((chip) => chip.closest('[data-team-name]')!.getAttribute('data-team-name')))
     const assertOncePerTeam = async (count: number) => {
       const teams = await oddsTeams()
       assert.equal(teams.length, count)
       assert.equal(new Set(teams).size, count, `each team shows its chance once in the bracket: ${teams.join(', ')}`)
     }
     await assertOncePerTeam(16)
+    assert.equal(await bracket.locator('[title^="Advances in"]').count(), 0, 'Sampling details are available in the table without hover')
+    assert.match(await tables.innerText(), /Advances in [\d,]+ of 4,000 trials/)
     assert.ok((await odds.allTextContents()).every((text) => /^, [<>]?\d+(\.\d)?% to advance$/.test(text)), 'bracket chances are short percentages')
     assert.equal(await page.evaluate(() => (window as unknown as { swissStatsProgress: number[] }).swissStatsProgress.some((count) => count > 0 && count < 4000)), true, 'real trial completion reaches the DOM')
 
@@ -145,6 +147,8 @@ test('on-demand hypothetical stats load, cancel, retry, and replace changed scen
     await tables.waitFor()
     assert.match(await details.innerText(), /1 drawn rounds and 1 observed results or picks stay fixed/)
     await assertOncePerTeam(16)
+    assert.equal(await bracket.locator('[title^="Advances in"]').count(), 0, 'Sampling details are available in the table without hover')
+    assert.match(await tables.innerText(), /Advances in [\d,]+ of 4,000 trials/)
 
     for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 })

@@ -198,7 +198,7 @@ test('invalid prior feed records failed health without replacing its bytes', asy
       await writeFile(output, invalid)
       await writeFile(`${output}.health.json`, JSON.stringify({ checkedAt: at, complete: true, warnings: [] }))
       const run = spawnSync(process.execPath, ['--import', 'tsx', resolve('scripts/tournament-feed-collector.ts'), output], {
-        env: { ...process.env, TOURNAMENT_COLLECTOR_ENABLED: '1' }, encoding: 'utf8', timeout: 10_000,
+        encoding: 'utf8', timeout: 10_000,
       })
       assert.equal(run.status, 1, run.stderr)
       assert.equal(await readFile(output, 'utf8'), invalid)

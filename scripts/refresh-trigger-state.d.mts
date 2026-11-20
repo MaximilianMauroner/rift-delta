@@ -52,7 +52,7 @@ export function acknowledgeMatches(state: unknown, reconciliations: Array<{
   canonicalSeriesId?: string
   scoredGameIds?: string[]
 }>, acknowledgedAt?: string | Date): RefreshTriggerState
-export function shouldFetchScoredProviders(state: unknown, options?: { now?: string | Date; correctionAuditDue?: boolean; manual?: boolean; shadowIngestionEnabled?: boolean }): boolean
+export function shouldFetchScoredProviders(state: unknown, options?: { now?: string | Date; correctionAuditDue?: boolean; manual?: boolean }): boolean
 export function refreshTriggerCause(state: unknown, options?: { now?: string | Date; correctionAuditDue?: boolean; manual?: boolean }): 'pending-match' | 'daily-audit' | 'manual-force' | 'retry' | 'unchanged-scheduled-probe'
 export function assertRefreshCadence(options: { intervalMinutes: number; mode: TriggerMode; commit?: string; deploymentId?: string; receiptAuthority?: unknown; resolveReference?: (key: string) => Promise<unknown>; now?: string | number | Date }): Promise<true>
 export function retryDelayMs(attempts: number): number

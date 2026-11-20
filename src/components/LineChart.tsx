@@ -3,10 +3,13 @@ import {
   CartesianGrid,
   Line,
   LineChart as RechartsLineChart,
+  ReferenceArea,
   Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
   useActiveTooltipLabel,
+  usePlotArea,
+  useXAxisScale,
   type TooltipContentProps,
 } from 'recharts'
 import { Button } from './ui/button'
@@ -25,6 +28,13 @@ export type ChartSeries = {
   label: string
   color: string
   points: ChartPoint[]
+}
+
+/** A span of time to mark behind the lines, such as an international event. */
+export type ChartEvent = {
+  label: string
+  start: number
+  end: number
 }
 
 export type ChartActiveRow = {
@@ -57,6 +67,8 @@ export type LineChartProps = {
   interactiveLegend?: boolean
   /** Shown below the chart for the hovered row, or the latest row. */
   details?: (active: ChartActiveRow) => ReactNode
+  /** Shaded behind the lines where they overlap the chart's time range. */
+  events?: ChartEvent[]
 }
 
 /** Longer than a normal break between matches; shorter than an off-season. */
@@ -68,7 +80,7 @@ const DIRECT_LABEL_MIN_GAP_PX = 24
 const CHART_VERTICAL_CHROME_PX = 92
 /** Lines take their colours from the series, and the tooltip takes names from its payload. */
 const CHART_CONFIG: ChartConfig = {}
-const AXIS_TICK_STYLE = { fill: 'var(--muted)', fontSize: 13, fontWeight: 550 }
+const AXIS_TICK_STYLE = { fill: 'var(--muted)', fontSize: 12 }
 
 export function LineChart({
   series,
@@ -82,6 +94,7 @@ export function LineChart({
   curve = 'linear',
   interactiveLegend = false,
   details,
+  events = [],
 }: LineChartProps) {
   const [focusedSeriesId, setFocusedSeriesId] = useState<string>()
   const [hoveredT, setHoveredT] = useState<number>()
@@ -92,7 +105,7 @@ export function LineChart({
   const { data, meta, gaps } = useMemo(() => buildChartData(series), [series])
 
   if (series.length === 0 || domain === null || data.length === 0) {
-    return <p className="text-muted-foreground p-5">No chart data available.</p>
+    return <p className="text-muted p-5">No chart data available.</p>
   }
 
   const { minT, maxT, minY, maxY } = domain
@@ -104,6 +117,9 @@ export function LineChart({
   const formatYTick = yTickFormat ?? yFormat
   const xMonthTicks = monthTicks(minT, maxT)
   const xTicks = xMonthTicks ?? timeTicks(minT, maxT, 5)
+  const shownEvents = events.flatMap((event) =>
+    event.end < minT || event.start > maxT ? [] : [{ ...event, start: Math.max(event.start, minT), end: Math.min(event.end, maxT) }],
+  )
   const lineType = curve === 'step' ? 'stepAfter' : 'linear'
   const detailT = hoveredT !== undefined && data.some((row) => row.t === hoveredT) ? hoveredT : data[data.length - 1].t
   const selectedRow = activeRow(series, detailT)
@@ -140,15 +156,15 @@ export function LineChart({
             {entry.label}
           </Button>
         ) : (
-          <span className="inline-flex items-center gap-2 text-sm text-muted-foreground" key={entry.id}>
+          <span className="inline-flex items-center gap-2 text-sm text-muted" key={entry.id}>
             <i className="inline-block h-[3px] w-[11px] shrink-0 rounded-full" style={{ background: entry.color }} aria-hidden="true" />
             {entry.label}
           </span>
         ))}
         {pointReadout && selectedRow.points[0] ? (
           <div className="chart-point-readout ml-auto grid justify-items-end gap-1 text-xs tabular-nums">
-            <time dateTime={new Date(selectedRow.t).toISOString()} className="text-muted-foreground">{formatChartTimestamp(selectedRow.t)}</time>
-            <strong className="text-sm text-foreground">{yFormat(selectedRow.points[0].point.y)}</strong>
+            <time dateTime={new Date(selectedRow.t).toISOString()} className="text-muted">{formatChartTimestamp(selectedRow.t)}</time>
+            <strong className="text-sm text-text">{yFormat(selectedRow.points[0].point.y)}</strong>
           </div>
         ) : null}
       </div>
@@ -160,7 +176,7 @@ export function LineChart({
       >
         <RechartsLineChart
           data={data}
-          margin={{ top: 18, right: directLabels ? DIRECT_LABEL_WIDTH : 20, bottom: 16, left: 4 }}
+          margin={{ top: shownEvents.length ? 40 : 18, right: directLabels ? DIRECT_LABEL_WIDTH : 20, bottom: 16, left: 4 }}
           aria-label={`${yLabel} over time for ${series.map((entry) => entry.label).join(', ')}`}
           aria-describedby={summaryId}
         >
@@ -190,7 +206,19 @@ export function LineChart({
             tick={{ style: AXIS_TICK_STYLE }}
             tickFormatter={(value) => formatYTick(Number(value))}
           />
-          <RechartsTooltip trigger="hover" cursor={{ stroke: 'var(--line-strong)' }} content={renderTooltip} />
+          {shownEvents.map((event) => (
+            <ReferenceArea
+              key={`${event.label}-${event.start}`}
+              x1={event.start}
+              x2={event.end}
+              fill="var(--focus)"
+              fillOpacity={0.08}
+              strokeOpacity={0}
+              ifOverflow="hidden"
+            />
+          ))}
+          {shownEvents.length ? <EventLabels events={shownEvents} /> : null}
+          <RechartsTooltip trigger="hover" cursor={{ stroke: 'var(--line)' }} content={renderTooltip} />
           {details ? <ActiveRowListener onActive={setHoveredT} /> : null}
           {gaps.map(({ key, series: entry }) => (
             <Line key={key} dataKey={key} opacity={focusedId && focusedId !== entry.id ? 0.18 : 1} stroke={entry.color} strokeWidth={1.5} strokeDasharray="4 4" connectNulls dot={false} activeDot={false} tooltipType="none" isAnimationActive={false} />
@@ -213,7 +241,7 @@ export function LineChart({
                     const target = directLabels.get(entry.id)
                     if (!target || props.index !== target.index || typeof props.x !== 'number') return <g />
                     return (
-                      <text x={props.x + 7} y={target.y(Number(props.y))} dy="0.32em" fill="var(--text)" fontSize={12} fontWeight={680} className="font-mono">
+                      <text x={props.x + 7} y={target.y(Number(props.y))} dy="0.32em" fill="var(--text)" fontSize={12} fontWeight={700}>
                         {entry.label}
                       </text>
                     )
@@ -223,15 +251,55 @@ export function LineChart({
           ))}
         </RechartsLineChart>
       </ChartContainer>
-      {gaps.length > 0 ? <p className="px-4 pb-2 text-xs text-muted-foreground">Dashed lines span gaps of more than 21 days.</p> : null}
+      {gaps.length > 0 ? <p className="px-4 pb-2 text-xs text-muted">Dashed lines span gaps of more than 21 days.</p> : null}
       {details ? (
         <div className="min-w-0 px-4 pb-3" role="region" aria-label="Selected chart point details">
           {details(selectedRow)}
         </div>
       ) : null}
-      <div id={summaryId} className="sr-only">{summaryText}</div>
+      <div id={summaryId} className="sr-only">
+        {summaryText}
+        {shownEvents.length ? ` Marked events: ${shownEvents.map((event) => `${event.label} from ${formatChartTimestamp(event.start)} to ${formatChartTimestamp(event.end)}`).join(', ')}.` : ''}
+      </div>
     </div>
   )
+}
+
+const EVENT_LABEL_CHAR_PX = 6.6
+const EVENT_LABEL_GAP_PX = 6
+
+/**
+ * Names each event band above the plot. On a narrow chart neighbouring events
+ * sit closer than their names are wide, so a name that would overlap the one
+ * before it is left out. The band stays, and the summary still lists it.
+ */
+function EventLabels({ events }: { events: ChartEvent[] }) {
+  const scale = useXAxisScale()
+  const plot = usePlotArea()
+  if (!scale || !plot) return null
+  return (
+    <g aria-hidden="true">
+      {placeEventLabels(events, scale, plot).map(({ key, x, label }) => (
+        <text key={key} x={x} y={plot.y - 20} textAnchor="middle" fill="var(--muted)" fontSize={12} fontWeight={600}>{label}</text>
+      ))}
+    </g>
+  )
+}
+
+function placeEventLabels(events: ChartEvent[], scale: (value: number) => number | undefined, plot: { x: number; width: number }) {
+  const placed: { key: string; x: number; label: string }[] = []
+  let previousRight = -Infinity
+  for (const event of [...events].sort((a, b) => a.start - b.start)) {
+    const start = scale(event.start)
+    const end = scale(event.end)
+    if (start === undefined || end === undefined) continue
+    const half = (event.label.length * EVENT_LABEL_CHAR_PX) / 2
+    const x = Math.min(Math.max((start + end) / 2, plot.x + half), plot.x + plot.width - half)
+    if (x - half < previousRight + EVENT_LABEL_GAP_PX) continue
+    previousRight = x + half
+    placed.push({ key: `${event.label}-${event.start}`, x, label: event.label })
+  }
+  return placed
 }
 
 /** Keeps the last row that hover, touch, or the arrow keys made active. */
@@ -283,7 +351,7 @@ function buildChartData(series: ChartSeries[]) {
       if (previousPoint && point.t - previousPoint.t > SEGMENT_GAP_MS) {
         const gapKey = `gap${index}_${segment}`
         gaps.push({ key: gapKey, series: entry })
-        const previousDatum = dataByTime.get(previousPoint.t) ?? { t: previousPoint.t }
+        const previousDatum: ChartDatum = dataByTime.get(previousPoint.t) ?? { t: previousPoint.t }
         previousDatum[gapKey] = previousPoint.y
         const nextDatum: ChartDatum = dataByTime.get(point.t) ?? { t: point.t }
         nextDatum[gapKey] = point.y

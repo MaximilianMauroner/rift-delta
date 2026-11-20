@@ -58,6 +58,26 @@ for (const force of [true, false]) {
   })
 }
 
+test('fenced shadow ingestion keeps full authority when checkpoint comparison differs', async () => {
+  const client = memoryS3(seedClient.objects)
+  const directory = join(root, 'shadow')
+  const result = await refresh(directory, client, 3, true, {}, 'shadow')
+  assert.equal(result.incrementalAction, 'publish-full')
+  assert.equal(result.incrementalMetrics.classification, 'latest-append')
+  assert.equal(result.incrementalMetrics.fullSnapshotWritten, true)
+  const state = JSON.parse(await readFile(join(directory, 'raw/refresh-state.json'), 'utf8'))
+  const parity = state.lastRun.stages.find((stage: { name: string }) => stage.name === 'semantic-parity')
+  assert.equal(parity.result, 'failed')
+  assert.equal(parity.output.semanticReport.equal, true)
+  assert.equal(parity.output.stateReport.checkpointEqual, false)
+  const diagnostic = JSON.parse(await readFile(join(directory, 'raw/incremental-diagnostic.json'), 'utf8'))
+  assert.equal(diagnostic.reason, 'checkpoint-state-parity-mismatch')
+  const active = await readActiveContentAddressedGeneration({ config, client })
+  assert.ok(active.found)
+  assert.equal(active.manifest.generationId, result.generationId)
+  assert.equal(client.objects.has('rankings/artifacts/latest-full.json'), true)
+})
+
 for (const localState of ['legacy', 'corrupt', 'unreadable', 'pending local', 'pending bucket'] as const) {
   test(`verified remote restore does not bypass existing ${localState} state`, async () => {
     const directory = join(root, localState.replaceAll(' ', '-'))
@@ -115,7 +135,7 @@ test('cold refresh cannot replay from a different verified raw generation', asyn
 })
 
 async function refresh(directory: string, client: ReturnType<typeof memoryS3>, matchCount: number, force = true,
-  options: Record<string, unknown> = {}) {
+  options: Record<string, unknown> = {}, mode: 'gated' | 'shadow' = 'gated') {
   mock.timers.tick(1000)
   const lease = await acquireBucketLease('ops/refresh-lease.json', { owner: 'fixture', config, client })
   assert.ok(lease.acquired)
@@ -127,8 +147,7 @@ async function refresh(directory: string, client: ReturnType<typeof memoryS3>, m
     ...(force ? ['--force'] : []),
   ], {
     env: {
-      RANKING_REFRESH_MODE: 'gated', RANKING_REFRESH_CAUSE: 'pending-match', RANKING_RAW_SOURCE_WORKER: 'node',
-      RANKING_BUCKET_RESTORE_RAW: 'true', RANKING_BUCKET_UPLOAD_ENABLED: 'true',
+      RANKING_REFRESH_MODE: mode, RANKING_REFRESH_CAUSE: 'pending-match',
       RANKING_REFRESH_LEASE_OWNER: lease.lease.owner,
       RANKING_REFRESH_FENCING_TOKEN: String(lease.lease.fencingToken),
       RANKING_REFRESH_PROMOTION_ETAG: lease.promotionEtag,

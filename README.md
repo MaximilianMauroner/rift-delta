@@ -37,6 +37,8 @@ pnpm ranking:baseline
 ```
 
 `verify` checks types, source ownership, style, tracked-file hygiene, and tests.
+On a clean local checkout, it can reuse a successful run with matching inputs.
+Use `pnpm verify --fresh` to run all checks again. CI always runs all checks.
 `build` bundles the local payload. `ranking:baseline` checks the committed safety
 receipt without network access or bucket mutation. On a shared coding VM, run
 heavy checks one at a time through `heavy-check`.
@@ -160,14 +162,14 @@ response must include `X-Ranking-Runtime: rust`.
 The refresh service starts with `node scripts/refresh-once.mjs`. The committed
 cron runs every six hours. Node remains the default refresh implementation.
 The gated worker uses confirmed pending matches to decide when to call providers.
-The web server has no background refresh unless `RANKING_REFRESH_ENABLED=true`.
+The web server does not run a background refresh.
 Changes to production cadence, activation, deployment, or deletion need separate
 authorization. A merge to `main` can cause Railway to deploy.
 
 Bucket access uses `BUCKET`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `REGION`, and
 `ENDPOINT`. `RANKING_BUCKET_PREFIX` defaults to `rankings`.
 `RANKING_BUCKET_REQUIRED=true` rejects a refresh without credentials.
-`RANKING_BUCKET_UPLOAD_ENABLED=false` disables uploads for local work.
+Pass `--skip-bucket-upload` to the refresh command to skip uploads for local work.
 `RANKING_REFRESH_MODE` selects `gated` or `shadow`.
 `RANKING_REFRESH_LOOKBACK_DAYS` and `RANKING_REFRESH_BOOTSTRAP_START` select the
 provider collection window. Do not put credentials in source files.

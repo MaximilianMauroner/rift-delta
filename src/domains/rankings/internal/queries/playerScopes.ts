@@ -1,4 +1,4 @@
-import type { CompactPlayer, PublicPlayerDirectory, SnapshotFilter } from '../../types.ts'
+import type { CompactPlayer, PublicPlayerDirectory, Role, SnapshotFilter } from '../../types.ts'
 import { snapshotKey } from '../published/schema.ts'
 import { compareCodeUnits } from '../../../../shared/codeUnitOrder.mjs'
 
@@ -14,40 +14,69 @@ export function emptyPlayerScope(filter: SnapshotFilter): ResolvedPlayerScope {
   return { players: [], currentLineups: {}, label: playerScopeLabel(filter, 'current') }
 }
 
-export type PlayerLeaderboardScore = { kind: 'stats-power' | 'role-power'; value: number }
+export type PlayerScoreFamily = 'stats-power' | 'role-power'
 
-type PlayerLeaderboardRow = CompactPlayer & { leaderboardRank: number; leaderboardScore: PlayerLeaderboardScore }
+export type PlayerUnrankedReason = 'no-stat-games' | 'no-score'
 
-/** The one score that orders the Players leaderboard: finite Stats Power, otherwise Role Power. */
-export function playerLeaderboardScore(player: Pick<CompactPlayer, 'rating' | 'statsPower'>): PlayerLeaderboardScore {
-  const score = player.statsPower?.score
-  return typeof score === 'number' && Number.isFinite(score)
-    ? { kind: 'stats-power', value: score }
-    : { kind: 'role-power', value: player.rating }
+export type PlayerLeaderboardScore =
+  | { status: 'ranked'; value: number }
+  | { status: 'unranked'; reason: PlayerUnrankedReason }
+
+export type PlayerLeaderboardRow = CompactPlayer & (
+  | { leaderboardRank: number; leaderboardScore: Extract<PlayerLeaderboardScore, { status: 'ranked' }> }
+  | { leaderboardRank: null; leaderboardScore: Extract<PlayerLeaderboardScore, { status: 'unranked' }> }
+)
+
+export type PlayerLeaderboard = { scoreFamily: PlayerScoreFamily; rows: PlayerLeaderboardRow[] }
+
+export function playerLeaderboardScore(
+  player: Pick<CompactPlayer, 'rating' | 'statsPower'>,
+  family: PlayerScoreFamily,
+): PlayerLeaderboardScore {
+  if (family === 'role-power') {
+    return Number.isFinite(player.rating) ? { status: 'ranked', value: player.rating } : { status: 'unranked', reason: 'no-score' }
+  }
+  const power = player.statsPower
+  if (!power || !Number.isFinite(power.score)) return { status: 'unranked', reason: 'no-score' }
+  if (power.priorOnly || !(power.sampleGames > 0)) return { status: 'unranked', reason: 'no-stat-games' }
+  return { status: 'ranked', value: power.score }
 }
 
 /**
- * Orders one exact scope by its selected score. Equal scores share a leaderboard rank;
- * stored strength rank and stable IDs only order those ties for display.
+ * Ranks one exact scope by one score family: Stats Power when any row has it, otherwise
+ * Role Power. A selected role narrows the ranking population after the family is chosen.
+ * Equal full-precision scores share a rank. Unranked rows follow ranked rows.
+ * Stored strength rank and stable IDs only order rows that the score does not separate.
  */
 export function playerLeaderboardForScope(
   directory: PublicPlayerDirectory | undefined,
   filter: SnapshotFilter,
-): PlayerLeaderboardRow[] {
-  if (!directory) return []
+  role: Role | 'All' = 'All',
+): PlayerLeaderboard {
+  if (!directory) return { scoreFamily: 'role-power', rows: [] }
   const players = filter.season === 'All' && filter.event === 'All' && filter.region === 'All' && !filter.checkpoint
     ? directory.players
     : directory.scopedPlayers?.[snapshotKey(filter)] ?? []
-  const ordered = players
-    .map((player) => ({ ...player, leaderboardRank: 0, leaderboardScore: playerLeaderboardScore(player) }))
+  const scoreFamily: PlayerScoreFamily = players.some((player) => player.statsPower) ? 'stats-power' : 'role-power'
+  const ordered = (role === 'All' ? players : players.filter((player) => player.role === role))
+    .map((player) => ({ player, score: playerLeaderboardScore(player, scoreFamily) }))
     .sort((left, right) =>
-      right.leaderboardScore.value - left.leaderboardScore.value || left.rank - right.rank || compareCodeUnits(left.id, right.id),
+      compareScores(left.score, right.score) || left.player.rank - right.player.rank || compareCodeUnits(left.player.id, right.player.id),
     )
-  ordered.forEach((player, index) => {
-    const previous = ordered[index - 1]
-    player.leaderboardRank = previous?.leaderboardScore.value === player.leaderboardScore.value ? previous.leaderboardRank : index + 1
+  let previous: { value: number; rank: number } | undefined
+  const rows = ordered.map(({ player, score }, index): PlayerLeaderboardRow => {
+    if (score.status === 'unranked') return { ...player, leaderboardRank: null, leaderboardScore: score }
+    const rank = previous?.value === score.value ? previous.rank : index + 1
+    previous = { value: score.value, rank }
+    return { ...player, leaderboardRank: rank, leaderboardScore: score }
   })
-  return ordered
+  return { scoreFamily, rows }
+}
+
+function compareScores(left: PlayerLeaderboardScore, right: PlayerLeaderboardScore) {
+  if (left.status === 'ranked' && right.status === 'ranked') return right.value - left.value
+  if (left.status === right.status) return 0
+  return left.status === 'ranked' ? -1 : 1
 }
 
 export function resolvePlayerScope(

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import * as React from 'react'
 import { Card } from './card'
+import { leagueColor } from '../../shared/teamColor'
 import { cn } from '@/shared/utils'
 
 /**
@@ -14,8 +15,8 @@ import { cn } from '@/shared/utils'
  * `Panel` strips Card's default padding: the slots below own their own spacing
  * so a header, a full-bleed table and a footer can sit flush against the edges.
  */
-export function Panel({ className, ...props }: React.ComponentProps<'div'>) {
-  return <Card className={cn('gap-0 py-0', className)} {...props} />
+export function Panel({ className, league, style, ...props }: React.ComponentProps<'div'> & { league?: string }) {
+  return <Card className={cn('gap-0 py-0', className)} style={league ? { ...style, borderTop: `3px solid ${leagueColor(league)}` } : style} {...props} />
 }
 
 /**
@@ -23,7 +24,7 @@ export function Panel({ className, ...props }: React.ComponentProps<'div'>) {
  * on the trailing edge.
  *
  * There is deliberately no eyebrow slot. Every panel used to open with an
- * uppercase grey label above its title, which cost a line of vertical space per
+ * grey label above its title, which cost a line of vertical space per
  * panel and pushed the actual data further down on every screen. Where the
  * eyebrow carried real information it now belongs in the title or in a badge
  * passed to `actions`.
@@ -49,12 +50,12 @@ export function PanelHeader({
   return (
     <div
       data-slot="panel-header"
-      className={cn('flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-border px-4 py-3', className)}
+      className={cn('flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-line px-4 py-3', className)}
     >
       <div className="mr-auto grid min-w-0 flex-[1_1_260px] gap-0.5">
-        <h2 id={titleId} className="text-base font-semibold text-[var(--text-strong)]">{title}</h2>
+        <h2 id={titleId} className="text-base font-semibold text-text">{title}</h2>
         {description ? (
-          <p className="max-w-[74ch] text-sm leading-[1.45] text-muted-foreground">{description}</p>
+          <p className="max-w-[74ch] text-sm leading-[1.45] text-muted">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
@@ -71,7 +72,7 @@ export function PanelFooter({ className, ...props }: React.ComponentProps<'div'>
   return (
     <div
       data-slot="panel-footer"
-      className={cn('min-w-0 border-t border-border px-4 py-2.5', className)}
+      className={cn('min-w-0 border-t border-line px-4 py-2.5', className)}
       {...props}
     />
   )

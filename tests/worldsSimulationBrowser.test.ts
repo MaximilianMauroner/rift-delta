@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import { chromium } from 'playwright-core'
 import { createWorldsFixtureServer } from './fixtures/worldsBrowserFixture'
 
-test('Worlds fixture journey computes off-thread, cancels, navigates and invalidates stale state', { timeout: 60_000 }, async () => {
+test('Worlds fixture journey computes off-thread, cancels, navigates and invalidates stale state', { timeout: 120_000 }, async () => {
   const { server, controls, workerGate } = await createWorldsFixtureServer()
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
@@ -15,6 +15,13 @@ test('Worlds fixture journey computes off-thread, cancels, navigates and invalid
     const path = chromium.executablePath()
     browser = await chromium.launch(existsSync(path) ? { headless: true } : { headless: true, channel: 'chrome' })
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+    async function waitForComplete() {
+      await page.getByText('Computation complete.', { exact: true }).waitFor()
+      const probabilities = page.locator('details').filter({ has: page.getByText('All stage probabilities', { exact: true }) })
+      if (await probabilities.count() && await probabilities.getAttribute('open') === null) {
+        await probabilities.locator('summary').first().click()
+      }
+    }
     async function waitForSampling() {
       const progress = await workerGate.waitForHeld()
       assert.ok(progress.completed > 0 && progress.completed < progress.total, `Gate must hold real unfinished sampling: ${JSON.stringify(progress)}`)
@@ -22,11 +29,24 @@ test('Worlds fixture journey computes off-thread, cancels, navigates and invalid
       await page.getByRole('button', { name: 'Cancel simulation', exact: true }).waitFor()
     }
     const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message))
+    await page.goto(`${base}/#tournaments`)
+    await waitForComplete()
+    const forecastPanel = page.locator('[aria-label="Worlds simulation"]')
+    const bracket = page.getByRole('region', { name: 'Bracket, scrolls sideways' }).first()
+    const desktopBracket = await bracket.boundingBox()
+    const desktopForecast = await forecastPanel.boundingBox()
+    assert.ok(desktopBracket && desktopForecast && desktopForecast.x > desktopBracket.x + desktopBracket.width, 'The forecast sits beside the bracket on desktop')
+    await page.setViewportSize({ width: 390, height: 800 })
+    const phoneBracket = await bracket.boundingBox()
+    const phoneForecast = await forecastPanel.boundingBox()
+    assert.ok(phoneBracket && phoneForecast && phoneForecast.y > phoneBracket.y + phoneBracket.height, 'The forecast sits below the bracket on phones')
+    await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto(`${base}/#tournaments?view=schedule`)
     await page.getByText('Current stage: Swiss · round 5', { exact: true }).waitFor()
-    await page.getByText('Computation complete.', { exact: true }).waitFor()
+    await waitForComplete()
     assert.equal(await page.locator('table').first().locator('tbody tr').count(), 19)
     assert.match(await page.locator('table').first().getByRole('cell', { name: 'Swiss: 100.0%; observed outcome', exact: true }).first().getAttribute('aria-label') ?? '', /observed outcome/)
+    assert.match(await page.locator('table').first().getByRole('cell', { name: 'Swiss: 100.0%; observed outcome', exact: true }).first().innerText(), /Observed/)
     await page.getByText('Simulation basis and precision', { exact: true }).click()
     await page.getByText(/seeded-monte-carlo · 10,000 sampled trials/).waitFor()
     assert.match(await page.locator('body').innerText(), /Synthetic Worlds state and model evidence/)
@@ -73,7 +93,7 @@ test('Worlds fixture journey computes off-thread, cancels, navigates and invalid
     await page.getByText(/Worlds state does not match this schedule revision/).waitFor()
     controls.corrupt = false
     await page.getByRole('button', { name: 'Refresh', exact: true }).click()
-    await page.getByText('Computation complete.', { exact: true }).waitFor()
+    await waitForComplete()
     assert.equal(await page.locator('table').first().locator('tbody tr').count(), 19)
 
     // A same-key reload must stop an active worker before the companion request can time out.
@@ -94,7 +114,7 @@ test('Worlds fixture journey computes off-thread, cancels, navigates and invalid
     workerGate.release()
     controls.companionDelayMs = 0
     await page.getByRole('button', { name: 'Refresh', exact: true }).click()
-    await page.getByText('Computation complete.', { exact: true }).waitFor()
+    await waitForComplete()
     // A fresh page has no baseline cache. Main-thread marks continue while its worker runs.
     controls.holdWorker = true
     await page.reload()
@@ -119,9 +139,10 @@ test('Worlds fixture journey computes off-thread, cancels, navigates and invalid
     controls.stage = 'completed'
     await page.getByRole('button', { name: 'Refresh', exact: true }).click()
     await page.getByText('Current stage: Completed', { exact: true }).waitFor()
-    await page.getByText('Computation complete.', { exact: true }).waitFor()
+    await waitForComplete()
     const champion = page.locator('table').first().getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'Fixture LCK1 · LCK1', exact: true }) })
     assert.match(await champion.innerText(), /Reached champion/)
+    assert.equal(await page.getByRole('region', { name: 'Champion forecast' }).count(), 0, 'An observed champion is shown as an outcome in the table')
     assert.match(await champion.innerText(), /100.0%/)
     await page.getByText('Simulation basis and precision', { exact: true }).click()
     const completedPanel = page.locator('[aria-label="Worlds simulation"]')
@@ -133,14 +154,14 @@ test('Worlds fixture journey computes off-thread, cancels, navigates and invalid
     // Source assertion tags do not turn the retained synthetic rating model into official inputs.
     controls.fictionalSourceAssertions = true; controls.stage = 'swiss-5'
     await page.reload()
-    await page.getByText('Computation complete.', { exact: true }).waitFor()
+    await waitForComplete()
     await page.getByText(/^Sample model inputs\./).waitFor()
     assert.equal(await page.getByText(/^Synthetic Worlds state and model evidence\./).count(), 0)
     assert.equal(await page.locator('details').filter({ has: page.getByText('Simulation basis and precision', { exact: true }) }).getAttribute('open'), null)
     controls.stage = 'completed'
     await page.reload()
     await page.getByText('Current stage: Completed', { exact: true }).waitFor()
-    await page.getByText('Computation complete.', { exact: true }).waitFor()
+    await waitForComplete()
     assert.equal(await page.getByText(/^Sample model inputs\./).count(), 0)
     await page.getByText('Simulation basis and precision', { exact: true }).click()
     await page.getByText('No historical or current model snapshot is assumed.', { exact: true }).waitFor()

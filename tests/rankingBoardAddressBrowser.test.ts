@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium, type Page } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
 import type { MatchRecord, TeamProfile } from '../src/domains/rankings/types.ts'
@@ -36,13 +36,13 @@ const msi: MatchRecord = { id: 'MSI-Euro 01-Amer 01', sourceProvider: 'oracles-e
 const board = (params: string) => `#rankings?scope=all&eligibility=all${params ? `&${params}` : ''}`
 
 async function boardRows(page: Page) {
-  return page.locator('table tbody tr').evaluateAll((rows) => rows.map((row) => row.querySelector('td:nth-child(2)')?.textContent ?? ''))
+  return page.locator('table tbody tr[data-team-key]').evaluateAll((rows) => rows.map((row) => row.querySelector('td:nth-child(2)')?.textContent ?? ''))
 }
 
 /** Waits until the board shows `count` rows whose team cell contains `prefix`, then reports what it shows. */
 async function expectBoard(page: Page, count: number, prefix: string, step: string) {
   await page.waitForFunction(({ count, prefix }) => {
-    const rows = [...document.querySelectorAll('table tbody tr td:nth-child(2)')].map((cell) => cell.textContent ?? '')
+    const rows = [...document.querySelectorAll('table tbody tr[data-team-key] td:nth-child(2)')].map((cell) => cell.textContent ?? '')
     return rows.length === count && rows.every((row) => row.includes(prefix))
   }, { count, prefix }, { timeout: 5_000 }).catch(() => undefined)
   const rows = await boardRows(page)
@@ -57,7 +57,7 @@ test('the Rankings board follows its address after load: typed and linked hashes
   const dataRequests: string[] = []
   let holdManifest = false
   const pendingManifest: Array<() => void> = []
-  const fixture: Plugin = { name: 'ranking-board-address-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'ranking-board-address-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (path.startsWith('/tournament-data/')) {
@@ -78,10 +78,9 @@ test('the Rankings board follows its address after load: typed and linked hashes
       response.end(body ?? '{}')
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}/`
@@ -130,6 +129,14 @@ test('the Rankings board follows its address after load: typed and linked hashes
     await expectBoard(page, 15, '', 'size changed in the hash')
     await setHash(board('size=15&page=2'))
     await expectBoard(page, 5, '', 'page changed in the hash')
+    // The field holds every page, so a team opened there can be off this page.
+    // Closing it returns focus to its field mark, not to the page body.
+    const strongest = page.locator('.power-field button[tabindex="0"]')
+    const strongestKey = await strongest.getAttribute('data-field-key')
+    assert.equal(await page.locator(`table tbody tr[data-team-key="${strongestKey}"]`).count(), 0, 'the strongest team is on page 1')
+    await strongest.click()
+    await page.getByRole('region', { name: 'Team details', exact: true }).getByRole('button', { name: 'Close', exact: true }).click()
+    await page.waitForFunction((key) => document.activeElement?.getAttribute('data-field-key') === key, strongestKey, { timeout: 2_000 })
     // App owns the search and the board owns the region: both come from the same address.
     await setHash(board('team=Amer+0&region=LCS'))
     await expectBoard(page, 9, 'Amer 0', 'search and region changed together')
@@ -145,7 +152,7 @@ test('the Rankings board follows its address after load: typed and linked hashes
     // The board still writes its own filters to the address.
     await setHash(board('region=LEC'))
     await expectBoard(page, 10, 'Euro', 'region changed after Forward')
-    await page.getByRole('group', { name: 'Region' }).getByRole('button', { name: 'All regions', exact: true }).click()
+    await page.getByRole('navigation', { name: 'League filter' }).getByRole('link', { name: 'All leagues', exact: true }).click()
     await page.waitForFunction(() => !new URLSearchParams(location.hash.split('?')[1]).has('region'))
     await expectBoard(page, 20, '', 'All regions chip')
 
@@ -154,24 +161,25 @@ test('the Rankings board follows its address after load: typed and linked hashes
     await expectBoard(page, 2, '', 'tournament changed in the hash')
     await setHash(board('tournament=international&size=15'))
     await expectBoard(page, 2, '', 'size changed with a tournament')
+    await page.getByRole('combobox', { name: 'Rows per page', exact: true }).locator('option[value="15"]:checked').waitFor({ state: 'attached' })
 
     // The logo opens the same clean board as the Rankings tab. It is ranked
     // only, and no fixture team is ranked, so the address and chips show it.
     const hash = () => page.evaluate(() => location.hash)
-    const home = page.getByTitle('Go to Rankings home')
-    const selectedRegion = page.getByRole('group', { name: 'Region' }).getByRole('button', { pressed: true })
+    const home = page.getByRole('complementary', { name: 'Site sidebar' }).getByRole('link', { name: 'rift-delta', exact: true })
+    const selectedRegion = page.getByRole('navigation', { name: 'League filter' }).locator('[aria-current]')
     await setHash(board('region=LEC&size=15'))
     await expectBoard(page, 10, 'Euro', 'filters before the logo')
     await home.click()
     await page.waitForFunction(() => location.hash === '#rankings?scope=all', undefined, { timeout: 5_000 }).catch(() => undefined)
     assert.equal(await hash(), '#rankings?scope=all')
     // The hash changes before React commits the region selection.
-    await selectedRegion.filter({ hasText: /^All regions$/ }).waitFor({ state: 'visible', timeout: 5_000 })
-    assert.equal(await selectedRegion.textContent(), 'All regions')
+    await selectedRegion.filter({ hasText: /^All leagues$/ }).waitFor({ state: 'visible', timeout: 5_000 })
+    assert.equal(await selectedRegion.textContent(), 'All leagues')
     // A second click leaves the hash unchanged, so no hashchange fires.
     await home.click()
     assert.equal(await hash(), '#rankings?scope=all')
-    assert.equal(await selectedRegion.textContent(), 'All regions')
+    assert.equal(await selectedRegion.textContent(), 'All leagues')
 
     // A fresh load reads what the board wrote: the page, and a sort whose direction the address omits.
     await page.goto('about:blank')
@@ -193,12 +201,12 @@ test('the Rankings board follows its address after load: typed and linked hashes
     holdManifest = true
     await page.reload({ waitUntil: 'domcontentloaded' })
     await page.getByRole('heading', { name: 'Team Power Index', exact: true }).waitFor()
-    assert.equal(await page.locator('table tbody tr').count(), 0)
+    assert.equal(await page.locator('table tbody tr[data-team-key]').count(), 0)
     holdManifest = false
     pendingManifest.splice(0).forEach((respond) => respond())
     await expectBoard(page, 20, '', 'board after the delayed manifest')
 
-    const rows = page.locator('table tbody tr')
+    const rows = page.locator('table tbody tr[data-team-key]')
     const compare = rows.locator('input[type="checkbox"]')
     const comparisonNames = await rows.locator('td:nth-child(2) b').allTextContents()
     const comparisonCodes = comparisonNames.map((name) => teams[name].code ?? name)
@@ -206,19 +214,35 @@ test('the Rankings board follows its address after load: typed and linked hashes
     await compare.nth(5).check()
     await compare.nth(6).check()
     await compare.nth(7).check()
+    const beforeComparison = await page.evaluate(() => ({ hash: location.hash, entries: history.length }))
     await page.getByRole('button', { name: 'Open comparison', exact: true }).click()
-    const comparison = page.getByRole('dialog', { name: 'Team comparison', exact: true })
-    assert.equal(await comparison.count(), 1, 'Comparison opens its shell without a full-screen module loader')
+    const comparison = page.getByRole('region', { name: 'Team comparison', exact: true })
+    assert.equal(await comparison.count(), 1, 'Comparison opens its page without a full-screen module loader')
     const trend = comparison.getByRole('region', { name: 'Compared team power score trend', exact: true })
     await trend.getByRole('application', { name: `Power score over time for ${comparisonCodes.slice(5, 8).join(', ')}`, exact: true }).waitFor()
+    const comparedKeys = () => page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).getAll('compare'))
+    const pickedKeys = await comparedKeys()
+    assert.equal(pickedKeys.length, 3, 'The comparison address holds every picked team')
+    assert.equal(await page.evaluate(() => history.length), beforeComparison.entries + 1, 'Opening the comparison adds one history entry')
+    await page.reload()
+    await trend.getByRole('application', { name: `Power score over time for ${comparisonCodes.slice(5, 8).join(', ')}`, exact: true }).waitFor()
+    assert.deepEqual(await comparedKeys(), pickedKeys, 'Reload restores the same comparison')
     await comparison.getByRole('button', { name: `Remove ${comparisonNames[5]} from comparison`, exact: true }).click()
     await trend.getByRole('application', { name: `Power score over time for ${comparisonCodes.slice(6, 8).join(', ')}`, exact: true }).waitFor()
-    await comparison.getByRole('button', { name: 'Close', exact: true }).click()
+    assert.deepEqual(await comparedKeys(), pickedKeys.slice(1), 'Removing a team updates the address in place')
+    await page.goBack()
+    await expectBoard(page, 20, '', 'Back from the comparison returns to the board')
+    assert.equal(await page.evaluate(() => location.hash), beforeComparison.hash)
+    assert.equal(await comparison.count(), 0)
+    await page.goForward()
+    await comparison.waitFor()
+    await comparison.getByRole('button', { name: 'Back to rankings', exact: true }).click()
+    await expectBoard(page, 20, '', 'Back to rankings closes the comparison')
     await page.getByRole('region', { name: 'Compare teams: 2 selected', exact: true }).getByRole('button', { name: 'Clear', exact: true }).click()
 
     // The closed Players panel must not compete with the selected team's chart.
     await rows.first().getByRole('button').first().click()
-    const detail = page.getByRole('dialog')
+    const detail = page.getByRole('region', { name: 'Team details', exact: true })
     await detail.locator('.recharts-surface').first().waitFor()
     assert.equal(dataRequests.includes('/data/entities/players.json'), false)
     const playerResponse = page.waitForResponse((response) => new URL(response.url()).pathname === '/data/entities/players.json')
@@ -231,6 +255,82 @@ test('the Rankings board follows its address after load: typed and linked hashes
     await compare.nth(9).check()
     await page.getByRole('button', { name: 'Open comparison', exact: true }).click()
     await trend.getByRole('application', { name: `Power score over time for ${comparisonCodes.slice(8, 10).join(', ')}`, exact: true }).waitFor()
+    await comparison.getByRole('button', { name: 'Back to rankings', exact: true }).click()
+    await setHash(board('region=LEC'))
+    await expectBoard(page, 10, 'Euro', 'sidebar starts with the addressed region')
+    const sidebar = page.getByRole('complementary', { name: 'Site sidebar' })
+    const leagues = page.getByRole('navigation', { name: 'League filter' })
+    assert.equal((await sidebar.boundingBox())?.width, 208)
+    await leagues.getByRole('link', { name: 'LCS', exact: true }).click()
+    await expectBoard(page, 10, 'Amer', 'sidebar changes the existing board filter')
+    await page.reload()
+    await expectBoard(page, 10, 'Amer', 'sidebar filter survives reload')
+
+    await page.setViewportSize({ width: 850, height: 900 })
+    assert.equal((await sidebar.boundingBox())?.width, 64)
+    assert.equal(await leagues.isVisible(), false)
+    const railLink = sidebar.getByRole('link', { name: 'Regions', exact: true })
+    await railLink.focus()
+    assert.equal(await railLink.locator('span').evaluate((label) => getComputedStyle(label).clipPath), 'none')
+    await page.getByRole('group', { name: 'Region' }).getByRole('button', { name: 'LEC', exact: true }).click()
+    await expectBoard(page, 10, 'Euro', 'in-page filter drives the same address')
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await leagues.locator('a[aria-current="true"]').waitFor()
+    assert.equal(await leagues.getByRole('link', { name: 'LEC', exact: true }).getAttribute('aria-current'), 'true')
+    assert.ok(await page.locator('table tbody tr[data-team-key] td:nth-child(2) b').first().evaluate((name) => name.getBoundingClientRect().width > 40), 'team names stay visible beside the desktop sidebar')
+
+    await page.setViewportSize({ width: 390, height: 740 })
+    assert.equal(await sidebar.isVisible(), false)
+    assert.ok((await page.locator('.app-mode-header p').boundingBox())!.height < 22, 'the phone intro fits one line')
+    await page.getByRole('button', { name: 'Search', exact: true }).click()
+    const shellSearch = page.getByRole('searchbox', { name: 'Find a team', exact: true })
+    await shellSearch.fill('Euro 01')
+    await expectBoard(page, 1, 'Euro 01', 'phone shell search')
+    await page.getByRole('button', { name: 'Close search', exact: true }).click()
+    await expectBoard(page, 10, 'Euro', 'closing search clears it')
+    await page.keyboard.press('/')
+    await page.waitForFunction(() => document.activeElement?.getAttribute('type') === 'search')
+    await page.getByRole('button', { name: 'Close search', exact: true }).click()
+    await page.setViewportSize({ width: 320, height: 640 })
+    assert.equal(await page.locator('.app-tabbar a').count(), 5)
+    assert.equal(await page.locator('.app-tabbar a').evaluateAll((links) => links.every((link) => {
+      const label = link.querySelector('span')!.getBoundingClientRect()
+      const box = link.getBoundingClientRect()
+      return label.left >= box.left && label.right <= box.right
+    })), true, 'every tab label fits at 320px')
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+
+    await page.setViewportSize({ width: 1280, height: 900 })
+    const focusAfterNavigation = await page.evaluate(async () => {
+      const original = window.requestAnimationFrame
+      const callbacks: FrameRequestCallback[] = []
+      window.requestAnimationFrame = (callback) => { callbacks.push(callback); return callbacks.length }
+      try {
+        location.hash = '#regions?scope=all'
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => { observer.disconnect(); reject(new Error('Regions route did not render')) }, 5000)
+          const observer = new MutationObserver(() => {
+            if (document.querySelector('nav[aria-label="Primary"] a[href*="#regions"][aria-current="page"]')) {
+              observer.disconnect()
+              clearTimeout(timeout)
+              const link = document.querySelector<HTMLElement>('nav[aria-label="Primary"] a[href*="#rankings"]')
+              if (!link) { reject(new Error('Rankings navigation link is missing')); return }
+              link.focus()
+              resolve()
+            }
+          })
+          observer.observe(document.body, { attributes: true, childList: true, subtree: true })
+        })
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        const link = document.querySelector<HTMLElement>('nav[aria-label="Primary"] a[href*="#rankings"]')
+        if (!link) throw new Error('Rankings navigation link is missing')
+        callbacks.splice(0).forEach((callback) => callback(performance.now()))
+        return document.activeElement === link
+      } finally {
+        window.requestAnimationFrame = original
+      }
+    })
+    assert.equal(focusAfterNavigation, true, 'A delayed navigation frame does not steal focus from a later user action')
   } finally {
     pendingManifest.splice(0).forEach((respond) => respond())
     await browser?.close()

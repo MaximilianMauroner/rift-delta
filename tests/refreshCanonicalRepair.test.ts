@@ -65,7 +65,7 @@ for (const repair of ['partial publication', 'missing marker'] as const) {
         '--staging-dir', join(root, 'staging'), '--output', join(root, 'full.json'), '--public-data-dir', publicDataDir,
         '--start', '2026-01-01', '--end', '2026-06-29',
       ], {
-        env: { RANKING_BUCKET_RESTORE_RAW: 'false', RANKING_RAW_SOURCE_WORKER: 'node',
+        env: {
           ...(incremental ? { RANKING_REFRESH_FENCING_TOKEN: '7' } : {}) },
         bucketConfig: config,
         bucketClient: client,
@@ -102,7 +102,7 @@ for (const repair of ['partial publication', 'missing marker'] as const) {
             assert.ok(options.generationId && options.stateManifestAuthority)
             const rootManifest = JSON.parse(await readFile(join(options.publicDataDir, 'ranking-summary.json'), 'utf8'))
             const entries = []
-            for (const relativePath of ['ranking-summary.json', 'evaluation/replay-predictions.json']) {
+            for (const relativePath of ['ranking-summary.json', 'evaluation/replay-predictions.json', 'scouting/index.json']) {
               const artifact = prepareSemanticArtifact(JSON.parse(await readFile(join(options.publicDataDir, relativePath), 'utf8')))
               await client.send(new PutObjectCommand({
                 Bucket: config.bucket, Key: `rankings/objects/sha256/${artifact.digest}`, Body: artifact.compressed, ContentEncoding: 'gzip',

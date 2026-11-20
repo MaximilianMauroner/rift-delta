@@ -1,5 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
-import { startTransition, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { startTransition, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { showsManifestErrorInAppShell } from '../../browser/bootstrap'
 import { currentHashQuery, hashForModeAndScope, hashParam, readModeFromHash, readScopeFromHash, readTournamentFilterFromHash, replaceHashForModeAndScope, writeNavigationHash } from '../../browser/navigation'
 import { canUseBackgroundPrefetch, scheduleIdleWork } from '../../browser/rankings/prefetch'
@@ -12,7 +12,7 @@ import {
   seasonFromScope,
   usePublicArtifacts,
 } from '../../browser/rankings/usePublicArtifacts'
-import { RegionBadge } from '../../components/ui'
+import { LeagueDot } from '../../components/ui'
 import { RouteErrorBoundary } from '../../components/RouteErrorBoundary'
 import { Alert } from '../../components/ui/alert'
 import { LoadingState } from '../../components/ui/loading'
@@ -27,19 +27,19 @@ import {
   teamKey,
 } from '../../shared/display'
 import { cn } from '../../shared/utils'
+import { useCompareAddress } from '../../hooks/useCompareAddress'
 import { AppNavigation, ErrorScreen, ManifestRouteShell, ModeHeader, ScopedSnapshotState } from '../AppShell'
 import { MODE_TITLES, PAGE_LAYOUTS, type Mode } from '../shellConfig'
 import {
   REGION_COMPARE_ROWS,
   regionCompareColumns,
   regionKey,
-  TEAM_COMPARE_ROWS,
-  teamCompareColumns,
 } from './compareAnalysisData'
 import { CompareDock, type CompareDockEntity } from './CompareDock'
-import { RegionCompareDrawer, TeamCompareDrawer } from './CompareDrawer'
-import { HeadToHead } from './HeadToHead'
-import { MatchesView, PlayersView, preloadComparison, preloadView, RegionCompareAnalysis, RegionsView, TeamCompareAnalysis } from './routeLoading'
+import { RegionCompareDrawer } from './CompareDrawer'
+import { ComparePage } from './ComparePage'
+import { MatchesView, PlayersView, preloadComparison, preloadView, RegionCompareAnalysis, RegionsView } from './routeLoading'
+import { playerLeague } from './playerData'
 import { ScopeBar } from './ScopeBar'
 import { TeamsView } from './TeamsView'
 import type { PlayerLoadState } from './types'
@@ -56,6 +56,18 @@ function scopeForMode(mode: Mode, scope: string) {
   return mode === 'players' && checkpointFromScope(scope) ? `season:${seasonFromScope(scope)}` : scope
 }
 
+/** The tray wraps to several rows on phones, so the space main reserves for it follows its real height. */
+function reserveTrayHeight(tray: HTMLDivElement | null) {
+  const main = tray?.closest('main')
+  if (!tray || !main) return undefined
+  const observer = new ResizeObserver(() => main.style.setProperty('--tray-h', `${tray.offsetHeight}px`))
+  observer.observe(tray)
+  return () => {
+    observer.disconnect()
+    main.style.removeProperty('--tray-h')
+  }
+}
+
 export function RankingRoute() {
   const [mode, setMode] = useState<Mode>(readModeFromHash)
   const [scope, setScope] = useState(() => scopeForMode(readModeFromHash(), readScopeFromHash() ?? currentSeasonScope()))
@@ -63,7 +75,9 @@ export function RankingRoute() {
   const [loadTeamHistory, setLoadTeamHistory] = useState(false)
   const [historyTeams, setHistoryTeams] = useState<readonly string[]>([])
   const [teamPicks, setTeamPicks] = useState<RankingSummaryStanding[]>([])
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [regionDrawerOpen, setRegionDrawerOpen] = useState(false)
+  const [boardHashQuery, setBoardHashQuery] = useState(currentHashQuery)
+  const compare = useCompareAddress(boardHashQuery)
   const [matchYear, setMatchYear] = useState(() => hashParam('matchesYear'))
   const [loadRegionHistory, setLoadRegionHistory] = useState(() => readModeFromHash() === 'regions')
   const [loadMatchHistory, setLoadMatchHistory] = useState(() => ['matches', 'regions'].includes(readModeFromHash()))
@@ -71,6 +85,7 @@ export function RankingRoute() {
   // the ones TeamsView owns are: a shared or reloaded board must come back.
   const [tournamentFilter, setTournamentFilter] = useState<TournamentFilterValue>(() => readTournamentFilterFromHash())
   const tournamentId = tournamentIdFromFilter(tournamentFilter)
+  const compareKeys = mode === 'rankings' ? compare.keys : undefined
   const {
     manifestState,
     effectiveScope,
@@ -93,8 +108,8 @@ export function RankingRoute() {
     prefetchTournament,
   } = usePublicArtifacts(scope, {
     loadPlayers,
-    loadTeamHistory,
-    teamHistoryTeams: drawerOpen && mode === 'rankings' ? teamPicks.map(teamKey) : historyTeams,
+    loadTeamHistory: loadTeamHistory || compareKeys !== undefined,
+    teamHistoryTeams: compareKeys ?? historyTeams,
     matchHistoryYear: matchYear,
     loadRegionHistory,
     loadTournamentMovements: mode === 'rankings',
@@ -103,7 +118,6 @@ export function RankingRoute() {
   })
   const [regionPicks, setRegionPicks] = useState<RegionStrength[]>([])
   const [teamSearch, setTeamSearch] = useState(() => hashParam('team') ?? '')
-  const [boardHashQuery, setBoardHashQuery] = useState(currentHashQuery)
   const [matchesHashQuery, setMatchesHashQuery] = useState(currentHashQuery)
   const [playersHashQuery, setPlayersHashQuery] = useState(currentHashQuery)
   const mainRef = useRef<HTMLElement | null>(null)
@@ -135,12 +149,14 @@ export function RankingRoute() {
   }
 
   const searchRef = useRef<HTMLInputElement | null>(null)
-  const searchTeams = useCallback((value: string) => {
+  const boardScrollRef = useRef(0)
+  function searchTeams(value: string) {
     setTeamSearch(value)
-    // The search finds teams on the board, so typing from another view takes
-    // the reader to the board rather than filtering a view with no teams.
+    // The search finds teams on the board, so typing from another view, or
+    // from the comparison page, takes the reader to the board.
+    if (compareKeys) compare.dismiss()
     setMode('rankings')
-  }, [])
+  }
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -192,10 +208,10 @@ export function RankingRoute() {
     replaceHashForModeAndScope(mode, effectiveScope)
   }, [effectiveScope, mode])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
     if (didMountModeRef.current) {
-      requestAnimationFrame(() => mainRef.current?.focus({ preventScroll: true }))
+      mainRef.current?.focus({ preventScroll: true })
     } else {
       didMountModeRef.current = true
     }
@@ -268,6 +284,41 @@ export function RankingRoute() {
   }, [playersState])
   const activeRegionPicks = useMemo(() => reconcilePicks(regionPicks, regions, regionKey), [regionPicks, regions])
   const activeTeamPicks = useMemo(() => reconcilePicks(teamPicks, universe.standings, teamKey), [teamPicks, universe.standings])
+  const standingsByKey = useMemo(() => new Map(universe.standings.map((team) => [teamKey(team), team])), [universe.standings])
+  const comparedTeams = useMemo(
+    () => compareKeys?.flatMap((key) => standingsByKey.get(key) ?? []).slice(-COMPARE_LIMIT),
+    [compareKeys, standingsByKey],
+  )
+  const comparePage = comparedTeams !== undefined
+  const comparedKeys = comparedTeams?.map(teamKey).join('\u0000')
+  const snapshotReady = snapshotState.status === 'ready'
+
+  // A linked comparison names teams by key. Once the scope has loaded, keys it
+  // does not hold leave the address.
+  useEffect(() => {
+    if (!snapshotReady || !compareKeys || comparedKeys === undefined || comparedKeys === compareKeys.join('\u0000')) return
+    if (comparedKeys === '') compare.dismiss()
+    else compare.update(comparedKeys.split('\u0000'))
+  }, [compare, compareKeys, comparedKeys, snapshotReady])
+  // The board picks follow the page, so closing a linked comparison keeps its teams picked.
+  const [syncedComparison, setSyncedComparison] = useState<string>()
+  if (!comparePage && syncedComparison !== undefined) setSyncedComparison(undefined)
+  if (snapshotReady && comparedTeams && comparedKeys && comparedKeys !== syncedComparison) {
+    setSyncedComparison(comparedKeys)
+    setTeamPicks(comparedTeams)
+  }
+
+  const wasComparePage = useRef(comparePage)
+  useEffect(() => {
+    if (wasComparePage.current && !comparePage) {
+      const top = boardScrollRef.current
+      requestAnimationFrame(() => {
+        window.scrollTo({ top, left: 0, behavior: 'auto' })
+        mainRef.current?.focus({ preventScroll: true })
+      })
+    }
+    wasComparePage.current = comparePage
+  }, [comparePage])
   const regionPickIds = useMemo(() => new Set(activeRegionPicks.map(regionKey)), [activeRegionPicks])
 
   function toggleRegion(region: RegionStrength) {
@@ -302,7 +353,7 @@ export function RankingRoute() {
   }
 
   const loadedData = manifestState.data
-  const hasCompareTray = mode === 'rankings' || mode === 'regions'
+  const hasCompareTray = (mode === 'rankings' && !comparePage) || mode === 'regions'
   const seeded = loadedData.dataMode === 'seeded-sample' || loadedData.coverage?.seededSample === true
   const matchCount = snapshot?.matchCount ?? loadedData.coverage?.matchCount
   const compareEntities: CompareDockEntity[] = mode === 'regions'
@@ -311,7 +362,7 @@ export function RankingRoute() {
         code: region.region,
         name: region.region,
         meta: `${region.teamCount} flagship teams`,
-        badge: <RegionBadge region={region.region} size="sm" />,
+        badge: <LeagueDot league={region.region} />,
       }))
     : activeTeamPicks.map((team) => ({
         id: teamKey(team),
@@ -323,16 +374,10 @@ export function RankingRoute() {
   const compareMatchup = mode === 'rankings' && activeTeamPicks.length >= 2
     ? { home: activeTeamPicks[0], away: activeTeamPicks[1], model: loadedData.model }
     : undefined
-  const teamColumns = teamCompareColumns(activeTeamPicks)
   const regionColumns = regionCompareColumns(activeRegionPicks)
   const movementBaseline = movementBaselineFor(activeCheckpoint, checkpointTabs)
   const pendingCheckpoint = pendingCheckpointForSeason(activeSeason, seasonYears, checkpointTabs)
-  const teamCompareAfter = drawerOpen && mode === 'rankings' ? (
-    <Suspense fallback={<LoadingState label="Loading team comparison" />}>
-      <TeamCompareAnalysis teams={activeTeamPicks} columns={teamColumns} historyState={teamHistoryState} />
-    </Suspense>
-  ) : null
-  const regionCompareAfter = drawerOpen && mode === 'regions' ? (
+  const regionCompareAfter = regionDrawerOpen && mode === 'regions' ? (
     <Suspense fallback={<LoadingState label="Loading region comparison" />}>
       <RegionCompareAnalysis
         regions={activeRegionPicks}
@@ -350,8 +395,20 @@ export function RankingRoute() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <a className="fixed top-[-56px] left-3 z-80 rounded-md border border-[var(--accent-line)] bg-[var(--surface-2)] px-3 py-2 text-sm font-semibold text-[var(--text-strong)] no-underline shadow-[var(--shadow-2)] transition-[top] duration-120 ease-out focus-visible:top-3" href="#main-content" onClick={(event) => { event.preventDefault(); mainRef.current?.focus(); mainRef.current?.scrollIntoView({ block: 'start' }) }}>Skip to content</a>
-      <AppNavigation mode={mode} scope={effectiveScope} onGoHome={goHome} search={teamSearch} onSearch={mode === 'matches' || mode === 'players' ? undefined : searchTeams} searchRef={searchRef} onIntent={prepareMode} />
+      <a className="fixed top-[-56px] left-3 z-80 rounded-md border border-focus bg-raised px-3 py-2 text-sm font-semibold text-text no-underline transition-[top] duration-120 ease-out focus-visible:top-3" href="#main-content" onClick={(event) => { event.preventDefault(); mainRef.current?.focus(); mainRef.current?.scrollIntoView({ block: 'start' }) }}>Skip to content</a>
+      <AppNavigation
+        mode={mode}
+        scope={effectiveScope}
+        onGoHome={goHome}
+        search={teamSearch}
+        onSearch={mode === 'matches' || mode === 'players' ? undefined : searchTeams}
+        searchRef={searchRef}
+        onIntent={prepareMode}
+        leagues={mode === 'players'
+          ? activePlayers.map(playerLeague)
+          : universe.regionOptions}
+        leagueEvents={mode === 'matches' && matchHistoryState.status === 'ready' ? matchHistoryState.data.catalog.series : undefined}
+      />
 
       {/* Space is reserved for the fixed compare tray on the two views that have
           one, and for the bottom tab bar on phones. */}
@@ -365,9 +422,10 @@ export function RankingRoute() {
         tabIndex={-1}
         ref={mainRef}
       >
-        <ModeHeader mode={mode} />
+        {/* The board chrome steps aside when a team takes the whole screen. */}
+        {comparePage ? null : <div className="board-chrome contents"><ModeHeader mode={mode} /></div>}
 
-        <ScopeBar
+        {comparePage ? null : <div className="board-chrome contents"><ScopeBar
           seasons={seasonTabs}
           activeSeason={activeSeason}
           checkpoints={mode === 'players' ? [] : checkpointTabs}
@@ -384,7 +442,7 @@ export function RankingRoute() {
             if (!activeSeason) return
             preloadOnIntent(checkpointId ? checkpointScope(activeSeason, checkpointId) : `season:${activeSeason}`)
           }}
-        />
+        /></div>}
 
         {/* Fixed to the bottom edge and, on wider screens, present before the
             first pick. Inline, it scrolled out of view while the reader picked
@@ -393,7 +451,7 @@ export function RankingRoute() {
             first pick: there the labelled row checkbox announces the feature
             and the screen height is better spent on teams. */}
         {hasCompareTray ? (
-          <div className={cn('fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line-strong)] bg-[color-mix(in_oklch,var(--surface)_94%,var(--bg))] px-[var(--page-x)] py-2 shadow-[var(--shadow-tray)] max-sm:bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] max-sm:px-3', compareEntities.length === 0 && 'max-sm:hidden')}>
+          <div ref={reserveTrayHeight} className={cn('compare-tray fixed inset-x-0 bottom-0 z-40 border-t border-line bg-[color-mix(in_srgb,var(--surface)_94%,var(--ground))] px-[var(--page-x)] py-2 max-sm:bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] max-sm:px-3', compareEntities.length === 0 && 'max-sm:hidden')}>
             <CompareDock
               subject={mode === 'regions' ? 'regions' : 'teams'}
               limit={COMPARE_LIMIT}
@@ -413,10 +471,11 @@ export function RankingRoute() {
                 if (mode === 'regions') {
                   requestRegionHistory()
                   requestTeamHistory()
+                  setRegionDrawerOpen(true)
                 } else {
-                  requestTeamHistory(activeTeamPicks.map(teamKey))
+                  boardScrollRef.current = window.scrollY
+                  compare.open(activeTeamPicks.map(teamKey))
                 }
-                setDrawerOpen(true)
               }}
             />
           </div>
@@ -437,7 +496,7 @@ export function RankingRoute() {
           <RouteErrorBoundary key={mode}>
             <Suspense fallback={<LoadingState presentation="page" layout={PAGE_LAYOUTS[mode]} label={`Loading ${MODE_TITLES[mode].title}`} />}>
               {mode === 'players' ? (
-                <PlayersView state={playersState} filter={filter} scopeLabel={scopeLabel(effectiveScope)} hashQuery={playersHashQuery} searchRef={searchRef} />
+                <PlayersView state={playersState} manifest={loadedData} filter={filter} scopeLabel={scopeLabel(effectiveScope)} hashQuery={playersHashQuery} searchRef={searchRef} />
               ) : null}
               {mode === 'regions' ? (
                 <RegionsView
@@ -451,7 +510,19 @@ export function RankingRoute() {
                   onRequestRegionHistory={requestRegionHistory}
                 />
               ) : null}
-              {mode === 'rankings' ? (
+              {comparePage ? (
+                <ComparePage
+                  teams={comparedTeams}
+                  model={loadedData.model}
+                  historyState={teamHistoryState}
+                  scopeLabel={scopeLabel(effectiveScope)}
+                  onClose={compare.close}
+                  onRemove={(id) => {
+                    setTeamPicks((current) => current.filter((team) => teamKey(team) !== id))
+                    compare.update(comparedTeams.map(teamKey).filter((key) => key !== id))
+                  }}
+                />
+              ) : mode === 'rankings' ? (
                 <>
                   <TeamsView
                     universe={universe}
@@ -489,7 +560,7 @@ export function RankingRoute() {
                     }}
                     onToggle={toggleTeam}
                     onRequestPlayers={requestPlayers}
-                    onRequestTeamHistory={drawerOpen ? undefined : requestTeamHistory}
+                    onRequestTeamHistory={requestTeamHistory}
                     onTournamentFilterChange={setTournamentFilter}
                     onPrefetchTournament={prefetchTournament}
                   />
@@ -501,17 +572,17 @@ export function RankingRoute() {
             </Suspense>
           </RouteErrorBoundary>
         )}
-        <footer aria-label="Project disclaimer" className="mx-[var(--page-x)] mt-7 flex flex-wrap gap-x-3 gap-y-1 border-t border-border pt-4 text-xs leading-[1.55] text-[var(--faint)] [&>a]:inline-flex [&>a]:min-h-6 [&>a]:min-w-6 [&>a]:items-center">
+        <footer aria-label="Project disclaimer" className="mx-[var(--page-x)] mt-7 flex flex-wrap gap-x-3 gap-y-1 border-t border-line pt-4 text-xs leading-[1.55] text-muted [&>a]:inline-flex [&>a]:min-h-6 [&>a]:min-w-6 [&>a]:items-center">
           <span>{RIOT_PROJECT_NOTICE}</span>
-          <a className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" href={PROJECT_REPOSITORY_URL}>Source code</a>
-          <a className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" href={PROJECT_FEEDBACK_URL}>Report feedback</a>
-          <a className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" href="/legal">Legal notice</a>
-          <a className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" href="/privacy">Privacy</a>
-          <a className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" href="/licenses">Licenses</a>
+          <a className="text-muted underline-offset-2 hover:text-text hover:underline" href={PROJECT_REPOSITORY_URL}>Source code</a>
+          <a className="text-muted underline-offset-2 hover:text-text hover:underline" href={PROJECT_FEEDBACK_URL}>Report feedback</a>
+          <a className="text-muted underline-offset-2 hover:text-text hover:underline" href="/legal">Legal notice</a>
+          <a className="text-muted underline-offset-2 hover:text-text hover:underline" href="/privacy">Privacy</a>
+          <a className="text-muted underline-offset-2 hover:text-text hover:underline" href="/licenses">Licenses</a>
         </footer>
       </main>
 
-      {drawerOpen && mode === 'regions' ? (
+      {regionDrawerOpen && mode === 'regions' ? (
         <RegionCompareDrawer
           open
           title="Region comparison"
@@ -519,21 +590,8 @@ export function RankingRoute() {
           columns={regionColumns}
           rows={REGION_COMPARE_ROWS}
           after={regionCompareAfter}
-          onClose={() => setDrawerOpen(false)}
+          onClose={() => setRegionDrawerOpen(false)}
           onRemove={(id) => setRegionPicks((current) => current.filter((region) => regionKey(region) !== id))}
-        />
-      ) : null}
-      {drawerOpen && mode === 'rankings' ? (
-        <TeamCompareDrawer
-          open
-          title="Team comparison"
-          entities={activeTeamPicks}
-          columns={teamColumns}
-          rows={TEAM_COMPARE_ROWS}
-          before={compareMatchup ? <HeadToHead home={compareMatchup.home} away={compareMatchup.away} model={compareMatchup.model} /> : undefined}
-          after={teamCompareAfter}
-          onClose={() => setDrawerOpen(false)}
-          onRemove={(id) => setTeamPicks((current) => current.filter((team) => teamKey(team) !== id))}
         />
       ) : null}
     </div>

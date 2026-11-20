@@ -1,3 +1,4 @@
+import { writeOracleForecastFixture } from './fixtures/oracleForecastFixture.ts'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
@@ -18,12 +19,10 @@ async function fixture(directory: string) {
   const manifestPath = join(directory, 'manifest.json')
   const requestsPath = join(directory, 'requests.json')
   const candidatePath = join(directory, 'candidate.json')
-  await writeFile(join(directory, 'raw.json'), JSON.stringify({ fetchedAt: '2026-02-09T00:00:00Z',
-    matches: sampleMatches.slice(0, 2).map((match, index) => ({ ...match, id: `candidate-game-${index}`,
-      sourceProvider: 'leaguepedia-cargo', sourceGameId: `source-${index}` })) }))
-  await writeFile(manifestPath, JSON.stringify({ generatedAt: '2026-02-09T00:00:00Z', files: { leaguepediaJson: ['raw.json'] } }))
+  const sourceCapture = await writeOracleForecastFixture(directory, 'raw.csv', sampleMatches.slice(0, 2), Date.parse('2026-02-09T00:00:00Z'))
+  await writeFile(manifestPath, JSON.stringify({ files: { oracleCsv: ['raw.csv'] } }))
   const source = await importRankingSourceData({ manifestPath })
-  await writeFile(requestsPath, JSON.stringify({ evidenceMode: 'synthetic', availability: 'verified',
+  await writeFile(requestsPath, JSON.stringify({ evidenceMode: 'synthetic', availability: 'verified', sourceFiles: [sourceCapture],
     observations: source.matches.map(match => ({ gameId: match.id, observedAt: Date.parse(match.date) + 3600_000,
       resultAvailableAt: Date.parse(match.date) + 3600_000 })), requests: [{
       seriesId: 'candidate-series', eventId: 'candidate-event', homeTeamId: 'gen', awayTeamId: 't1',

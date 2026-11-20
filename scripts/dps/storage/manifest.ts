@@ -167,16 +167,3 @@ export async function markArchiveObjectFailed(
     [archiveObjectId, reason.slice(0, 1000)],
   );
 }
-
-export async function loadManifestById(
-  archiveObjectId: string,
-): Promise<ArchiveManifestRow | null> {
-  const rows = await query<ArchiveManifestRow>(
-    `SELECT archive_object_id,object_kind,source_match_id,source_identity,patch,platform_region,
-            object_key,sha256,compressed_bytes,uncompressed_bytes,source_schema_version,
-            extractor_version,dataset_version,engine_version,status
-       FROM lol_dps.archive_objects WHERE archive_object_id=$1`,
-    [archiveObjectId],
-  );
-  return rows[0] ?? null;
-}

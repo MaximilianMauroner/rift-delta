@@ -1,10 +1,9 @@
-import { useMemo } from 'react'
-import { CountBadge, HeatChip } from '../../components/ui'
+import { CountBadge } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { POWER_COMPONENT_LABELS } from '../../domains/rankings/read'
 import type { CompactPlayer, PublicCurrentLineup, RankingSummaryStanding } from '../../domains/rankings/types'
-import { extent, formatDate, formatDecimal, formatNumber, formatRating } from '../../shared/display'
+import { formatDate, formatDecimal, formatNumber, formatRating } from '../../shared/display'
 import { cn } from '../../shared/utils'
 import { clampNumber, formatRatingMovement, formatUncertaintyBand, movementTone } from './boardFormat'
 import { componentLedgerRowClassName, detailCardClassName, emptyPlayerRankCardClassName, playerRankCardHeadClassName } from './detailStyles'
@@ -24,7 +23,6 @@ export function PlayerRankingCard({
   loadState: PlayerLoadState
   playerScopeLabel?: string
 }) {
-  const [ratingMin, ratingMax] = useMemo(() => extent(players.map((player) => player.rating)), [players])
   const observedLineupIds = new Set(currentLineup?.starters.map((player) => player.playerId) ?? [])
 
   if (players.length === 0) {
@@ -77,9 +75,9 @@ export function PlayerRankingCard({
           <div>
             <h3>
               Player Rankings
-              <CountBadge>Source gap</CountBadge>
+              <CountBadge>No ranked players</CountBadge>
             </h3>
-            <p>No player data in {playerScopeLabel}.</p>
+            <p>No ranked player data in {playerScopeLabel}.</p>
           </div>
         </div>
       </aside>
@@ -91,17 +89,19 @@ export function PlayerRankingCard({
       <div className={playerRankCardHeadClassName}>
         <div>
           <h3>Player Rankings</h3>
-          <p>
-            {currentLineup
-              ? `Last lineup ${formatDate(currentLineup.observedAt)}${currentLineup.observedEvent ? ` at ${currentLineup.observedEvent}` : ''}`
-              : `Career rows in ${playerScopeLabel}`}
-          </p>
+          <p>Ranked career rows in {playerScopeLabel}.</p>
+          {currentLineup ? (
+            <small>
+              Roster evidence from {formatDate(currentLineup.observedAt)}{currentLineup.observedEvent ? ` at ${currentLineup.observedEvent}` : ''}.
+              {' '}Observed players can have too few games to qualify for rankings.
+            </small>
+          ) : null}
           {currentLineup?.missingRoles.length ? <small>Missing roles: {currentLineup.missingRoles.join(', ')}</small> : null}
         </div>
         <CountBadge>{players.length} players</CountBadge>
       </div>
 
-        <Table containerClassName="player-rank-table mt-4 max-h-[360px] overflow-auto rounded-md border border-border max-sm:max-h-none max-sm:overflow-visible [&_.right]:text-right [&_.ent_b]:block [&_.ent_b]:overflow-hidden [&_.ent_b]:text-ellipsis [&_.ent_b]:whitespace-nowrap [&_.ent_small]:block [&_.ent_small]:overflow-hidden [&_.ent_small]:text-ellipsis [&_.ent_small]:whitespace-nowrap [&_table]:w-full [&_table]:table-fixed [&_table]:border-collapse [&_table]:max-sm:block [&_tbody]:max-sm:block [&_td]:border-b [&_td]:border-border [&_td]:px-2 [&_td]:py-2.5 [&_td]:text-left [&_td]:align-middle [&_td]:text-sm [&_th]:sticky [&_th]:top-0 [&_th]:z-[1] [&_th]:border-b [&_th]:border-border [&_th]:bg-[var(--detail-surface-3,var(--surface-3))] [&_th]:py-2.5 [&_tr:last-child_td]:border-b-0">
+        <Table containerClassName="player-rank-table mt-4 max-h-[360px] overflow-auto rounded-md border border-line max-sm:max-h-none max-sm:overflow-visible [&_.right]:text-right [&_.ent_b]:block [&_.ent_b]:overflow-hidden [&_.ent_b]:text-ellipsis [&_.ent_b]:whitespace-nowrap [&_.ent_small]:block [&_.ent_small]:overflow-hidden [&_.ent_small]:text-ellipsis [&_.ent_small]:whitespace-nowrap [&_table]:w-full [&_table]:table-fixed [&_table]:border-collapse [&_table]:max-sm:block [&_tbody]:max-sm:block [&_td]:border-b [&_td]:border-line [&_td]:px-2 [&_td]:py-2.5 [&_td]:text-left [&_td]:align-middle [&_td]:text-sm [&_th]:sticky [&_th]:top-0 [&_th]:z-[1] [&_th]:border-b [&_th]:border-line [&_th]:bg-[var(--detail-surface-3,var(--line))] [&_th]:py-2.5 [&_tr:last-child_td]:border-b-0">
           <TableHeader>
             <TableRow>
               <TableHead>Rank</TableHead>
@@ -114,9 +114,9 @@ export function PlayerRankingCard({
           <TableBody>
             {players.map((player) => (
               <TableRow key={player.id} className="hover:bg-transparent">
-                <TableCell className={cn('font-mono font-semibold text-muted-foreground tabular-nums', player.rank <= 3 && 'text-[var(--rank-gold)]')}>#{player.rank}</TableCell>
+                <TableCell className={cn('font-semibold text-muted tabular-nums', player.rank <= 3 && 'text-text')}>#{player.rank}</TableCell>
                 <TableCell>
-                  <div className="flex flex-col gap-px [&_b]:font-semibold [&_b]:text-[var(--text-strong)] [&_small]:text-xs [&_small]:text-[var(--faint)]">
+                  <div className="flex flex-col gap-px [&_b]:font-semibold [&_b]:text-text [&_small]:text-xs [&_small]:text-muted">
                     <b>{player.name}</b>
                     <small>
                       {observedLineupIds.has(player.playerId ?? player.id)
@@ -129,9 +129,9 @@ export function PlayerRankingCard({
                   <Badge variant="secondary" className="whitespace-nowrap text-xs">{player.role}</Badge>
                 </TableCell>
                 <TableCell className="right">
-                  <HeatChip value={player.rating} min={ratingMin} max={ratingMax} label={formatRating(player.rating)} />
+                  <b className="text-sm font-semibold">{formatRating(player.rating)}</b>
                 </TableCell>
-                <TableCell className="right num">{formatTeamGames(player)}</TableCell>
+                <TableCell className="right">{formatTeamGames(player)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -177,12 +177,12 @@ export function ComponentBreakdown({ team }: { team: RankingSummaryStanding }) {
 
   return (
     <div className={cn(detailCardClassName, 'px-5 py-4')} aria-label={`${team.team} rating components`}>
-      <div className="mb-3.5 flex items-start justify-between gap-3 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-[var(--text-strong)] [&_p]:mt-1 [&_p]:text-sm [&_p]:leading-[1.4] [&_p]:text-[var(--faint)] [&>span]:shrink-0 [&>span]:text-sm [&>span]:font-bold [&>span]:text-muted-foreground [&>span]:tabular-nums">
+      <div className="mb-3.5 flex items-start justify-between gap-3 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-text [&_p]:mt-1 [&_p]:text-sm [&_p]:leading-[1.4] [&_p]:text-muted [&>span]:shrink-0 [&>span]:text-sm [&>span]:font-bold [&>span]:text-muted [&>span]:tabular-nums">
         <h3>Power Score Breakdown</h3>
         <span>{formatRating(team.rating)} {formatUncertaintyBand(components.uncertainty)}</span>
       </div>
-      <div className="grid gap-px overflow-hidden rounded-md border border-border bg-border">
-        <div className={cn(componentLedgerRowClassName, 'bg-[var(--detail-surface-3,var(--surface-3))]')} title="League anchor baseline before team-specific adjustments.">
+      <div className="grid gap-px overflow-hidden rounded-md border border-line bg-line">
+        <div className={cn(componentLedgerRowClassName, 'bg-[var(--detail-surface-3,var(--line))]')} title="League anchor baseline before team-specific adjustments.">
           <span>{POWER_COMPONENT_LABELS.league}</span>
           <b>{formatRating(components.leagueAnchor)}</b>
           <ComponentBar value={components.leagueAnchor} max={maxComponentMagnitude} />
@@ -194,7 +194,7 @@ export function ComponentBreakdown({ team }: { team: RankingSummaryStanding }) {
             <ComponentBar value={row.value} max={maxComponentMagnitude} />
           </div>
         ))}
-        <div className={cn(componentLedgerRowClassName, 'border-t border-[var(--line-strong)] bg-[var(--detail-surface-3,var(--surface-3))]')}>
+        <div className={cn(componentLedgerRowClassName, 'border-t border-line bg-[var(--detail-surface-3,var(--line))]')}>
           <span>Power score</span>
           <b>{formatRating(team.rating)}</b>
         </div>
@@ -206,8 +206,8 @@ export function ComponentBreakdown({ team }: { team: RankingSummaryStanding }) {
 function ComponentBar({ value, max }: { value: number; max: number }) {
   const width = max > 0 ? clampNumber((Math.abs(value) / max) * 100, 2, 100) : 0
   return (
-    <span className="relative col-span-full block h-1 overflow-hidden rounded-full bg-[color-mix(in_oklch,var(--line)_68%,transparent)]" aria-hidden="true">
-      <span className={cn('absolute inset-y-0 left-0 block min-w-0.5 rounded-[inherit]', value < 0 ? 'bg-[color-mix(in_oklch,var(--down)_82%,transparent)]' : 'bg-[color-mix(in_oklch,var(--up)_76%,var(--accent-strong))]')} style={{ width: `${width}%` }} />
+    <span className="relative col-span-full block h-1 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--line)_68%,transparent)]" aria-hidden="true">
+      <span className={cn('absolute inset-y-0 left-0 block min-w-0.5 rounded-[inherit]', value < 0 ? 'bg-[color-mix(in_srgb,var(--down)_82%,transparent)]' : 'bg-[color-mix(in_srgb,var(--up)_76%,var(--focus))]')} style={{ width: `${width}%` }} />
     </span>
   )
 }

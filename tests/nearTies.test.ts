@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { boardHeadline } from '../src/views/rankings/boardHeadline.ts'
+import { boardHeadline, headlineScope } from '../src/views/rankings/boardHeadline.ts'
 import { publishedRatingScale } from '../src/domains/rankings/internal/policy/modelConfig.ts'
 import { isNearTie, nearTieGroups, nearTiePositions } from '../src/domains/rankings/internal/queries/nearTies.ts'
 import type { RankingSummaryStanding } from '../src/domains/rankings/internal/projections/snapshot.ts'
@@ -30,14 +30,27 @@ test('headline calls a coin-flip lead close to level', () => {
   assert.match(headline ?? '', /^Hanwha Life Esports lead, but Bilibili Gaming are close to level: 5\d% per game\.$/)
 })
 
-test('headline states a clear lead as a points gap and game edge', () => {
+test('headline states a clear lead as a Power gap and game edge', () => {
   const headline = boardHeadline([standing('Alpha', 2400), standing('Beta', 2200)], model)
-  assert.match(headline ?? '', /^Alpha lead Beta by 200 points, a \d\d% game edge\.$/)
+  assert.match(headline ?? '', /^Alpha lead Beta by 200 Power, a \d\d% game edge\.$/)
 })
 
 test('headline handles scopes with one or no ranked team', () => {
   assert.equal(boardHeadline([], model), undefined)
   assert.equal(boardHeadline([standing('Solo', 2000)], model), 'Solo lead the ranking.')
+})
+
+test('a filtered board names its filter and leads with the filtered leader', () => {
+  const scope = headlineScope({ region: 'LEC', tier: 'All', search: '' })
+  const headline = boardHeadline([standing('G2 Esports', 2070), standing('Karmine Corp', 1917)], model, scope)
+  assert.match(headline ?? '', /^LEC: G2 Esports lead Karmine Corp by 153 Power, a \d\d% game edge\.$/)
+  assert.equal(boardHeadline([standing('Movistar KOI', 1797)], model, scope), 'LEC: Movistar KOI is the only ranked team.')
+  assert.equal(boardHeadline([], model, scope), undefined)
+})
+
+test('the headline scope lists every active filter and is empty without one', () => {
+  assert.equal(headlineScope({ region: 'All', tier: 'All', search: '  ' }), undefined)
+  assert.equal(headlineScope({ region: 'LCK', tier: 'A', search: 'gen', tournament: 'MSI 2026' }), 'LCK, A tier, MSI 2026, search "gen"')
 })
 
 function standing(team: string, rating: number): RankingSummaryStanding {

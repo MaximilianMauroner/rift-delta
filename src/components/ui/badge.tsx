@@ -9,28 +9,27 @@ import { cn } from '../../shared/utils'
  * only offered three.
  */
 const badgeVariants = cva(
-  'inline-flex max-w-full items-center gap-1 overflow-hidden rounded-full border px-2 py-0.5 text-2xs font-semibold whitespace-nowrap tabular-nums',
+  'inline-flex max-w-full items-center gap-1 overflow-hidden rounded-md border px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap',
   {
     variants: {
       variant: {
-        secondary: 'border-border bg-[var(--surface-2)] text-muted-foreground',
-        warning: 'border-transparent bg-[var(--warn-soft)] text-[var(--warn)]',
-        /* Rank quality. --rank-gold carries this meaning and no other. */
-        rank: 'border-[color-mix(in_oklch,var(--rank-gold),var(--line)_54%)] bg-[color-mix(in_oklch,var(--rank-gold)_12%,transparent)] font-bold text-[var(--rank-gold)]',
+        secondary: 'border-line bg-raised text-muted',
+        warning: 'border-[var(--warn)] bg-surface text-[var(--warn)]',
+        rank: 'border-line bg-raised font-bold text-text',
         /* Competition and event labels. */
-        event: 'border-border bg-[color-mix(in_oklch,var(--surface-2)_72%,transparent)] text-[var(--faint)]',
-        /* Match outcome. */
-        win: 'border-[color-mix(in_oklch,var(--win)_44%,var(--line))] bg-[var(--win-soft)] text-[var(--win)]',
-        loss: 'border-[color-mix(in_oklch,var(--loss)_44%,var(--line))] bg-[var(--loss-soft)] text-[var(--loss)]',
-        /* A series in progress. */
-        live: 'border-[color-mix(in_oklch,var(--live)_44%,var(--line))] bg-[var(--live-soft)] text-[var(--live)]',
+        event: 'border-line text-muted',
+        /* Match outcome. Always carries its W or L letter. */
+        win: 'border-transparent bg-[var(--up-wash)] text-up',
+        loss: 'border-transparent bg-[var(--down-wash)] text-down',
+        /* A series in progress. Always carries the word Live. */
+        live: 'border-[var(--live)] bg-[var(--live)] text-ground',
         /* Hypothetical scenario content, never a live result. */
-        preview: 'border-dashed border-[var(--preview-line)] bg-[var(--preview-soft)] text-[var(--preview)]',
+        preview: 'border-dashed border-[var(--forecast)] bg-transparent text-[var(--forecast)]',
       },
       size: {
         default: '',
-        /* Square-ish tier and result marks, sized to align with a table row. */
-        mark: 'grid size-[var(--mark-size,22px)] place-items-center rounded-sm px-0 py-0 text-center [--mark-size:22px]',
+        /* Square tier and result marks, sized to align with a table row. */
+        mark: 'grid size-[var(--mark-size,22px)] place-items-center px-0 py-0 text-center [--mark-size:22px]',
       },
     },
     defaultVariants: { variant: 'secondary', size: 'default' },
@@ -41,4 +40,4 @@ function Badge({ className, variant, size, ...props }: React.ComponentProps<'spa
   return <span data-slot="badge" className={cn(badgeVariants({ variant, size, className }))} {...props} />
 }
 
-export { Badge, badgeVariants }
+export { Badge }

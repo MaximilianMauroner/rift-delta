@@ -22,11 +22,18 @@ export async function createSyntheticParity(directory: string, consumerRoot: str
       teamA: 'Gen.G', teamB: 'T1', winner: index === 1 ? 'T1' : 'Gen.G', teamAKills: 18, teamBKills: 12,
       teamAGold: 62000, teamBGold: 59000,
     })) }
-  await save('synthetic-raw.json', raw)
-  const manifest = await save('inputs.json', { files: { leaguepediaJson: ['synthetic-raw.json'], oracleCsv: [], lolEsportsJson: [] } })
+  const csv = ['gameid,date,gamelength,year,league,split,playoffs,bestof,patch,position,side,teamname,result,kills,totalgold',
+    ...raw.matches.flatMap(match => [
+      `${match.id},${match.date}T00:00:00Z,1800,2026,LCK,Spring,0,1,26.1,team,blue,${match.teamA},${Number(match.winner === match.teamA)},${match.teamAKills},${match.teamAGold}`,
+      `${match.id},${match.date}T00:00:00Z,1800,2026,LCK,Spring,0,1,26.1,team,red,${match.teamB},${Number(match.winner === match.teamB)},${match.teamBKills},${match.teamBGold}`,
+    ])].join('\n')
+  const rawPath = join(directory, 'synthetic-raw.csv')
+  await writeFile(rawPath, csv, { flag: 'wx' })
+  const manifest = await save('inputs.json', { files: { leaguepediaJson: [], oracleCsv: ['synthetic-raw.csv'], lolEsportsJson: [] } })
   const source = await importRankingSourceData({ manifestPath: manifest })
   const asOf = Date.parse('2026-02-10T10:00:00Z')
   const requests: ForecastRequestFile = { evidenceMode: 'synthetic', availability: 'verified',
+    sourceFiles: [{ path: 'synthetic-raw.csv', observedAt: Date.parse(raw.fetchedAt), sha256: sha256(csv) }],
     observations: source.matches.map(match => ({ gameId: match.id, observedAt: Date.parse(match.date) + 3600_000,
       resultAvailableAt: Date.parse(match.date) + 3600_000 })),
     requests: ([1, 3, 5] as const).flatMap(bestOf => [false, true].map(swapped => ({

@@ -11,8 +11,9 @@ import {
   compareSeriesPassResponse, encodeSeriesPassRequest, MAX_BATCH_BYTES, numberBits, readBounded, runSeriesPassShadow,
   seriesPassDateResponseBytes, sha256,
 } from '../tools/audit/series-pass-shadow.ts'
-import { game, observe, profiles, roster, sparseDate, variedGames } from './seriesPassFixtures.ts'
+import { game, observe, profiles, roster, rosterContinuityDate, seedRosterContinuityContext, sparseDate, variedGames } from './seriesPassFixtures.ts'
 import { crossMidnightReviewCases, crossMidnightTeams } from './fixtures/crossMidnightReviewCases.ts'
+import { retentionHistory, supportedRetentionDate } from './supportedRosterRetentionFixtures.ts'
 
 const binary = process.env.RANKING_COMPUTE_TEST_BINARY
 const artifactRoot = resolve('.agents/artifacts/series-pass-tests')
@@ -36,6 +37,32 @@ function responseFor(captures: ReturnType<typeof observe>['captures'], request: 
     dates: captures.map((capture) => encode(capture.expected)),
   }
 }
+
+test('native matches proven upgrade preservation and unproven or weaker lineup shrink', { skip: !binary }, async () => {
+  const root = await temporary()
+  try {
+    for (const [name, history] of [['upgrade', retentionHistory()], ['weaker', retentionHistory(0.1)],
+      ['equal', retentionHistory(0.5)], ['missing', []]] as const) {
+      const { capture } = supportedRetentionDate([...history])
+      assert.equal(capture.expected.series[0].continuity[1].rating, name === 'upgrade' ? 1900 : 1720)
+      const result = await runSeriesPassShadow({ captures: [capture], binaryPath: binary!, outputDir: join(root, name) })
+      assert.equal(result.mismatches, 0)
+    }
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test('native agrees on roster-retained result expectations without same-day result leakage', { skip: !binary }, async () => {
+  const root = await temporary()
+  try {
+    for (const [winner, unchanged, prepare] of [['Alpha', false], ['Beta', false], ['Alpha', true], ['Alpha', false, seedRosterContinuityContext]] as const) {
+      const { capture } = rosterContinuityDate(winner, unchanged, prepare)
+      const result = await runSeriesPassShadow({ captures: [capture], binaryPath: binary!,
+        outputDir: join(root, `${winner}-${unchanged}-${Boolean(prepare)}`) })
+      assert.equal(result.series, 5)
+      assert.equal(result.mismatches, 0)
+    }
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
 
 test('the real date observer is detached and leaves checkpoints and materialized rankings unchanged', () => {
   const matches = variedGames()

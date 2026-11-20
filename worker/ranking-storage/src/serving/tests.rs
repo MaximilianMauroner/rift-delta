@@ -71,7 +71,7 @@ impl Drop for Fixture {
     }
 }
 impl Fixture {
-    async fn new(redirect: bool) -> Self {
+    async fn new(threshold: &str) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let endpoint = format!("http://{}", listener.local_addr().unwrap());
         let state = Arc::new(Mutex::new(State::default()));
@@ -124,7 +124,7 @@ impl Fixture {
             state,
             task,
             origin: PublishedOrigin {
-                transport: Transport::fixture(&endpoint, redirect),
+                transport: Transport::fixture(&endpoint, threshold),
                 admission: Arc::new(Semaphore::new(2)),
                 root_cache: Mutex::new(None),
             },
@@ -202,7 +202,7 @@ impl Fixture {
 
 #[tokio::test]
 async fn direct_objects_verify_transport_without_requiring_a_semantic_envelope() {
-    let fixture = Fixture::new(false).await;
+    let fixture = Fixture::new("65536").await;
     let semantic = br#"{"artifactKind":"public-artifact-directory","entries":[]}"#;
     let hash = sha256(semantic);
     let path = format!("objects/sha256/{hash}");
@@ -222,7 +222,7 @@ async fn direct_objects_verify_transport_without_requiring_a_semantic_envelope()
 
 #[tokio::test]
 async fn immutable_head_and_presigning_do_not_download_object_bodies() {
-    let fixture = Fixture::new(true).await;
+    let fixture = Fixture::new("1").await;
     let semantic = b"real body";
     let path = format!("objects/sha256/{}", sha256(semantic));
     fixture.put(&path, Response::immutable(semantic));
@@ -259,7 +259,7 @@ async fn immutable_head_and_presigning_do_not_download_object_bodies() {
 
 #[tokio::test]
 async fn failed_presign_metadata_uses_the_verified_get_proxy() {
-    let fixture = Fixture::new(true).await;
+    let fixture = Fixture::new("1").await;
     let semantic = b"proxy recovery";
     let path = format!("objects/sha256/{}", sha256(semantic));
     let mut object = Response::immutable(semantic);
@@ -285,7 +285,7 @@ async fn failed_presign_metadata_uses_the_verified_get_proxy() {
 
 #[tokio::test]
 async fn pointer_is_reread_and_only_valid_immutable_roots_are_cached() {
-    let fixture = Fixture::new(false).await;
+    let fixture = Fixture::new("65536").await;
     let (first, _) = fixture.generation("one", 2, true);
     for _ in 0..2 {
         let served = fixture
@@ -355,7 +355,7 @@ async fn pointer_is_reread_and_only_valid_immutable_roots_are_cached() {
 
 #[tokio::test]
 async fn legacy_cutover_preserves_wire_contract_and_pinned_reads_preserve_original_bytes() {
-    let fixture = Fixture::new(false).await;
+    let fixture = Fixture::new("65536").await;
     let (manifest, _) = fixture.generation("legacy", 1, false);
     let served = fixture
         .origin
@@ -392,7 +392,7 @@ async fn legacy_cutover_preserves_wire_contract_and_pinned_reads_preserve_origin
 
 #[tokio::test]
 async fn corruption_metadata_and_declared_semantic_limit_fail_before_delivery() {
-    let fixture = Fixture::new(false).await;
+    let fixture = Fixture::new("65536").await;
     let semantic = b"checked bytes";
     let path = format!("objects/sha256/{}", sha256(semantic));
     for change in 0..4 {
@@ -432,7 +432,7 @@ async fn corruption_metadata_and_declared_semantic_limit_fail_before_delivery() 
 
 #[tokio::test]
 async fn body_owners_retain_admission_and_the_next_read_waits() {
-    let fixture = Fixture::new(false).await;
+    let fixture = Fixture::new("65536").await;
     fixture.put("data/a.json", Response::json(&json!({"ok":true})));
     let first = fixture
         .origin
@@ -505,7 +505,7 @@ fn unsafe_requested_paths_fail_before_storage_and_signing() {
 #[tokio::test]
 async fn publication_provenance_and_stored_membership_are_required() {
     for mismatch in ["provenance", "membership"] {
-        let fixture = Fixture::new(false).await;
+        let fixture = Fixture::new("65536").await;
         let (_, mut pointer) = fixture.generation("bound", 2, true);
         let mut receipt: Value = serde_json::from_slice(&fixture.state.lock().unwrap().objects["/fixture/rankings/generations/bound/publish.json"].body).unwrap();
         if mismatch == "provenance" {
@@ -528,7 +528,7 @@ async fn publication_provenance_and_stored_membership_are_required() {
 
 #[tokio::test]
 async fn retained_native_schema_requires_its_canonical_publish_receipt() {
-    let fixture = Fixture::new(false).await;
+    let fixture = Fixture::new("65536").await;
     let (manifest, mut pointer) = fixture.generation("native", 2, false);
     let raw = "b".repeat(64);
     let public = json!({"key":pointer["manifestKey"], "digest":pointer["manifestDigest"], "bytes":manifest.body.len(), "contentType":JSON_TYPE});
@@ -561,7 +561,7 @@ async fn retained_native_schema_requires_its_canonical_publish_receipt() {
 
 #[tokio::test]
 async fn oversized_stored_length_is_rejected_before_body_materialization() {
-    let fixture = Fixture::new(false).await;
+    let fixture = Fixture::new("65536").await;
     let mut response = Response::json(&json!({"bounded":true}));
     response
         .headers

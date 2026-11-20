@@ -67,8 +67,8 @@ test('LoL Esports reference download failure is warning-only unless required', a
   const tempDir = await mkdtemp(join(tmpdir(), 'lol-ranking-data-'))
   const manifestPath = join(tempDir, 'manifest.json')
   const server = createServer((_request, response) => {
-    response.writeHead(503, { 'content-type': 'application/json' })
-    response.end('{"error":"temporarily unavailable"}\n')
+    response.writeHead(403, { 'content-type': 'application/json' })
+    response.end('{"error":"forbidden"}\n')
   })
 
   try {
@@ -205,6 +205,8 @@ test('Oracle HTML quota failure still allows Leaguepedia fallback download', asy
 })
 
 async function runDownloader(flags: string[]) {
-  const { command, args } = providerFetchWorkerCommand(flags)
+  const { command, args } = process.env.RANKING_RUST_TEST_BINARY
+    ? { command: process.env.RANKING_RUST_TEST_BINARY, args: ['fetch', ...flags] }
+    : providerFetchWorkerCommand(flags)
   return execFileAsync(command, args, { cwd: process.cwd(), maxBuffer: 1024 * 1024 })
 }

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan, publicMatchHistoryShardPath } from '../src/domains/rankings/internal/published/writePlan.ts'
 import { parsePublicMatchHistoryCatalog } from '../src/domains/rankings/internal/published/schema.ts'
@@ -37,7 +37,7 @@ test('prefetching an older match page retains the loaded page on screen', { time
   assert.ok(oldestPage)
   const oldestPath = new URL(oldestPage.url, 'http://fixture.invalid').pathname
   const bodies = new Map(plan.writes.map((write) => [`/data/${write.relativePath}`, write.contents]))
-  const fixture: Plugin = { name: 'match-page-prefetch-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'match-page-prefetch-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (!path.startsWith('/data/')) return next()
@@ -47,10 +47,9 @@ test('prefetching an older match page retains the loaded page on screen', { time
       response.end(body ?? '{}')
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer!.address()
     assert.ok(address && typeof address !== 'string')
     const executablePath = chromium.executablePath()
@@ -74,15 +73,21 @@ test('prefetching an older match page retains the loaded page on screen', { time
     assert.equal(await page.evaluate(() => document.visibilityState), 'visible')
     assert.deepEqual(await page.evaluate(() => Object.getOwnPropertyDescriptor(navigator, 'connection')?.value), connection)
     await rows.nth(24).waitFor()
+    const rowBackground = () => rows.first().evaluate((node) => getComputedStyle(node).backgroundColor)
+    const restingBackground = await rowBackground()
+    await rows.first().hover()
+    await page.waitForFunction((resting) => getComputedStyle(document.querySelector('table tbody tr')!).backgroundColor !== resting, restingBackground)
+    assert.notEqual(await rowBackground(), restingBackground, 'A hovered series row is tinted')
+    await page.mouse.move(0, 0)
     for (let currentPage = 2; currentPage <= 16; currentPage++) {
       await next.click()
       await page.getByText(`Page ${currentPage} of 18`, { exact: true }).waitFor()
       await rows.nth(24).waitFor()
       const heading = page.getByRole('heading', { name: 'Series ledger' })
       assert.ok(await heading.evaluate((node) => {
-        const top = node.getBoundingClientRect().top
+        const { top, width, height } = node.getBoundingClientRect()
         const headerBottom = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0
-        return top >= headerBottom && top < innerHeight / 2
+        return node === document.activeElement && width > 1 && height > 1 && top >= headerBottom && top < innerHeight / 2
       }), 'Explicit pagination returns to the results heading below the sticky navigation')
     }
     const prefetched = page.waitForResponse((response) => new URL(response.url()).pathname === oldestPath).catch(async (error: unknown) => {
@@ -109,6 +114,18 @@ test('prefetching an older match page retains the loaded page on screen', { time
     await rows.nth(24).waitFor({ timeout: 5_000 })
     assert.equal(await rows.count(), 25, 'Focus prefetch must retain all 25 visible series')
     await page.getByText('Page 17 of 18', { exact: true }).waitFor()
+    for (const width of [800, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.getByRole('button', { name: 'Previous page', exact: true }).click()
+      await page.locator('[data-first-answer="matches"]').nth(24).waitFor()
+      const heading = page.getByRole('heading', { name: 'Series ledger' })
+      assert.ok(await heading.evaluate((node) => {
+        const { top, width, height } = node.getBoundingClientRect()
+        const headerBottom = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0
+        return node === document.activeElement && width > 1 && height > 1 && top >= headerBottom && top < innerHeight / 2
+      }), `Pagination reveals and focuses the ledger heading at ${width}px`)
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    }
     assert.deepEqual(errors, [])
   } finally { await browser?.close(); await server.close() }
 })

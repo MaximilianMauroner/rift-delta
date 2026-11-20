@@ -108,7 +108,7 @@ test('scheduled date-window downloads retain a new tournament across refreshes w
       await refreshDataIfChanged(['--raw-dir', rawDir, '--manifest', manifestPath,
         '--staging-dir', join(directory, 'staging'), '--lookback-days', '3', '--end', end, '--skip-crunch',
         '--oracle', 'false', '--lolesports', 'false', '--leaguepedia-base-url', baseUrl,
-      ], { env: { PATH: '', RANKING_BUCKET_RESTORE_RAW: 'false', RANKING_BUCKET_UPLOAD_ENABLED: 'false', RANKING_REFRESH_BOOTSTRAP_START: '2025-01-01' } })
+      ], { env: { PATH: '', RANKING_REFRESH_BOOTSTRAP_START: '2025-01-01' } })
       const source = await importRankingSourceData({ manifestPath })
       const cup = source.matches.filter((game) => game.event === event)
       assert.equal(cup.length, expectedGames)

@@ -1,6 +1,7 @@
 export {
   PUBLIC_ARTIFACT_PATHS,
   createPublicArtifactWritePlan,
+  type PublicArtifactFamily,
   publicMatchHistoryPagePath,
   publicMatchHistoryShardPath,
   publicScopeArtifactPath,

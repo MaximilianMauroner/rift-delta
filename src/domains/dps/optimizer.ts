@@ -90,10 +90,6 @@ export const OPTIMIZER_MODELED_NO_EFFECT_ITEM_IDS = OPTIMIZER_COVERAGE.filter(
   (item) => item.scope === "modeled-no-effect",
 ).map((item) => item.id);
 
-export function optimizerCoverageItems(): OptimizerCoverageItem[] {
-  return OPTIMIZER_COVERAGE.map((item) => ({ ...item }));
-}
-
 /** Resolves the continuation setting that the objective sends to the simulator. */
 export function optimizerContinuationForObjective(
   objective: OptimizerObjective,
@@ -151,8 +147,6 @@ export function optimizerEligibleItemIds(
     .sort((left, right) => left - right);
 }
 
-export const getOptimizerEligibleItemIds = optimizerEligibleItemIds;
-
 /**
  * Resolves an explicit pool into known eligible IDs and reports values that
  * cannot be simulated. Duplicate input IDs are reported rather than allowed
@@ -190,18 +184,6 @@ export function resolveOptimizerEligibility(
   };
 }
 
-export function isOptimizerEligibleItem(
-  itemId: number,
-  catalog: CatalogLike = ITEMS,
-  options: { allowPartialItems?: boolean } = {},
-): boolean {
-  return (
-    Number.isInteger(itemId) &&
-    catalog[itemId] !== undefined &&
-    (options.allowPartialItems === true || OPTIMIZER_TRUSTED_ITEM_SET.has(itemId))
-  );
-}
-
 /**
  * Canonical item order is numeric and independent of purchase/UI order. It
  * intentionally preserves duplicate IDs: duplicate builds are illegal, and
@@ -212,8 +194,6 @@ export function canonicalizeItemIds(itemIds: readonly number[]): number[] {
   return [...itemIds].sort(compareNumbers);
 }
 
-export const canonicalBuildItemIds = canonicalizeItemIds;
-
 export function canonicalizeBuild(build: Build): Build {
   return { ...build, itemIds: canonicalizeItemIds(build.itemIds) };
 }
@@ -222,11 +202,6 @@ export function canonicalBuildKey(buildOrItemIds: Build | readonly number[]): st
   const itemIds = isBuild(buildOrItemIds) ? buildOrItemIds.itemIds : buildOrItemIds;
   return canonicalizeItemIds(itemIds).join(",");
 }
-
-/** An order-insensitive identity used for candidate de-duplication/cache keys. */
-export const canonicalBuildIdentity = canonicalBuildKey;
-export const buildIdentity = canonicalBuildKey;
-export const buildKey = canonicalBuildKey;
 
 export function sameBuildIdentity(
   left: Build | readonly number[],
@@ -356,10 +331,6 @@ export function generateLegalBuilds(
   return generated;
 }
 
-/** Alias emphasizing that this is exhaustive rather than heuristic search. */
-export const generateExhaustiveBuilds = generateLegalBuilds;
-export const generateLegalCandidateBuilds = generateLegalBuilds;
-
 export function generateCandidateBuilds(
   optionsOrEligibleItemIds: OptimizerGenerationOptions | readonly number[] = {},
   constraintsArgument: Partial<OptimizerConstraints> = {},
@@ -371,8 +342,6 @@ export function generateCandidateBuilds(
     goldTotal: totalGold(build.itemIds, options.catalog),
   }));
 }
-
-export const generateOptimizerCandidates = generateCandidateBuilds;
 
 function resolveGenerationOptions(
   optionsOrEligibleItemIds: OptimizerGenerationOptions | readonly number[],

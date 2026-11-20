@@ -46,9 +46,10 @@ import {
   eventWeightForMatch,
   type EventWeightContext,
 } from '../replay/eventWeighting.ts'
+import { evaluationEventId } from '../queries/replayEvidence.ts'
 import { homeLeagueForMatch, sourceTraceFor } from '../evidence/matchContext.ts'
 import { canonicalSeriesForMatches, canonicalSeriesOutcomeForTeam, resolveCanonicalSeries } from '../evidence/seriesResolver.ts'
-import { isCompleteSourcedMatchup, mergeRosterObservation } from './rosters.ts'
+import { isCompleteSourcedMatchup, mergeRosterObservation, rosterFingerprint } from './rosters.ts'
 import { buildPlayerStatsPower } from './playerStatsPower.ts'
 import {
   buildCausalContextIdentity,
@@ -73,7 +74,11 @@ export type PregamePlayerRatingEdge = {
   teamBLineupCompleteness?: MatchRosterSnapshot['completeness']
   teamAFreshnessWeight: number
   teamBFreshnessWeight: number
+  teamARosterUpgrade?: RosterUpgradeProof
+  teamBRosterUpgrade?: RosterUpgradeProof
 }
+
+export type RosterUpgradeProof = Readonly<{ previous: string; played: string }>
 
 export type PlayerRatingContext = {
   teams?: Record<string, TeamProfile>
@@ -320,6 +325,8 @@ export function buildPregamePlayerRatingEdges(
   const edges = new Map<string, PregamePlayerRatingEdge>()
   const leagueRatings = leagueRatingsFor(resolvedContext.leagueStrengths)
   const lastObservedRosterByTeam = new Map<string, MatchRosterSnapshot>()
+  const lastObservedRosterByEvent = new Map<string, Map<string, MatchRosterSnapshot>>()
+  const lastPlayedRosterByTeam = new Map<string, MatchRosterSnapshot>()
   const seriesList = resolveCanonicalSeries(matches)
   const observations = seriesList.map((series, order) => ({
     series,
@@ -342,19 +349,26 @@ export function buildPregamePlayerRatingEdges(
       }
       applySourcedPlayerUpdates(observed.games, state, preUpdateRatings, resolvedContext, leagueRatings)
       for (const match of observed.games) {
+        const eventKey = evaluationEventId(match)
+        const eventRosters = lastObservedRosterByEvent.get(eventKey) ?? new Map<string, MatchRosterSnapshot>()
+        lastObservedRosterByEvent.set(eventKey, eventRosters)
         for (const { team, roster } of teamRosterEntries(match)) {
           if (!roster) continue
-          lastObservedRosterByTeam.set(team, mergeRosterObservation(lastObservedRosterByTeam.get(team), {
+          const priorTeamRoster = lastObservedRosterByTeam.get(team)
+          const observation = {
             ...roster,
             evidenceBasis: roster.evidenceBasis ?? 'scored-series',
             sourceSeriesId: observed.id,
-          })!)
+          }
+          eventRosters.set(team, mergeRosterObservation(eventRosters.get(team) ?? priorTeamRoster, observation)!)
+          lastObservedRosterByTeam.set(team, mergeRosterObservation(priorTeamRoster, observation)!)
         }
       }
     }
     const firstMatch = series.games[0]!
-    const teamARoster = lastObservedRosterByTeam.get(firstMatch.teamA)
-    const teamBRoster = lastObservedRosterByTeam.get(firstMatch.teamB)
+    const eventRosters = lastObservedRosterByEvent.get(evaluationEventId(firstMatch))
+    const teamARoster = eventRosters?.get(firstMatch.teamA) ?? lastObservedRosterByTeam.get(firstMatch.teamA)
+    const teamBRoster = eventRosters?.get(firstMatch.teamB) ?? lastObservedRosterByTeam.get(firstMatch.teamB)
     const edgeByTeam = new Map([
       [firstMatch.teamA, {
         ...playerEdgeForRoster(
@@ -382,6 +396,22 @@ export function buildPregamePlayerRatingEdges(
     for (const match of series.games) {
       const teamAEdge = edgeByTeam.get(match.teamA)!
       const teamBEdge = edgeByTeam.get(match.teamB)!
+      const upgrade = (side: 'A' | 'B') => {
+        const team = side === 'A' ? match.teamA : match.teamB
+        const played = side === 'A' ? match.teamARoster : match.teamBRoster
+        const previous = lastPlayedRosterByTeam.get(team)
+        const fullEvidence = (lineup?: MatchRosterSnapshot) => lineup?.completeness === 'complete-five-role'
+          && lineup.players.length === 5 && new Set(lineup.players.map(({ role }) => role)).size === 5
+          && new Set(lineup.players.map(({ id }) => id)).size === 5
+          && lineup.players.every(({ id }) => Number.isFinite(state.ratings.get(id)) && (state.games.get(id) ?? 0) >= playerPregameMinGames)
+        if (!fullEvidence(previous) || !fullEvidence(played)) return undefined
+        const edge = (lineup: MatchRosterSnapshot | undefined) => playerEdgeForRoster(lineup, state.ratings, state.games,
+          leagueForSide(match, side, resolvedContext), leagueRatings, series.date).adjustment
+        return edge(played) > edge(previous)
+          ? { previous: rosterFingerprint(previous)!, played: rosterFingerprint(played)! } : undefined
+      }
+      const teamARosterUpgrade = upgrade('A')
+      const teamBRosterUpgrade = upgrade('B')
       edges.set(match.id, {
         teamAAdjustment: teamAEdge.adjustment,
         teamBAdjustment: teamBEdge.adjustment,
@@ -395,7 +425,14 @@ export function buildPregamePlayerRatingEdges(
         teamBLineupCompleteness: teamBEdge.roster?.completeness,
         teamAFreshnessWeight: teamAEdge.freshnessWeight,
         teamBFreshnessWeight: teamBEdge.freshnessWeight,
+        ...(teamARosterUpgrade ? { teamARosterUpgrade } : {}),
+        ...(teamBRosterUpgrade ? { teamBRosterUpgrade } : {}),
       })
+    }
+    for (const match of series.games) {
+      for (const { team, roster } of teamRosterEntries(match)) {
+        if (rosterFingerprint(roster) && roster) lastPlayedRosterByTeam.set(team, roster)
+      }
     }
   }
 
@@ -1098,7 +1135,7 @@ function noWinStatScoreFor(player: RosterPlayerAppearance) {
   const parts = [
     diagnosticScorePart(sourcedPerformanceWeights.damageShare, stats.damageShare, baseline.damageShare, 0.12),
     diagnosticScorePart(sourcedPerformanceWeights.earnedGoldShare, stats.earnedGoldShare, baseline.earnedGoldShare, 0.1),
-    { weight: sourcedPerformanceWeights.kda, score: statScore(kdaFor(stats), baseline.kda, 4) },
+    diagnosticScorePart(sourcedPerformanceWeights.kda, kdaFor(stats), baseline.kda, 4),
     diagnosticScorePart(sourcedPerformanceWeights.vision, stats.vspm, baseline.vspm, 1.8),
   ].filter((part): part is { weight: number; score: number } => Boolean(part))
   const totalWeight = parts.reduce((total, part) => total + part.weight, 0)
@@ -1207,6 +1244,7 @@ function rawPlayerPerformance(player: RosterPlayerAppearance) {
 }
 
 function kdaFor(stats: PlayerGameStats) {
+  if (stats.kills === undefined || stats.deaths === undefined || stats.assists === undefined) return undefined
   return (stats.kills + stats.assists) / Math.max(1, stats.deaths)
 }
 

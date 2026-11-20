@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Worlds postmortem concepts</title>
+    <style id="concept-style">
+      {{STYLE}}
+    </style>
+    <style>
+      :root {
+        --review-text: #202348;
+        --review-card: #f0f1fb;
+        --review-border: #a4abc5;
+        --review-primary: #5049af;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --review-text: #f4f4f6;
+          --review-card: #222430;
+          --review-border: #626575;
+          --review-primary: #809fff;
+        }
+      }
+      .review-shell {
+        max-width: var(--page-max, 60rem);
+        margin: 0 auto 24px;
+        color: var(--foreground, var(--review-text));
+        font: 14px/1.45 var(--font-sans, Arial, sans-serif);
+        container-type: inline-size;
+      }
+      .review-shell * {
+        box-sizing: border-box;
+      }
+      .review-controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .review-shell button {
+        appearance: none;
+        cursor: pointer;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        background: var(--card, var(--review-card));
+        border: 1px solid var(--border, var(--review-border));
+        border-radius: 10px;
+        padding: 11px 12px;
+        min-width: 0;
+      }
+      .review-shell button:hover {
+        border-color: var(--foreground, var(--review-text));
+      }
+      .review-shell button:focus-visible {
+        outline: 3px solid var(--ring, #879aff);
+        outline-offset: 3px;
+      }
+      .review-shell .review-choice {
+        flex: 1 1 150px;
+      }
+      .review-choice strong,
+      .review-choice span {
+        display: block;
+      }
+      .review-choice strong {
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .review-choice span {
+        font-size: 12px;
+        margin-top: 3px;
+        opacity: 0.8;
+      }
+      .review-shell .review-choice[aria-pressed="true"] {
+        border-color: var(--primary, var(--review-primary));
+        box-shadow: inset 0 0 0 1px var(--primary, var(--review-primary));
+      }
+      .review-meta {
+        display: flex;
+        gap: 14px;
+        align-items: baseline;
+        justify-content: space-between;
+      }
+      .review-meta p {
+        font-size: 12px;
+        margin: 0;
+        max-width: 55ch;
+      }
+      .review-shell details {
+        font-size: 12px;
+        flex-shrink: 0;
+      }
+      .review-shell summary {
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      .review-branches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 8px;
+      }
+      .review-branches button {
+        font-size: 12px;
+        padding: 7px;
+      }
+      .review-shell [data-review-status] {
+        display: block;
+        font-size: 12px;
+        opacity: 0.75;
+        margin-top: 5px;
+      }
+      @container (max-width:430px) {
+        .review-controls {
+          gap: 5px;
+        }
+        .review-shell .review-choice {
+          flex-basis: 100%;
+          padding: 8px 10px;
+        }
+        .review-choice strong,
+        .review-choice span {
+          display: inline;
+        }
+        .review-choice span {
+          float: right;
+        }
+        .review-meta {
+          display: block;
+        }
+        .review-meta details {
+          margin-top: 7px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section
+      class="review-shell"
+      aria-label="Compare design concepts"
+      data-exploration-id="worlds-postmortem-20261115"
+    >
+      <nav class="review-controls" aria-label="Design alternatives">
+        {{BUTTONS}}
+      </nav>
+      <div class="review-meta">
+        <p id="review-description">{{DESCRIPTION}}</p>
+        <details>
+          <summary>View branches</summary>
+          <div class="review-branches">{{BRANCHES}}</div>
+        </details>
+      </div>
+      <output data-review-status aria-live="polite"
+        >A is the selected baseline.</output
+      >
+    </section>
+    <div id="review-content">{{BODY}}</div>
+    <script type="application/json" id="review-data">
+      {{DATA}}
+    </script>
+    <script>
+      (() => {
+        const concepts = JSON.parse(
+          document.getElementById("review-data").textContent,
+        );
+        const content = document.getElementById("review-content");
+        const style = document.getElementById("concept-style");
+        let active;
+        function display(node) {
+          if (!concepts[node]) {
+            document.querySelector("[data-review-status]").textContent =
+              "Unknown concept. Choose one of the labelled designs.";
+            return;
+          }
+          if (active === node) return;
+          const concept = concepts[node];
+          style.textContent = concept.styles;
+          content.innerHTML = concept.body;
+          document.getElementById("review-description").textContent =
+            concept.description;
+          document
+            .querySelectorAll("[data-review-node]")
+            .forEach((button) =>
+              button.setAttribute(
+                "aria-pressed",
+                String(button.dataset.reviewNode === node),
+              ),
+            );
+          document.querySelector("[data-review-status]").textContent =
+            "Viewing " + node + ". A is the selected baseline.";
+          active = node;
+          const script = document.createElement("script");
+          script.textContent = concept.script;
+          content.append(script);
+        }
+        document.querySelectorAll("[data-review-node]").forEach((button) =>
+          button.addEventListener("click", () => {
+            location.hash = button.dataset.reviewNode;
+          }),
+        );
+        window.addEventListener("hashchange", () =>
+          display(location.hash.slice(1) || "{{FIRSTKEY}}"),
+        );
+        display(location.hash.slice(1) || "{{FIRSTKEY}}");
+      })();
+    </script>
+  </body>
+</html>

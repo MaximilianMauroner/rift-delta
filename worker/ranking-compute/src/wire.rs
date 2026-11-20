@@ -198,6 +198,8 @@ pub(crate) struct League {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct SeriesFrame {
     pub(crate) series_id: String,
+    #[serde(default)]
+    pub(crate) preserve_roster_strength: [bool; 2],
     pub(crate) teams: [usize; 2],
     pub(crate) leagues: [usize; 2],
     pub(crate) best_of: u8,

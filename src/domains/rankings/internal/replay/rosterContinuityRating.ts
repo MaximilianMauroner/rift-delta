@@ -7,37 +7,39 @@ import {
   rosterContinuityFloor,
 } from '../policy/modelConfig.ts'
 import { clamp } from './ratingCalculations.ts'
-import { rosterContinuity } from '../players/rosters.ts'
+import { rosterContinuity, rosterFingerprint } from '../players/rosters.ts'
+import type { PregamePlayerRatingEdge, RosterUpgradeProof } from '../players/playerModel.ts'
 
 export function applyRosterContinuityForSeries(
   match: MatchRecord,
-  ratings: Map<string, number>,
-  executionRatings: Map<string, number>,
+  ratingChannels: readonly Map<string, number>[],
   uncertainties: Map<string, number>,
   lastRosterByTeam: Map<string, MatchRosterSnapshot>,
   currentRosterContinuity: Map<string, number>,
+  playerEvidence?: PregamePlayerRatingEdge,
 ) {
   const processedTeams = new Set<string>()
-  applyRosterContinuityForTeam({
+  const preservedA = applyRosterContinuityForTeam({
     team: match.teamA,
     observedRoster: match.teamARoster,
     processedTeams,
-    ratings,
-    executionRatings,
+    ratingChannels,
     uncertainties,
     lastRosterByTeam,
     currentRosterContinuity,
+    upgrade: playerEvidence?.teamARosterUpgrade,
   })
-  applyRosterContinuityForTeam({
+  const preservedB = applyRosterContinuityForTeam({
     team: match.teamB,
     observedRoster: match.teamBRoster,
     processedTeams,
-    ratings,
-    executionRatings,
+    ratingChannels,
     uncertainties,
     lastRosterByTeam,
     currentRosterContinuity,
+    upgrade: playerEvidence?.teamBRosterUpgrade,
   })
+  return [preservedA, preservedB] as const
 }
 
 export function roundedContinuity(value?: number) {
@@ -48,36 +50,39 @@ function applyRosterContinuityForTeam({
   team,
   observedRoster,
   processedTeams,
-  ratings,
-  executionRatings,
+  ratingChannels,
   uncertainties,
   lastRosterByTeam,
   currentRosterContinuity,
+  upgrade,
 }: {
   team: string
   observedRoster?: MatchRosterSnapshot
   processedTeams: Set<string>
-  ratings: Map<string, number>
-  executionRatings: Map<string, number>
+  ratingChannels: readonly Map<string, number>[]
   uncertainties: Map<string, number>
   lastRosterByTeam: Map<string, MatchRosterSnapshot>
   currentRosterContinuity: Map<string, number>
+  upgrade?: RosterUpgradeProof
 }) {
-  if (processedTeams.has(team)) return
+  if (processedTeams.has(team)) return false
   processedTeams.add(team)
 
   const continuity = rosterContinuity(lastRosterByTeam.get(team), observedRoster)
-  if (continuity === undefined) return
+  if (continuity === undefined) return false
 
   currentRosterContinuity.set(team, continuity)
-  const retention = rosterContinuityFloor + (1 - rosterContinuityFloor) * continuity
-  const rating = ratings.get(team) ?? initialTeamRating
-  const executionRating = executionRatings.get(team) ?? initialTeamRating
-  ratings.set(team, initialTeamRating + retention * (rating - initialTeamRating))
-  executionRatings.set(team, initialTeamRating + retention * (executionRating - initialTeamRating))
+  const preserved = upgrade !== undefined && upgrade.previous === rosterFingerprint(lastRosterByTeam.get(team))
+    && upgrade.played === rosterFingerprint(observedRoster)
+  const retention = preserved ? 1 : rosterContinuityFloor + (1 - rosterContinuityFloor) * continuity
+  for (const ratings of ratingChannels) {
+    const rating = ratings.get(team) ?? initialTeamRating
+    ratings.set(team, initialTeamRating + retention * (rating - initialTeamRating))
+  }
 
   if (continuity < 1) {
     const uncertainty = uncertainties.get(team) ?? maximumUncertainty
     uncertainties.set(team, clamp(uncertainty + rosterChangeUncertaintyPenalty * (1 - continuity), minimumUncertainty, maximumUncertainty))
   }
+  return preserved
 }

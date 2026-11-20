@@ -32,13 +32,10 @@ const host = process.env.HOST ?? '0.0.0.0'
 const distDir = resolve(process.env.RAILWAY_DIST_DIR ?? 'dist')
 const publicDataDir = resolve(process.env.RANKING_PUBLIC_DATA_DIR ?? 'public/data')
 const tournamentDataDir = resolve(process.env.TOURNAMENT_PUBLIC_DATA_DIR ?? 'public/tournament-data')
-const refreshEnabled = process.env.RANKING_REFRESH_ENABLED === 'true'
 const refreshMode = process.env.RANKING_REFRESH_MODE === 'shadow' ? 'shadow' : 'gated'
 const dataCacheControl = process.env.RANKING_DATA_CACHE_CONTROL ?? 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800, stale-if-error=604800'
 const dataManifestCacheControl = process.env.RANKING_DATA_MANIFEST_CACHE_CONTROL ?? 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600, stale-if-error=86400'
 const htmlCacheControl = process.env.RANKING_HTML_CACHE_CONTROL ?? 'no-store'
-const gzipEnabled = process.env.RANKING_GZIP_ENABLED !== 'false'
-const presignedDeliveryEnabled = process.env.RANKING_PRESIGNED_DELIVERY_ENABLED === 'true'
 const presignedDeliveryThresholdBytes = positiveIntegerOrDefault(
   process.env.RANKING_PRESIGNED_DELIVERY_THRESHOLD_BYTES,
   65_536,
@@ -166,7 +163,6 @@ async function schedulerStatus() {
   const oldestPendingAt = pending.map((entry) => entry?.detectedAt).filter(Boolean).sort()[0] ?? null
   return {
     ok: Boolean(state),
-    enabled: refreshEnabled,
     mode: refreshMode,
     phase: state?.lastProbe?.status === 'error' ? 'degraded' : pending.length > 0 ? 'waiting-for-source' : 'waiting-for-game',
     checkedAt: state?.checkedAt ?? null,
@@ -393,7 +389,7 @@ async function serveDataFile(response, relativePath, options) {
 }
 
 async function tryRedirectToPresignedBucketObject(response, relativePath, options) {
-  if (!presignedDeliveryEnabled || options.forceProxy || !options.canonicalPresignedPath
+  if (options.forceProxy || !options.canonicalPresignedPath
     || !isContentAddressedObjectPath(relativePath)) return { redirected: false }
 
   const delivery = await preparePresignedBucketDelivery(relativePath, {
@@ -453,7 +449,7 @@ async function tryServeBucketFile(response, relativePath, {
   }
 
   const gzip = storedGzip
-    ? gzipEnabled && acceptsGzip(requestHeaders?.['accept-encoding'])
+    ? acceptsGzip(requestHeaders?.['accept-encoding'])
     : shouldGzip(requestHeaders, contentType, object.contentLength, headOnly)
   response.statusCode = 200
   response.setHeader('Content-Type', contentType)
@@ -492,7 +488,7 @@ function sendBucketHead(response, relativePath, object, { cacheControl, requestH
   }
 
   const storedGzip = object.contentEncoding === 'gzip'
-  const gzip = storedGzip && gzipEnabled && acceptsGzip(requestHeaders?.['accept-encoding'])
+  const gzip = storedGzip && acceptsGzip(requestHeaders?.['accept-encoding'])
   response.statusCode = 200
   response.setHeader('Content-Type', contentType)
   response.setHeader('Cache-Control', cacheControl)
@@ -702,7 +698,7 @@ function cacheControlForDataPath(path) {
 }
 
 function shouldGzip(requestHeaders, contentType, contentLength, headOnly) {
-  if (!gzipEnabled || headOnly || !isCompressibleContentType(contentType)) return false
+  if (headOnly || !isCompressibleContentType(contentType)) return false
   if (contentLength !== undefined && contentLength < 1024) return false
   return acceptsGzip(requestHeaders?.['accept-encoding'])
 }

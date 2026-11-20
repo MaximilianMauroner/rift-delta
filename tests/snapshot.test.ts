@@ -200,16 +200,7 @@ test('createPlayerDirectory flattens sourced players and joins region/league fro
   }])
   assert.equal(chovy.appearance?.latestTeamGames, 100)
   assert.equal(chovy.appearance?.roleGames, 100)
-  const lineup = directory.currentLineups[chovy.teamId!]
-  assert.equal(lineup.completeness, 'partial')
-  assert.equal(lineup.claim, 'last-observed')
-  assert.equal(lineup.evidenceBasis, 'scored-series')
-  assert.equal(lineup.observedEvent, 'LCK 2026 Rounds 1-2')
-  assert.equal(lineup.freshnessDays, 0)
-  assert.deepEqual(lineup.coveredRoles, ['Mid'])
-  assert.deepEqual(lineup.missingRoles, ['Top', 'Jungle', 'Bot', 'Support'])
-  assert.deepEqual(lineup.starters.map((player) => player.name), ['Chovy'])
-  assert.deepEqual(lineup.substitutes, [])
+  assert.deepEqual(directory.currentLineups, {})
   assert.deepEqual(chovy.appearance?.teamHistory, [{
     team: 'Gen.G',
     games: 100,
@@ -1387,7 +1378,7 @@ test('createTeamHistory preserves the final atomic delta for model-correct serie
   assert.equal(seriesPoint[3]?.bestOf, 5)
   assert.equal(seriesPoint[3]?.delta, -29)
   assert.deepEqual(seriesPoint[3]?.model, {
-    e: 0.43,
+    r: -0.43,
     w: 0.35,
   })
   assert.deepEqual(seriesPoint[3]?.sourceGameIds, [

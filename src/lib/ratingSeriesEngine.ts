@@ -83,7 +83,6 @@ export function emitPregamePredictionsForDate({
   teams,
   state,
   pregamePlayerRatingEdges,
-  sideAdjustments,
   onExactState,
 }: {
   matches: MatchRecord[]
@@ -103,7 +102,6 @@ export function emitPregamePredictionsForDate({
         state,
         batch,
         pregamePlayerRatingEdges,
-        sideAdjustments,
         onExactState,
       }))
     }
@@ -128,20 +126,22 @@ export function processRatingSeriesForDate({
   capture?: boolean
 }) {
   const batch = ratingBatchSnapshot(state)
-  const groups = ratingSeriesGroupsForDate(matches)
+  const groups = ratingSeriesGroupsForDate(matches, state.predictions)
+  const resultRatings = new Map(batch.ratings)
   const recorder = capture ? new SeriesPassRecorder({
     groups, matches, profiles: teams, state, lastDate, sideAdjustments, playerEdges: pregamePlayerRatingEdges,
   }) : undefined
   for (const [seriesIndex, series] of groups.entries()) {
-    applyRosterContinuityForSeries(
+    const preserved = applyRosterContinuityForSeries(
       series.finalMatch,
-      state.ratings,
-      state.executionRatings,
+      [state.ratings, state.executionRatings, resultRatings],
       state.uncertainties,
       state.lastRosterByTeam,
       state.currentRosterContinuity,
+      pregamePlayerRatingEdges.get(series.finalMatch.id),
     )
-    processRatingSeries({ series, teams, state, batch, sideAdjustments, lastDate, pregamePlayerRatingEdges, recorder, seriesIndex })
+    recorder?.recordRosterRetention(seriesIndex, preserved)
+    processRatingSeries({ series, teams, state, batch, resultRatings, sideAdjustments, lastDate, pregamePlayerRatingEdges, recorder, seriesIndex })
   }
   return recorder?.finish()
 }
@@ -153,7 +153,6 @@ function pregamePredictionForMatch({
   state,
   batch,
   pregamePlayerRatingEdges,
-  sideAdjustments,
   onExactState,
 }: {
   match: MatchRecord
@@ -162,7 +161,6 @@ function pregamePredictionForMatch({
   state: RatingRunState
   batch: RatingBatchSnapshot
   pregamePlayerRatingEdges: PregamePlayerRatingEdges
-  sideAdjustments: Map<string, number>
   onExactState?: (state: ExactPregameProbabilityState) => void
 }): PregamePrediction {
   const leagueA = homeLeagueForMatch(match, 'A', teams)
@@ -182,17 +180,18 @@ function pregamePredictionForMatch({
   const playerRatingEdge = pregamePlayerRatingEdges.get(match.id)
   const playerRatingAdjustmentA = playerRatingEdge?.teamAAdjustment ?? 0
   const playerRatingAdjustmentB = playerRatingEdge?.teamBAdjustment ?? 0
-  const { teamA: rosterPriorOffsetA, teamB: rosterPriorOffsetB } = rosterPriorOffsetsForMatch(match, pregamePlayerRatingEdges, batch.rosterPriorOffsets)
+  const rosterPriorOffsetA = playerRatingEdge?.teamAEvidenceBasis === 'prior-observed'
+    ? playerRatingAdjustmentA * playerRatingPredictionWeight
+    : batch.rosterPriorOffsets.get(match.teamA) ?? 0
+  const rosterPriorOffsetB = playerRatingEdge?.teamBEvidenceBasis === 'prior-observed'
+    ? playerRatingAdjustmentB * playerRatingPredictionWeight
+    : batch.rosterPriorOffsets.get(match.teamB) ?? 0
   const momentumA = batch.momentums.get(match.teamA) ?? 0
   const momentumB = batch.momentums.get(match.teamB) ?? 0
   const noExecutionRatingA = powerRatingA + rosterPriorOffsetA + momentumA
   const noExecutionRatingB = powerRatingB + rosterPriorOffsetB + momentumB
   const predictionRatingA = noExecutionRatingA + executionResidualAdjustmentA * executionResidualPredictionWeight
   const predictionRatingB = noExecutionRatingB + executionResidualAdjustmentB * executionResidualPredictionWeight
-  const sideAdjustmentA = sideAdjustmentFor(match, 'A', sideAdjustments)
-  const sideAdjustmentB = sideAdjustmentFor(match, 'B', sideAdjustments)
-  const publishedRatingA = predictionRatingA + sideAdjustmentA
-  const publishedRatingB = predictionRatingB + sideAdjustmentB
   const playerAdjustedRatingA = powerRatingA + playerRatingAdjustmentA * playerRatingShadowWeight + momentumA
   const playerAdjustedRatingB = powerRatingB + playerRatingAdjustmentB * playerRatingShadowWeight + momentumB
   const executionAdjustedRatingA = noExecutionRatingA + executionResidualAdjustmentA * executionResidualShadowWeight
@@ -208,8 +207,8 @@ function pregamePredictionForMatch({
     series.format,
   )
   const publishedPrediction = neutralWinProbability(
-    { team: match.teamA, rating: publishedRatingA, uncertainty: batch.uncertainties.get(match.teamA) ?? maximumUncertainty },
-    { team: match.teamB, rating: publishedRatingB, uncertainty: batch.uncertainties.get(match.teamB) ?? maximumUncertainty },
+    { team: match.teamA, rating: predictionRatingA, uncertainty: batch.uncertainties.get(match.teamA) ?? maximumUncertainty },
+    { team: match.teamB, rating: predictionRatingB, uncertainty: batch.uncertainties.get(match.teamB) ?? maximumUncertainty },
     series.format,
   )
   const playerAdjustedPrediction = neutralWinProbability(
@@ -223,7 +222,7 @@ function pregamePredictionForMatch({
     series.format,
   )
   const variants = {
-    published: predictionVariantFromWinProbability(publishedPrediction, publishedRatingA, publishedRatingB),
+    published: predictionVariantFromWinProbability(publishedPrediction, predictionRatingA, predictionRatingB),
     'team-only': predictionVariantFromWinProbability(teamOnlyPrediction, powerRatingA, powerRatingB),
     'player-adjusted': predictionVariantFromWinProbability(playerAdjustedPrediction, playerAdjustedRatingA, playerAdjustedRatingB),
     'execution-baseline': predictionVariantFromWinProbability(executionBaselinePrediction, noExecutionRatingA, noExecutionRatingB),
@@ -232,9 +231,9 @@ function pregamePredictionForMatch({
 
   onExactState?.({
     precision: 'full', policy: 'prior-date', throughDate: state.processedThroughUtcDate ?? '',
-    home: { team: match.teamA, rating: publishedRatingA, uncertainty: batch.uncertainties.get(match.teamA)!,
+    home: { team: match.teamA, rating: predictionRatingA, uncertainty: batch.uncertainties.get(match.teamA)!,
       games: (state.wins.get(match.teamA) ?? 0) + (state.losses.get(match.teamA) ?? 0) },
-    away: { team: match.teamB, rating: publishedRatingB, uncertainty: batch.uncertainties.get(match.teamB)!,
+    away: { team: match.teamB, rating: predictionRatingB, uncertainty: batch.uncertainties.get(match.teamB)!,
       games: (state.wins.get(match.teamB) ?? 0) + (state.losses.get(match.teamB) ?? 0) },
   })
 
@@ -280,8 +279,8 @@ function pregamePredictionForMatch({
     teamBRosterContinuity: roundedContinuity(state.currentRosterContinuity.get(match.teamB)),
     teamAPlayerRatingAdjustment: playerRatingAdjustmentA,
     teamBPlayerRatingAdjustment: playerRatingAdjustmentB,
-    teamASideAdjustment: Number(sideAdjustmentA.toFixed(1)),
-    teamBSideAdjustment: Number(sideAdjustmentB.toFixed(1)),
+    teamASideAdjustment: 0,
+    teamBSideAdjustment: 0,
     teamAPlayerRatingCoverage: playerRatingEdge?.teamACoverage ?? 0,
     teamBPlayerRatingCoverage: playerRatingEdge?.teamBCoverage ?? 0,
     teamALineupEvidenceBasis: playerRatingEdge?.teamAEvidenceBasis ?? 'unavailable',
@@ -347,6 +346,7 @@ function processRatingSeries({
   teams,
   state,
   batch,
+  resultRatings,
   sideAdjustments,
   lastDate,
   pregamePlayerRatingEdges,
@@ -357,6 +357,7 @@ function processRatingSeries({
   teams: Record<string, TeamProfile>
   state: RatingRunState
   batch: RatingBatchSnapshot
+  resultRatings: ReadonlyMap<string, number>
   sideAdjustments: Map<string, number>
   lastDate: string
   pregamePlayerRatingEdges: PregamePlayerRatingEdges
@@ -366,8 +367,8 @@ function processRatingSeries({
   const finalMatch = series.finalMatch
   const seriesLeagueA = homeLeagueForTeam(finalMatch, series.teamA, teams)
   const seriesLeagueB = homeLeagueForTeam(finalMatch, series.teamB, teams)
-  const seriesRatingA = batch.ratings.get(series.teamA) ?? initialTeamRating
-  const seriesRatingB = batch.ratings.get(series.teamB) ?? initialTeamRating
+  const seriesRatingA = resultRatings.get(series.teamA) ?? initialTeamRating
+  const seriesRatingB = resultRatings.get(series.teamB) ?? initialTeamRating
   const seriesRawLeagueScoreA = batch.leagueScores.get(seriesLeagueA) ?? leaguePriorFor(seriesLeagueA)
   const seriesRawLeagueScoreB = batch.leagueScores.get(seriesLeagueB) ?? leaguePriorFor(seriesLeagueB)
   const seriesLeagueScoreA = effectiveLeagueRating(seriesLeagueA, seriesRawLeagueScoreA, batch.leagueMatchCounts.get(seriesLeagueA) ?? 0)
@@ -997,6 +998,7 @@ function homeLeagueForTeam(match: MatchRecord, team: string, teams: Record<strin
 }
 
 type RatingSeriesGroup = {
+  recordedPrediction?: PregamePrediction
   key: string
   matches: MatchRecord[]
   finalMatch: MatchRecord
@@ -1014,9 +1016,10 @@ type RatingSeriesGroup = {
   state: CanonicalSeries['state']
 }
 
-function ratingSeriesGroupsForDate(matches: MatchRecord[]): RatingSeriesGroup[] {
+function ratingSeriesGroupsForDate(matches: MatchRecord[], predictions: PregamePrediction[]): RatingSeriesGroup[] {
   return resolveCanonicalSeries(matches).map((series) => ({
     key: series.id,
+    recordedPrediction: predictions.findLast((prediction) => prediction.id === series.games[0].id),
     matches: series.games,
     finalMatch: series.finalMatch,
     teamA: series.teamA,
@@ -1068,6 +1071,7 @@ function appendHistory(
   histories: Map<string, TeamHistoryPoint[]>,
   series: RatingSeriesGroup,
 ) {
+  const prediction = series.recordedPrediction
   histories.set(team, [
     ...(histories.get(team) ?? []),
     {
@@ -1080,6 +1084,11 @@ function appendHistory(
       sideAdjustment,
       ratingComponents: components,
       ratingUpdate: update,
+      ...(prediction ? {
+        recordedSeriesWinProbability: team === prediction.teamA
+          ? prediction.teamASeriesWinProbability
+          : prediction.teamBSeriesWinProbability,
+      } : {}),
       rank,
       delta: Math.round(delta),
       tier: match.tier,

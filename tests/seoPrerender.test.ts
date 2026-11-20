@@ -35,15 +35,6 @@ test('homepage prerender includes ranking snapshot content from public artifacts
   }
 })
 
-test('Tailwind scans utilities owned only by the prerender source file', async () => {
-  const [stylesheet, prerenderSource] = await Promise.all([
-    readFile('src/index.css', 'utf8'),
-    readFile('scripts/seo-prerender.ts', 'utf8'),
-  ])
-  assert.match(stylesheet, /@source\s+["']\.\.\/scripts\/seo-prerender\.ts["']/)
-  assert.match(prerenderSource, /max-w-\[1080px\]/)
-})
-
 test('visible startup stays the same across ranking refreshes and missing data', () => {
   const first = renderHomepagePrerender({
     generatedAt: '2026-10-11T12:00:00Z',

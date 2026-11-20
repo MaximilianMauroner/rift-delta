@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import type {
   TeamHistoryArtifactState
 } from '../../browser/rankings/usePublicArtifacts'
-import { RegionBadge } from '../../components/ui'
 import { LoadingState } from '../../components/ui/loading'
 import { Pager } from '../../components/ui/pager'
 import { eventTierConfig } from '../../domains/rankings/policy'
@@ -78,8 +77,8 @@ export function RecentMatches({
   }
 
   return (
-    <section className="mt-3.5 overflow-hidden rounded-sm border border-[var(--line-strong)] bg-[var(--detail-surface,var(--surface))]" aria-label="Recent form matches">
-      <div className="grid grid-cols-[64px_minmax(0,1fr)_minmax(92px,auto)] items-center gap-2.5 border-b border-border px-3.5 py-2 text-xs font-medium text-muted-foreground [&>span:last-child]:text-right max-sm:hidden" aria-hidden="true">
+    <section className="mt-3.5 overflow-hidden rounded-md border border-line bg-[var(--detail-surface,var(--surface))]" aria-label="Recent form matches">
+      <div className="grid grid-cols-[64px_minmax(0,1fr)_minmax(92px,auto)] items-center gap-2.5 border-b border-line px-3.5 py-2 text-xs font-semibold text-muted [&>span:last-child]:text-right max-sm:hidden" aria-hidden="true">
         <span>Result</span>
         <span>Opponent</span>
         <span>Rating after / match impact</span>
@@ -92,17 +91,17 @@ export function RecentMatches({
             const tierChip = matchTierChip(match)
             return (
               <div
-                className={cn('grid min-h-16 grid-cols-[64px_minmax(0,1fr)_minmax(92px,auto)] items-start gap-2.5 border-t border-dotted border-border px-3.5 py-3 first:border-t-0 max-sm:grid-cols-[26px_minmax(0,1fr)]', outcomeSignal?.tone === 'upset' && 'shadow-[inset_3px_0_0_color-mix(in_oklch,var(--warn)_72%,transparent)]', outcomeSignal?.tone === 'miss' && 'shadow-[inset_3px_0_0_color-mix(in_oklch,var(--down)_72%,transparent)]')}
+                className={cn('grid min-h-16 grid-cols-[64px_minmax(0,1fr)_minmax(92px,auto)] items-start gap-2.5 border-t border-dotted border-line px-3.5 py-3 first:border-t-0 max-sm:grid-cols-[26px_minmax(0,1fr)]', outcomeSignal?.tone === 'upset' && 'shadow-[inset_3px_0_0_color-mix(in_srgb,var(--text)_72%,transparent)]', outcomeSignal?.tone === 'miss' && 'shadow-[inset_3px_0_0_color-mix(in_srgb,var(--down)_72%,transparent)]')}
                 key={`${match.date}-${match.event}-${match.opponent}-${index}`}
               >
-                <span className={cn('grid size-[22px] place-items-center rounded-full text-2xs font-extrabold', match.result === 'W' ? 'bg-[var(--win-soft)] text-[var(--win)]' : match.result === 'L' ? 'bg-[var(--loss-soft)] text-[var(--loss)]' : 'bg-[var(--surface-3)] text-muted-foreground')}>{match.result}</span>
+                <span className={cn('grid size-[22px] place-items-center rounded-full text-xs font-bold', match.result === 'W' ? 'bg-[var(--up-wash)] text-up' : match.result === 'L' ? 'bg-[var(--down-wash)] text-down' : 'bg-line text-muted')}>{match.result}</span>
                 <div className="min-w-0">
                   <span className="flex min-w-0 items-baseline gap-2 max-sm:flex-col max-sm:items-start max-sm:gap-0.5">
-                    <b className="inline-block min-w-0 whitespace-normal [overflow-wrap:anywhere] text-sm font-bold text-[var(--text-strong)]">vs {match.opponent}</b>
-                    {opponent ? <span className="shrink-0 whitespace-nowrap text-2xs font-semibold text-muted-foreground tabular-nums" title="Current opponent rank and power score in this scope">{formatOpponentContext(opponent)}</span> : null}
+                    <b className="inline-block min-w-0 whitespace-normal [overflow-wrap:anywhere] text-sm font-bold text-text">vs {match.opponent}</b>
+                    {opponent ? <span className="shrink-0 whitespace-nowrap text-xs font-semibold text-muted tabular-nums" title="Current opponent rank and power score in this scope">{formatOpponentContext(opponent)}</span> : null}
                   </span>
-                  <small className="mt-0.5 block whitespace-normal [overflow-wrap:anywhere] text-xs text-[var(--faint)]" title={formatTeamMatchDetail(match)}>{formatTeamMatchMeta(match)}</small>
-                  <span className="mt-1.5 flex flex-wrap items-center gap-1 [&>span]:inline-flex [&>span]:min-h-[18px] [&>span]:max-w-full [&>span]:items-center [&>span]:whitespace-nowrap [&>span]:rounded-full [&>span]:border [&>span]:border-border [&>span]:bg-[color-mix(in_oklch,var(--detail-surface-2,var(--surface-2))_72%,transparent)] [&>span]:px-1.5 [&>span]:py-0.5 [&>span]:text-2xs [&>span]:font-bold [&>span]:leading-none [&>span]:text-muted-foreground [&>span.miss]:border-[color-mix(in_oklch,var(--down)_44%,var(--line))] [&>span.miss]:text-[var(--down)] [&>span.upset]:border-transparent [&>span.upset]:bg-[var(--warn-soft)] [&>span.upset]:text-[var(--warn)]" aria-label="Match context">
+                  <small className="mt-0.5 block whitespace-normal [overflow-wrap:anywhere] text-xs text-muted" title={formatTeamMatchDetail(match)}>{formatTeamMatchMeta(match)}</small>
+                  <span className="mt-1.5 flex flex-wrap items-center gap-1 [&>span]:inline-flex [&>span]:min-h-[18px] [&>span]:max-w-full [&>span]:items-center [&>span]:whitespace-nowrap [&>span]:rounded-full [&>span]:border [&>span]:border-line [&>span]:bg-[color-mix(in_srgb,var(--detail-surface-2,var(--raised))_72%,transparent)] [&>span]:px-1.5 [&>span]:py-0.5 [&>span]:text-xs [&>span]:font-bold [&>span]:leading-none [&>span]:text-muted [&>span.miss]:border-[color-mix(in_srgb,var(--down)_44%,var(--line))] [&>span.miss]:text-down [&>span.upset]:border-transparent [&>span.upset]:bg-raised [&>span.upset]:text-text" aria-label="Match context">
                     {tierChip ? <span title={tierChip.title}>{tierChip.label}</span> : null}
                     {typeof match.expectedWinProbability === 'number' ? (
                       <span title="Pregame expected series win probability for this team">
@@ -115,8 +114,8 @@ export function RecentMatches({
                     ) : null}
                   </span>
                 </div>
-                <div className="pt-px text-right tabular-nums [&_small]:mt-0.5 [&_small]:block [&_small]:text-xs [&_small]:font-bold [&_small]:text-muted-foreground [&_small.down]:text-[var(--down)] [&_small.flat]:text-[var(--faint)] [&_small.up]:text-[var(--up)] [&_strong]:block [&_strong]:text-md [&_strong]:font-bold [&_strong]:text-[var(--text-strong)] max-sm:col-start-2 max-sm:flex max-sm:flex-wrap max-sm:items-baseline max-sm:justify-self-start max-sm:gap-2 max-sm:text-left">
-                  <span className="hidden text-xs text-muted-foreground max-sm:block">Post-match Power</span>
+                <div className="pt-px text-right tabular-nums [&_small]:mt-0.5 [&_small]:block [&_small]:text-xs [&_small]:font-bold [&_small]:text-muted [&_small.down]:text-down [&_small.flat]:text-muted [&_small.up]:text-up [&_strong]:block [&_strong]:text-sm [&_strong]:font-bold [&_strong]:text-text max-sm:col-start-2 max-sm:flex max-sm:flex-wrap max-sm:items-baseline max-sm:justify-self-start max-sm:gap-2 max-sm:text-left">
+                  <span className="hidden text-xs text-muted max-sm:block">Post-match Power</span>
                   <strong>{formatRating(match.rating)}</strong>
                   {typeof match.matchImpact === 'number' ? (
                     <small className={movementTone(match.matchImpact)} title={`Recorded match impact ${formatRatingMovement(match.matchImpact)}`}>
@@ -137,14 +136,14 @@ export function RecentMatches({
       {historyPending ? (
         <MatchHistorySkeleton rowCount={Math.max(0, RECENT_MATCH_PAGE_SIZE - recentMatches.length)} compact={recentMatches.length > 0} />
       ) : recentMatches.length === 0 ? (
-        <p className="px-3.5 py-4 text-xs text-muted-foreground">
+        <p className="px-3.5 py-4 text-xs text-muted">
           {historyState.status === 'missing' || historyState.status === 'error'
             ? historyState.message
             : 'No matches in this scope.'}
         </p>
       ) : null}
       {(historyState.status === 'missing' || historyState.status === 'error') && recentMatches.length > 0 ? (
-        <p className="border-t border-border px-3.5 py-2.5 text-xs leading-[1.4] text-[var(--faint)]">{historyState.message}</p>
+        <p className="border-t border-line px-3.5 py-2.5 text-xs leading-[1.4] text-muted">{historyState.message}</p>
       ) : null}
       {totalMatches > RECENT_MATCH_PAGE_SIZE ? (
         <Pager
@@ -154,7 +153,7 @@ export function RecentMatches({
           pageCount={totalPages}
           onPage={updatePage}
           rangeLabel={resultSummary}
-          className="border-t border-border bg-[color-mix(in_oklch,var(--detail-surface-2,var(--surface-2))_64%,transparent)] px-3.5 py-2.5"
+          className="border-t border-line bg-[color-mix(in_srgb,var(--detail-surface-2,var(--raised))_64%,transparent)] px-3.5 py-2.5"
         />
       ) : null}
     </section>
@@ -297,22 +296,4 @@ function matchOutcomeSignal(match: RecentMatchSource) {
     }
   }
   return null
-}
-
-export function LeagueSigil({
-  league,
-  fallbackLabel,
-  small = false,
-}: {
-  league: string
-  fallbackLabel?: string
-  small?: boolean
-}) {
-  const code = league.trim().toUpperCase()
-  const badgeRegion = code || (fallbackLabel ?? league)
-  return (
-    <span className={cn('inline-grid h-6 shrink-0 place-items-center [&_.region-badge]:size-full', small ? 'w-7' : 'w-[30px]')} aria-hidden="true">
-      <RegionBadge region={badgeRegion} size="sm" />
-    </span>
-  )
 }

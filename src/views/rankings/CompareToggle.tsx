@@ -21,16 +21,16 @@ export function CompareToggle({
   return (
     <label
       className={cn(
-        'inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-semibold whitespace-nowrap select-none max-sm:h-auto max-sm:flex-col max-sm:gap-0.5 max-sm:px-1 max-sm:py-1 max-sm:text-2xs',
+        'inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-semibold whitespace-nowrap select-none max-sm:h-auto max-sm:flex-col max-sm:gap-0.5 max-sm:px-1 max-sm:py-1 max-sm:text-xs',
         picked
-          ? 'border-[var(--selected-line)] bg-[var(--selected-bg)] text-[var(--text-strong)]'
-          : 'border-[var(--line-strong)] text-muted-foreground hover:text-foreground',
+          ? 'border-focus bg-[var(--focus-wash)] text-text'
+          : 'border-line text-muted hover:text-text',
         className,
       )}
       data-slot="compare-toggle"
       data-row-click-exclude
     >
-      <input type="checkbox" className="size-3.5 accent-[var(--accent)]" checked={picked} onChange={onToggle} aria-label={`Compare ${label}`} />
+      <input type="checkbox" className="size-3.5 accent-[var(--focus)]" checked={picked} onChange={onToggle} aria-label={`Compare ${label}`} />
       <span>Compare</span>
     </label>
   )

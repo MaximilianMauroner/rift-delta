@@ -582,21 +582,22 @@ test('Railway server and production reader support identity and gzip delivery of
   await new Promise<void>((resolve) => bucket.listen(0, '127.0.0.1', resolve))
   const bucketPort = (bucket.address() as AddressInfo).port
   try {
-    for (const gzipEnabled of [false, true]) {
-      await t.test(gzipEnabled ? 'passes stored gzip through' : 'delivers decoded identity', async () => {
+    for (const acceptGzip of [false, true]) {
+      await t.test(acceptGzip ? 'passes stored gzip through' : 'delivers decoded identity', async () => {
         const server = await startRailwayServer(distDir, dataDir, {
           RANKING_BUCKET_NAME: 'test-bucket',
           RANKING_BUCKET_ENDPOINT: `http://127.0.0.1:${bucketPort}`,
           RANKING_BUCKET_ACCESS_KEY_ID: 'test',
           RANKING_BUCKET_SECRET_ACCESS_KEY: 'test',
           RANKING_BUCKET_FORCE_PATH_STYLE: 'true',
-          RANKING_GZIP_ENABLED: String(gzipEnabled),
         })
         try {
           const objectResponseEncodings: Array<string | null> = []
           const baseUrl = `http://127.0.0.1:${server.port}`
           const fetcher: typeof fetch = async (input, init) => {
-            const response = await fetch(new URL(String(input), baseUrl), init)
+            const headers = new Headers(init?.headers)
+            headers.set('accept-encoding', acceptGzip ? 'gzip' : 'identity')
+            const response = await fetch(new URL(String(input), baseUrl), { ...init, headers })
             if (new URL(response.url).pathname.startsWith('/data/objects/sha256/')) {
               objectResponseEncodings.push(response.headers.get('content-encoding'))
               assert.equal(response.headers.get('cache-control'), 'public, max-age=31536000, immutable')
@@ -609,7 +610,7 @@ test('Railway server and production reader support identity and gzip delivery of
 
           assert.equal(shard.matchCount, fixture.expectedMatchCount)
           const identityEncoding = process.env.RANKING_NATIVE_SERVER_TESTS === 'true' ? 'identity' : null
-          assert.deepEqual(objectResponseEncodings, gzipEnabled ? ['gzip', 'gzip'] : [identityEncoding, identityEncoding])
+          assert.deepEqual(objectResponseEncodings, acceptGzip ? ['gzip', 'gzip'] : [identityEncoding, identityEncoding])
 
           const invalidObject = await httpRequest(server.port, '/data/objects/sha256/not-a-digest')
           assert.equal(invalidObject.statusCode, 404)
@@ -691,7 +692,6 @@ test('Railway server hybrid delivery redirects only eligible immutable objects a
     RANKING_BUCKET_ACCESS_KEY_ID: 'test',
     RANKING_BUCKET_SECRET_ACCESS_KEY: 'test',
     RANKING_BUCKET_FORCE_PATH_STYLE: 'true',
-    RANKING_PRESIGNED_DELIVERY_ENABLED: 'true',
     RANKING_PRESIGNED_DELIVERY_THRESHOLD_BYTES: '65536',
   })
 
@@ -803,36 +803,6 @@ test('Railway server hybrid delivery redirects only eligible immutable objects a
     assert.deepEqual(JSON.parse(summary.body), { source: 'bundled' })
     assert.equal(bucketCalls.at(-1)?.method, 'GET')
 
-    const proxyServer = await startRailwayServer(distDir, dataDir, {
-      RANKING_BUCKET_NAME: 'test-bucket',
-      RANKING_BUCKET_ENDPOINT: `http://127.0.0.1:${bucketPort}`,
-      RANKING_BUCKET_ACCESS_KEY_ID: 'test',
-      RANKING_BUCKET_SECRET_ACCESS_KEY: 'test',
-      RANKING_BUCKET_FORCE_PATH_STYLE: 'true',
-      RANKING_PRESIGNED_DELIVERY_ENABLED: 'false',
-    })
-    try {
-      const callsBeforeDefaultHead = bucketCalls.length
-      const defaultHead = await httpRequest(proxyServer.port, largePath, {
-        method: 'HEAD',
-        headers: { 'accept-encoding': 'gzip' },
-      })
-      assert.equal(defaultHead.statusCode, 200)
-      assert.equal(defaultHead.body, '')
-      assert.equal(defaultHead.headers['content-length'], '70000')
-      assert.deepEqual(bucketCalls.slice(callsBeforeDefaultHead).map((call) => call.method), ['HEAD'])
-
-      const [defaultLarge, defaultSmall, defaultManifest] = await Promise.all([
-        httpRequest(proxyServer.port, largePath),
-        httpRequest(proxyServer.port, `/data/objects/sha256/${smallDigest}`),
-        httpRequest(proxyServer.port, '/data/ranking-summary.json'),
-      ])
-      assertHttpRepresentationEqual(defaultLarge, proxy)
-      assertHttpRepresentationEqual(defaultSmall, small)
-      assertHttpRepresentationEqual(defaultManifest, summary)
-    } finally {
-      await proxyServer.close()
-    }
   } finally {
     await server.close()
     await new Promise<void>((resolve, reject) => bucket.close((error) => error ? reject(error) : resolve()))
@@ -1229,7 +1199,6 @@ async function startRailwayServer(
       RAILWAY_DIST_DIR: distDir,
       RANKING_PUBLIC_DATA_DIR: dataDir,
       RANKING_TRIGGER_STATE: join(dataDir, 'refresh-trigger-state.json'),
-      RANKING_REFRESH_ENABLED: 'false',
       RANKING_BUCKET_NAME: '',
       RANKING_BUCKET_ENDPOINT: '',
       RANKING_BUCKET_ACCESS_KEY_ID: '',
@@ -1326,14 +1295,6 @@ function httpRequest(
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function assertHttpRepresentationEqual(actual: HttpResponse, expected: HttpResponse) {
-  assert.equal(actual.statusCode, expected.statusCode)
-  assert.equal(actual.body, expected.body)
-  for (const name of ['content-type', 'content-encoding', 'content-length', 'cache-control', 'etag', 'last-modified', 'vary']) {
-    assert.equal(actual.headers[name], expected.headers[name], `${name} must remain byte/header compatible`)
-  }
 }
 
 async function writeCrawlerShard(path: string, team: string) {

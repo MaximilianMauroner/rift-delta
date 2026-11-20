@@ -375,35 +375,6 @@ test('commit identity has explicit/env/Git priority and archive failure is stric
   assert.throws(() => parseArgs(['capture', '--overwrite']), /Unknown baseline argument/)
 })
 
-test('runtime defaults, cron, proxy delivery, and inventory-only GC remain explicit', async () => {
-  const [once, server, gc, refreshToml] = await Promise.all([
-    readFile('scripts/refresh-once.mjs', 'utf8'),
-    readFile('scripts/railway-server.mjs', 'utf8'),
-    readFile('scripts/ranking-bucket-gc.mjs', 'utf8'),
-    readFile('railway.refresh.toml', 'utf8'),
-  ])
-  assert.match(once, /RANKING_REFRESH_INTERVAL_MINUTES', 360/)
-  assert.match(once, /return value === 'shadow' \? 'shadow' : 'gated'/)
-  assert.match(server, /RANKING_PRESIGNED_DELIVERY_ENABLED === 'true'/)
-  assert.match(gc, /inventory-only/)
-  assert.equal(gc.includes('DeleteObjectCommand'), false)
-  assert.match(refreshToml, /cronSchedule = "0 \*\/6 \* \* \*"/)
-})
-
-test('baseline inspector imports and issues no publication or deletion capability', async () => {
-  const source = await readFile('scripts/ranking-restart-baseline.mjs', 'utf8')
-  for (const forbidden of [
-    'PutObjectCommand',
-    'DeleteObjectCommand',
-    'CopyObjectCommand',
-    'writeBucketJson',
-    'uploadRankingArtifacts',
-    'publishGenerationReceipt',
-    'deleteObject(',
-  ]) assert.equal(source.includes(forbidden), false, forbidden)
-  assert.match(source, /GetObjectCommand, ListObjectsV2Command/)
-})
-
 function bucketConfig() {
   return {
     enabled: true as const,

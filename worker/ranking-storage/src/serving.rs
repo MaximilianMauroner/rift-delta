@@ -243,14 +243,11 @@ impl PublishedOrigin {
         allow_redirect: bool,
     ) -> Result<Option<ServedObject>> {
         let mut metadata = None;
-        if head || (allow_redirect && self.transport.redirect_threshold.is_some()) {
+        if head || allow_redirect {
             match self.transport.read(path, ReadMethod::Head, 0).await {
                 Ok(Some(object)) => {
                     if allow_redirect
-                        && self
-                            .transport
-                            .redirect_threshold
-                            .is_some_and(|threshold| redirect_metadata(&object, hash, threshold))
+                        && redirect_metadata(&object, hash, self.transport.redirect_threshold)
                         && let Ok(location) = self.transport.presign(
                             path,
                             if head {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan, publicMatchHistoryShardPath } from '../src/domains/rankings/internal/published/writePlan.ts'
 import { createGenerationManifest, prepareSemanticArtifact } from '../scripts/public-artifact-storage.mjs'
@@ -43,7 +43,7 @@ test('Match year controls publish reloadable addresses before archive nodes arri
   let hold2025 = false
   const pending: Array<() => void> = []
   const release = () => { hold2025 = false; pending.splice(0).forEach((respond) => respond()) }
-  const fixture: Plugin = { name: 'matches-year-address-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'matches-year-address-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (!path.startsWith('/data/')) return next()
@@ -54,10 +54,9 @@ test('Match year controls publish reloadable addresses before archive nodes arri
       response.end(body ?? '{}')
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer!.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}`
@@ -85,7 +84,7 @@ test('Match year controls publish reloadable addresses before archive nodes arri
 
     await t.test('a year control resets page two before loading and reload keeps the requested filters', async () => {
       await page.goto(`${base}/${hash2026}`)
-      await pager.getByText('Page 2 of 2', { exact: true }).waitFor()
+      await pager.getByText('Page 2 of 2', { exact: true }).waitFor({ timeout: 10_000 })
       await rows.nth(9).waitFor()
       await year.selectOption('2026')
       assert.equal(query().get('page'), '2', 'selecting the effective year must keep the page')
@@ -196,7 +195,7 @@ test('Matches event choices and addressed pages survive catalog loading and real
   const pendingCatalog: Array<() => void> = []
   let holdSnapshot = false
   const pendingSnapshot: Array<() => void> = []
-  const fixture: Plugin = { name: 'matches-address-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'matches-address-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (!path.startsWith('/data/')) return next()
@@ -208,10 +207,9 @@ test('Matches event choices and addressed pages survive catalog loading and real
       response.end(body ?? '{}')
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer!.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}`
@@ -307,20 +305,20 @@ test('Matches event choices and addressed pages survive catalog loading and real
       }
       await navigate('#matches?scope=all&matchesYear=2025&team=Nobody&page=7')
       await page.getByText('No series match these filters', { exact: true }).waitFor()
-      await pager.getByText('Page 1 of 1', { exact: true }).waitFor()
+      assert.equal(await pager.count(), 0, 'an empty result shows no pager')
       await page.waitForFunction(() => !new URLSearchParams(location.hash.split('?')[1]).has('page'))
     })
 
     await t.test('compatible league changes retain events while filters, years and scopes reset pages', async () => {
       await navigate(pageTwo)
       await pager.getByText('Page 2 of 2', { exact: true }).waitFor()
-      await page.getByRole('combobox', { name: 'League', exact: true }).selectOption('LPL')
+      await page.getByRole('navigation', { name: 'League filter' }).getByRole('link', { name: 'LPL', exact: true }).click()
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
       assert.equal(await page.getByRole('combobox', { name: 'Event', exact: true }).inputValue(), 'DCup 2025')
       await pager.getByText('1–25 of 27', { exact: true }).waitFor()
-      await page.getByRole('combobox', { name: 'League', exact: true }).selectOption('LEC')
-      assert.equal(await page.getByRole('combobox', { name: 'Event', exact: true }).inputValue(), 'All')
+      await page.getByRole('navigation', { name: 'League filter' }).getByRole('link', { name: 'LEC', exact: true }).click()
       await pager.getByText('1–3 of 3', { exact: true }).waitFor()
+      assert.equal(await page.getByRole('combobox', { name: 'Event', exact: true }).inputValue(), 'All')
       await page.getByRole('button', { name: 'Clear filters', exact: true }).click()
       await page.getByRole('button', { name: 'Next page', exact: true }).click()
       await pager.getByText('Page 2 of 2', { exact: true }).waitFor()
@@ -332,10 +330,10 @@ test('Matches event choices and addressed pages survive catalog loading and real
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
       await page.getByRole('button', { name: 'Next page', exact: true }).click()
       await pager.getByText('Page 2 of 2', { exact: true }).waitFor()
-      await page.getByLabel('Season', { exact: true }).selectOption('2025')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2025', exact: true }).click()
       await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('scope') === 'season:2025')
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
-      await page.getByLabel('Season', { exact: true }).selectOption('All')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: 'All seasons', exact: true }).click()
       await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('scope') === 'all')
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
       await page.waitForFunction(() => !new URLSearchParams(location.hash.split('?')[1]).has('page'))
@@ -352,7 +350,7 @@ test('Matches event choices and addressed pages survive catalog loading and real
       await pager.getByText('Page 2 of 3', { exact: true }).waitFor()
       await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('page') === '2')
       const requestedSnapshot = page.waitForRequest((request) => new URL(request.url()).pathname === snapshotPath)
-      await page.getByLabel('Season', { exact: true }).selectOption('2026')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2026', exact: true }).click()
       await requestedSnapshot
       await page.getByText('Loading 2026 source season', { exact: true }).waitFor()
       await page.waitForFunction(() => !document.querySelector('[aria-label="Match history results"]'))
@@ -369,7 +367,7 @@ test('Matches event choices and addressed pages survive catalog loading and real
 
       await page.getByRole('button', { name: 'Next page', exact: true }).click()
       await pager.getByText('Page 2 of 2', { exact: true }).waitFor()
-      await page.getByLabel('Season', { exact: true }).selectOption('2026')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2026', exact: true }).click()
       await pager.getByText('Page 2 of 2', { exact: true }).waitFor()
       assert.equal(new URLSearchParams(new URL(page.url()).hash.split('?')[1]).get('page'), '2', 'selecting the current scope is a no-op')
 
@@ -395,12 +393,12 @@ test('Matches event choices and addressed pages survive catalog loading and real
       await page.getByRole('button', { name: 'Split 1', exact: true }).click()
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
 
-      await page.getByLabel('Season', { exact: true }).selectOption('All')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: 'All seasons', exact: true }).click()
       await pager.getByText('Page 1 of 3', { exact: true }).waitFor()
       await rows.nth(24).waitFor()
       await page.getByRole('button', { name: 'Next page', exact: true }).click()
       await pager.getByText('Page 2 of 3', { exact: true }).waitFor()
-      await page.getByLabel('Season', { exact: true }).selectOption('2026')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2026', exact: true }).click()
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
 
       await navigate('#matches?scope=all')
@@ -414,10 +412,10 @@ test('Matches event choices and addressed pages survive catalog loading and real
     await t.test('a hash change keeps page two when both scope snapshots are cached', async () => {
       await navigate('#matches?scope=all')
       await pager.getByText('Page 1 of 3', { exact: true }).waitFor()
-      await page.getByLabel('Season', { exact: true }).selectOption('2026')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: '2026', exact: true }).click()
       await pager.getByText('Page 1 of 2', { exact: true }).waitFor()
       await rows.nth(24).waitFor()
-      await page.getByLabel('Season', { exact: true }).selectOption('All')
+      await page.getByRole('group', { name: 'Season', exact: true }).getByRole('button', { name: 'All seasons', exact: true }).click()
       await pager.getByText('Page 1 of 3', { exact: true }).waitFor()
       await rows.nth(24).waitFor()
       const documentTime = await page.evaluate(() => performance.timeOrigin)

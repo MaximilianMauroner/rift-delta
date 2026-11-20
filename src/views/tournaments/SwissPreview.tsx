@@ -1,3 +1,4 @@
+import { TriangleAlert } from 'lucide-react'
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Alert } from '../../components/ui/alert'
 import { Badge } from '../../components/ui/badge'
@@ -8,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { TeamMark } from '../../components/TeamMark'
 import { teamBrandingFor } from '../../data/teamBranding'
 import { canonicalTeamNameFor, teamCodeFor, teamIdentityFor } from '../../domains/rankings/evidence'
+import { leagueColor } from '../../shared/teamColor'
 import { cn } from '../../shared/utils'
 import { hashEnum, hashParam, useHashSync } from '../../browser/navigation'
 import { formatTournamentTime, type TournamentEvent } from '../../domains/tournaments/read'
@@ -181,9 +183,9 @@ export function SwissPreview({ event, playInEvent, checkedAt, timezone }: { even
     return (
       <div className="grid min-w-0 justify-items-start gap-4">
         {startControl}
-        <Alert variant="warning" role="status">
+        <Alert variant="warning" role="status"><TriangleAlert aria-hidden="true" /><div className="min-w-0">
           Live draws are not available: {live.detail} Your live picks stay in the page address until live draws return.
-        </Alert>
+        </div></Alert>
       </div>
     )
   }
@@ -225,7 +227,7 @@ export function SwissPreview({ event, playInEvent, checkedAt, timezone }: { even
         </div>
       </div>
 
-      <p className="text-sm leading-[1.5] text-muted-foreground">
+      <p className="text-sm leading-[1.5] text-muted">
         Dashed outlines and “Your draw” mark your picks. They stay in the page address and never change real results.{' '}
         {baseline.kind === 'live'
           ? <>Draws and results from Leaguepedia, checked {formatTournamentTime(checkedAt, timezone)}. {live.status === 'ready' && live.note ? live.note : ''}</>
@@ -237,12 +239,12 @@ export function SwissPreview({ event, playInEvent, checkedAt, timezone }: { even
       </p>
       <div role="status" className="empty:hidden grid gap-1 text-sm">
         {notice ? <p>{notice}</p> : null}
-        {liveNotice ? <p className="text-[var(--warn)]">{liveNotice}</p> : null}
+        {liveNotice ? <p className="text-text">{liveNotice}</p> : null}
       </div>
 
       <SwissStatsBar stats={stats} />
 
-      <div className="grid min-w-0 items-start gap-4 min-[1700px]:grid-cols-[minmax(0,1fr)_28rem]">
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="grid min-w-0 gap-2">
           <NextStep scenario={current} canDraw={canDraw} team={team} playInOpen={baseline.kind === 'seeds' && !playIn} />
           <SwissOddsProvider stats={stats}>
@@ -289,11 +291,11 @@ function teamInfo(team: PreviewTeam): TeamInfo {
 /** What the scenario needs next. When a round can be drawn, also its draw rules. */
 function NextStep({ scenario, canDraw, team, playInOpen }: { scenario: ResolvedScenario; canDraw: boolean; team: TeamLookup; playInOpen: boolean }) {
   const next = scenario.next
-  if (next.kind === 'complete') return <p className="text-sm text-muted-foreground">Swiss stage complete. The eight Advanced teams go to the quarterfinals.</p>
+  if (next.kind === 'complete') return <p className="text-sm text-muted">Swiss stage complete. The eight Advanced teams go to the quarterfinals.</p>
   if (next.kind === 'results') {
     const missing = scenario.rounds[next.round - 1].matches.filter((match) => !match.winnerId).length
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted">
         Round {next.round}: pick {missing === 1 ? 'one winner' : `${missing} winners`} {next.round === SWISS_ROUND_SIZES.length ? 'to finish the Swiss stage' : `before Round ${next.round + 1} is drawn`}.
       </p>
     )
@@ -301,16 +303,16 @@ function NextStep({ scenario, canDraw, team, playInOpen }: { scenario: ResolvedS
   const waived = next.context.buckets.filter((bucket) => next.context.rematchBuckets.has(bucket.record))
   return (
     <div className="grid gap-1 text-sm">
-      <p className="text-muted-foreground">
+      <p className="text-muted">
         Round {next.round} is not drawn yet.{' '}
         {next.round === 1
           ? 'Pool 1 meets Pool 4, Pool 2 meets Pool 3, and teams from one region cannot meet.'
           : 'Teams meet a new opponent with the same record.'}
         {' '}“Fill a valid draw” is not the official draw.
       </p>
-      {playInOpen && next.round === 1 ? <p className="text-muted-foreground">The Play-In winner’s region is not chosen, so it meets only {team('LCK1').name} or {team('LPL1').name}.</p> : null}
-      {waived.length ? <p className="text-[var(--warn)]">No draw for {waived.map((bucket) => bucket.record.replace('-', '–')).join(' or ')} avoids a rematch, so rematches are allowed there (rule 4.3.3.2).</p> : null}
-      {!canDraw ? <p className="text-[var(--warn)]">No valid draw exists for these records.</p> : null}
+      {playInOpen && next.round === 1 ? <p className="text-muted">The Play-In winner’s region is not chosen, so it meets only {team('LCK1').name} or {team('LPL1').name}.</p> : null}
+      {waived.length ? <p className="text-text">No draw for {waived.map((bucket) => bucket.record.replace('-', '–')).join(' or ')} avoids a rematch, so rematches are allowed there (rule 4.3.3.2).</p> : null}
+      {!canDraw ? <p className="text-text">No valid draw exists for these records.</p> : null}
     </div>
   )
 }
@@ -330,7 +332,7 @@ function SwissBracket({ scenario, team, pools, canDraw, focusRound, onFocused, e
   edits: BracketEdits
 }) {
   return (
-    <div role="region" aria-label="Swiss bracket" tabIndex={0} className="relative min-w-0 overflow-x-auto rounded-md pb-2 focus-visible:outline-2 focus-visible:outline-[var(--focus)]">
+    <div role="region" aria-label="Swiss bracket" tabIndex={0} className="relative min-w-0 overflow-x-auto rounded-md pb-2 focus-visible:outline-2 focus-visible:outline-focus">
       <div className="grid min-w-[66rem] grid-cols-6 grid-rows-[auto_1fr] gap-x-3 gap-y-2">
         {SWISS_BRACKET.map((boxes, index) => index < SWISS_ROUND_SIZES.length
           // A round that gets a new draw mounts again, so it starts with "Change pairings" off.
@@ -387,7 +389,7 @@ function RoundColumn({ round, boxes, scenario, team, pools, canDraw, focus, onFo
 
   return (
     <div ref={column} tabIndex={-1} role="region" aria-labelledby={titleId}
-      className="row-span-2 grid min-w-0 grid-rows-subgrid rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--focus)]">
+      className="row-span-2 grid min-w-0 grid-rows-subgrid rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus">
       <ColumnHeader ref={header} title={`Round ${round}`} titleId={titleId}
         badge={resolved ? resolved.liveDraw ? <Badge>Live draw</Badge> : <Badge variant="preview">Your draw</Badge> : null}>
         {resolved ? resolved.liveDraw ? null : <>
@@ -397,8 +399,8 @@ function RoundColumn({ round, boxes, scenario, team, pools, canDraw, focus, onFo
           <Button variant="outline" size="sm" onClick={() => edits.clear(round)}>Clear draw</Button>
         </> : nextDraw?.round === round
           ? <Button size="sm" disabled={!canDraw} onClick={() => edits.draw(round, nextDraw.context)}>Fill a valid draw</Button>
-          : <span className="text-2xs text-[var(--faint)]">Drawn after Round {round - 1}</span>}
-        {missing ? <span className="text-2xs font-medium text-[var(--preview)]">{missing} to pick</span> : null}
+          : <span className="text-xs text-muted">Drawn after Round {round - 1}</span>}
+        {missing ? <span className="text-xs font-semibold text-muted">{missing} to pick</span> : null}
       </ColumnHeader>
       <div className="flex min-w-0 flex-col gap-3">
         <div className={cn('flex min-w-0 flex-1 flex-col gap-3', boxes.length > 1 && 'justify-between')}>
@@ -418,9 +420,9 @@ function RoundColumn({ round, boxes, scenario, team, pools, canDraw, focus, onFo
 function ColumnHeader({ ref, title, titleId, badge = null, children }: { ref?: Ref<HTMLDivElement>; title: string; titleId?: string; badge?: ReactNode; children?: ReactNode }) {
   // The scroll margin keeps a header that is scrolled into view below the sticky app header.
   return (
-    <div ref={ref} className="grid scroll-mt-[calc(var(--app-nav-h)+0.75rem)] content-start gap-1.5 border-b border-border pb-2">
+    <div ref={ref} className="grid scroll-mt-[calc(var(--app-nav-h)+0.75rem)] content-start gap-1.5 border-b border-line pb-2">
       <div className="flex min-h-5 items-center justify-between gap-2">
-        <h3 id={titleId} className="text-sm font-semibold text-[var(--text-strong)]">{title}</h3>
+        <h3 id={titleId} className="text-sm font-semibold text-text">{title}</h3>
         {badge}
       </div>
       <div className="flex min-h-7 flex-wrap items-center gap-1.5">{children}</div>
@@ -434,12 +436,12 @@ function RecordBox({ box, children }: { box: BracketBox; children: ReactNode }) 
   const outcome = teamOutcome({ wins, losses, status: box.kind === 'play' ? 'active' : box.kind })
   return (
     <div className={cn('grid min-w-0 gap-1.5 rounded-md border p-1.5',
-      box.kind === 'advanced' ? 'border-[color-mix(in_oklch,var(--win)_45%,var(--line))] bg-[color-mix(in_oklch,var(--win)_6%,var(--surface))]'
-        : box.kind === 'eliminated' ? 'border-[color-mix(in_oklch,var(--loss)_45%,var(--line))] bg-[color-mix(in_oklch,var(--loss)_6%,var(--surface))]'
-          : 'border-border bg-card')}>
+      box.kind === 'advanced' ? 'border-[color-mix(in_srgb,var(--up)_45%,var(--line))] bg-[color-mix(in_srgb,var(--up)_6%,var(--surface))]'
+        : box.kind === 'eliminated' ? 'border-[color-mix(in_srgb,var(--down)_45%,var(--line))] bg-[color-mix(in_srgb,var(--down)_6%,var(--surface))]'
+          : 'border-line bg-surface')}>
       <p className="flex items-baseline justify-between gap-2 px-0.5">
-        <span className="font-mono text-sm font-semibold text-[var(--text-strong)] tabular-nums">{wins}–{losses}</span>
-        <span className={cn('text-2xs', outcome.state === 'advanced' ? 'text-[var(--win)]' : outcome.state === 'eliminated' ? 'text-[var(--loss)]' : 'text-muted-foreground')}>
+        <span className="text-sm font-semibold text-text tabular-nums">{wins}–{losses}</span>
+        <span className={cn('text-xs', outcome.state === 'advanced' ? 'text-up' : outcome.state === 'eliminated' ? 'text-down' : 'text-muted')}>
           {outcome.state === 'advanced' ? 'Advanced' : outcome.state === 'eliminated' ? `Out, ${outcome.placement}` : `Bo${outcome.nextBestOf}`}
         </span>
       </p>
@@ -448,16 +450,22 @@ function RecordBox({ box, children }: { box: BracketBox; children: ReactNode }) 
   )
 }
 
-const ROW = 'flex h-7 w-full min-w-0 items-center gap-1.5 px-1.5 text-xs font-semibold'
+const ROW = 'league-row flex h-auto min-h-10 w-full min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0 px-1.5 py-1 text-xs font-semibold whitespace-normal'
 
 /** Teams known to hold a record, then quiet open places for teams that have not reached it yet. */
 function TeamSlots({ ids, size, team }: { ids: readonly string[]; size: number; team: TeamLookup }) {
   const open = Math.max(0, size - ids.length)
   return (
     <ul className="grid gap-1">
-      {ids.map((id) => <li key={id} title={team(id).name} className={cn(ROW, 'rounded-sm bg-[var(--surface-2)] text-foreground')}><TeamLine info={team(id)} oddsId={id} /></li>)}
+      {ids.map((id) => {
+        const info = team(id)
+        return <li key={id} title={info.name} data-team-name={info.name}
+          style={{ borderLeftColor: leagueColor(teamIdentityFor(info.name)?.league ?? '') }} className={cn(ROW, 'rounded-md bg-raised text-text')}>
+          <TeamLine info={info} oddsId={id} />
+        </li>
+      })}
       {Array.from({ length: open }, (_, index) => (
-        <li key={`open-${index}`} aria-hidden="true" className="h-7 rounded-sm border border-[color-mix(in_oklch,var(--line)_55%,transparent)]" />
+        <li key={`open-${index}`} aria-hidden="true" className="h-7 rounded-md border border-[color-mix(in_srgb,var(--line)_55%,transparent)]" />
       ))}
       {open ? <li className="sr-only">{open === 1 ? 'One place' : `${open} places`} not decided yet</li> : null}
     </ul>
@@ -469,8 +477,8 @@ function PoolList({ pools, team }: { pools: ReadonlyArray<readonly string[]>; te
     <ul aria-label="Round 1 pools" className="grid gap-2.5">
       {pools.map((pool, index) => (
         <li key={index} className="grid gap-1">
-          <p className="flex items-baseline justify-between gap-2 px-0.5 text-2xs text-muted-foreground">
-            <span className="font-semibold text-foreground">Pool {index + 1}</span>
+          <p className="flex items-baseline justify-between gap-2 px-0.5 text-xs text-muted">
+            <span className="font-semibold text-text">Pool {index + 1}</span>
             <span>meets Pool {pools.length - index}</span>
           </p>
           <TeamSlots ids={pool} size={pool.length} team={team} />
@@ -493,7 +501,7 @@ function MatchCard({ round, match, team, swap, onPick }: {
     <li className="grid min-w-0 gap-1">
       {/* The gap shows the container colour as a hairline between the two teams. */}
       <div role="group" aria-label={`Round ${round}: ${team(first).name} against ${team(second).name}`}
-        className="grid gap-px overflow-hidden rounded-sm border border-border bg-border">
+        className="grid gap-px overflow-hidden rounded-md border border-line bg-line">
         <TeamRow id={first} info={team(first)} match={match} locked={locked} onPick={onPick} />
         <TeamRow id={second} info={team(second)} match={match} locked={locked} onPick={onPick} />
       </div>
@@ -507,39 +515,35 @@ function TeamRow({ id, info, match, locked, onPick }: { id: string; info: TeamIn
   const lost = Boolean(match.winnerId) && !won
   if (locked) {
     return (
-      <span title={info.name} className={cn(ROW, won
-        ? 'bg-[color-mix(in_oklch,var(--win)_16%,var(--surface-2))] text-[var(--text-strong)] shadow-[inset_2px_0_0_var(--win)]'
-        : 'bg-[var(--surface-2)] text-muted-foreground')}>
+      <span title={info.name} data-team-name={info.name} style={{ borderLeftColor: leagueColor(teamIdentityFor(info.name)?.league ?? '') }} className={cn(ROW, won
+        ? 'bg-[color-mix(in_srgb,var(--up)_16%,var(--raised))] text-text shadow-[inset_2px_0_0_var(--up)]'
+        : 'bg-raised text-muted')}>
         <TeamLine info={info} faded={lost} oddsId={match.winnerId ? undefined : id} />
         <span className="sr-only">{won ? ', won' : lost ? ', lost' : ''}</span>
       </span>
     )
   }
   return (
-    <Button variant="ghost" aria-pressed={won} title={info.name} onClick={() => onPick(won ? null : id)}
-      className={cn(ROW, 'justify-start rounded-none border-0 bg-[var(--surface-2)] text-foreground hover:bg-[var(--surface-3)] hover:text-[var(--text-strong)]',
-        'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--focus)]',
-        won && 'bg-[color-mix(in_oklch,var(--preview)_16%,var(--surface-2))] text-[var(--text-strong)] outline-1 -outline-offset-1 outline-dashed outline-[var(--preview-line)] hover:bg-[color-mix(in_oklch,var(--preview)_22%,var(--surface-2))]',
-        lost && 'text-muted-foreground')}>
+    <Button variant="ghost" aria-pressed={won} title={info.name} data-team-name={info.name} style={{ borderLeftColor: leagueColor(teamIdentityFor(info.name)?.league ?? '') }} onClick={() => onPick(won ? null : id)}
+      className={cn(ROW, 'justify-start rounded-none border-0 bg-raised text-text hover:bg-line hover:text-text',
+        'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus',
+        won && 'bg-raised text-text outline-1 -outline-offset-1 outline-dashed outline-[var(--forecast)]',
+        lost && 'text-muted')}>
       <TeamLine info={info} faded={lost} oddsId={match.winnerId ? undefined : id} />
     </Button>
   )
 }
 
-/**
- * Logo, short code and seed slot. Screen readers then hear the full name, so a pick button's name starts with its
- * visible text. The row title also shows the full name. `oddsId` is set only on the row that holds the team's
- * current record, so each team's chance to advance shows once.
- */
+/** Odds belong to the row that holds the team's current record. */
 function TeamLine({ info, faded = false, oddsId }: { info: TeamInfo; faded?: boolean; oddsId?: string }) {
   return (
     <>
       {info.mark
         ? <TeamMark team={info.mark} className={cn('size-4 border-0 bg-transparent', faded && 'opacity-40')} imageClassName="p-0" />
-        : <span aria-hidden="true" className="size-4 shrink-0 rounded-sm border border-[var(--line-strong)]" />}
+        : <span aria-hidden="true" className="size-4 shrink-0 rounded-md border border-line" />}
       <span className="min-w-0 truncate">{info.code}</span>
-      {info.slot ? <span className="ml-auto shrink-0 text-2xs font-normal text-[var(--faint)]">{info.slot}</span> : null}
-      {info.name !== info.code ? <span className="sr-only">, {info.name}</span> : null}
+      {info.slot ? <span className="ml-auto shrink-0 text-xs font-normal text-muted">{info.slot}</span> : null}
+      {info.name !== info.code ? <span className="order-last w-full pl-5 text-left font-normal text-muted"><span className="sr-only">, </span>{info.name}</span> : null}
       {oddsId ? <AdvanceOdds id={oddsId} className={info.slot ? undefined : 'ml-auto'} /> : null}
     </>
   )
@@ -549,8 +553,8 @@ function SwapControl({ teamId, team, swap }: { teamId: string; team: TeamLookup;
   const id = useId()
   const current = swap.pairs.find((pair) => pair.includes(teamId))!.find((other) => other !== teamId)!
   return (
-    <div className="grid min-w-0 gap-0.5 text-2xs">
-      <label htmlFor={id} className="text-muted-foreground">Opponent for {team(teamId).code}</label>
+    <div className="grid min-w-0 gap-0.5 text-xs">
+      <label htmlFor={id} className="text-muted">Opponent for {team(teamId).code}</label>
       <Select id={id} className="h-7 w-full text-xs" value={current} onChange={(event) => swap.onSwap(teamId, event.target.value)}>
         {opponentOptions(swap.pairs, teamId, swap.context).map((option) => (
           <option key={option.id} value={option.id} disabled={Boolean(option.reason)}>
@@ -580,17 +584,17 @@ function StandingsPanel({ scenarios, slot, team }: { scenarios: Record<Slot, Res
   return (
     <Panel role="region" aria-labelledby={titleId} className="min-w-0 max-w-4xl min-[1700px]:max-w-none">
       <PanelHeader titleId={titleId} title="Standings" description={`Teams whose record differs in scenario ${other.toUpperCase()}.`} />
-      <p className="flex flex-wrap gap-x-4 gap-y-1 border-b border-border px-4 py-2 text-sm">
-        <span>Advanced <strong className="font-mono font-semibold text-[var(--win)] tabular-nums">{count('advanced')}</strong> of 8</span>
-        <span>Out <strong className="font-mono font-semibold text-[var(--loss)] tabular-nums">{count('eliminated')}</strong> of 8</span>
-        <span>Playing <strong className="font-mono font-semibold text-[var(--text-strong)] tabular-nums">{count('active')}</strong></span>
+      <p className="flex flex-wrap gap-x-4 gap-y-1 border-b border-line px-4 py-2 text-sm">
+        <span>Advanced <strong className="font-semibold text-up tabular-nums">{count('advanced')}</strong> of 8</span>
+        <span>Out <strong className="font-semibold text-down tabular-nums">{count('eliminated')}</strong> of 8</span>
+        <span>Playing <strong className="font-semibold text-text tabular-nums">{count('active')}</strong></span>
       </p>
       {changed.length ? (
         <Table containerClassName="max-h-none">
           <TableHeader>
             <TableRow>
               <TableHead scope="col">Team</TableHead>
-              {SLOTS.map((entry) => <TableHead key={entry} scope="col" className={cn(entry === slot && 'text-[var(--text-strong)]')}>{entry.toUpperCase()}{entry === slot ? <span className="sr-only"> (on the bracket)</span> : null}</TableHead>)}
+              {SLOTS.map((entry) => <TableHead key={entry} scope="col" className={cn(entry === slot && 'text-text')}>{entry.toUpperCase()}{entry === slot ? <span className="sr-only"> (on the bracket)</span> : null}</TableHead>)}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -598,13 +602,13 @@ function StandingsPanel({ scenarios, slot, team }: { scenarios: Record<Slot, Res
               const info = team(row.id)
               return (
                 <TableRow key={row.id}>
-                  <th scope="row" className="p-2 text-left align-middle text-sm font-medium text-[var(--text-strong)]">
+                  <th scope="row" className="p-2 text-left align-middle text-sm font-semibold text-text">
                     {/* The name wraps, and the slot wraps under it, so the table fits a phone-width panel. */}
                     <span className="flex min-w-0 items-center gap-2">
                       {info.mark ? <TeamMark team={info.mark} className="size-5 border-0 bg-transparent" imageClassName="p-0" /> : null}
                       <span className="min-w-0">
                         {info.name}
-                        {info.slot ? <> <span className="text-2xs font-normal whitespace-nowrap text-[var(--faint)]">{info.slot}</span></> : null}
+                        {info.slot ? <> <span className="text-xs font-normal whitespace-nowrap text-muted">{info.slot}</span></> : null}
                       </span>
                     </span>
                   </th>
@@ -615,7 +619,7 @@ function StandingsPanel({ scenarios, slot, team }: { scenarios: Record<Slot, Res
           </TableBody>
         </Table>
       ) : null}
-      <PanelFooter className="grid gap-1.5 text-xs text-muted-foreground">
+      <PanelFooter className="grid gap-1.5 text-xs text-muted">
         <p>{changed.length ? `Scenarios A and B differ for ${changed.length === 1 ? 'one team' : `${changed.length} teams`}.` : 'Scenarios A and B have the same records.'}</p>
         {knockout ? (
           <p>
@@ -631,9 +635,9 @@ function StandingCell({ row, active }: { row: SwissTeamStanding; active: boolean
   const outcome = teamOutcome(row)
   // Wraps only at spaces, so a narrow table never splits a record or a placing at its dash.
   return (
-    <TableCell className={cn('whitespace-normal', !active && 'border-l border-dashed border-[var(--preview-line)] text-muted-foreground')}>
-      <span className="font-mono whitespace-nowrap tabular-nums">{outcome.wins}–{outcome.losses}</span>{' '}
-      <span className={cn(outcome.state === 'advanced' && active && 'text-[var(--win)]', outcome.state === 'eliminated' && active && 'text-[var(--loss)]')}>{outcomeLabel(row)}</span>
+    <TableCell className={cn('whitespace-normal', !active && 'border-l border-dashed border-[var(--forecast)] text-muted')}>
+      <span className="whitespace-nowrap tabular-nums">{outcome.wins}–{outcome.losses}</span>{' '}
+      <span className={cn(outcome.state === 'advanced' && active && 'text-up', outcome.state === 'eliminated' && active && 'text-down')}>{outcomeLabel(row)}</span>
     </TableCell>
   )
 }

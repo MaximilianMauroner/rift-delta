@@ -3,7 +3,7 @@ import { compareCodeUnits } from '../../../../shared/codeUnitOrder.mjs'
 import type {
   ChampionPicks, CompactPlayer, CompactPlayerRating, ComputedRankingSnapshot, DataCoverage, DataQualityAudit, DataQualityLeagueSummary, DataSourceInfo, EventSummary,
   LeagueStrengthHistoryPoint, LeagueTierName,
-  MatchRecord,
+  MatchRecord, MatchRosterSnapshot,
   PlayerAppearanceSummary, PlayerComparisonMetricInfo, PlayerDirectory, PlayerIndividualResidual, PlayerLifecycleEvent, PlayerLifecycleReleaseEvent, PlayerMetricInfo, PlayerProfile, PlayerRatingProof, PlayerStanding, PublicCurrentLineup, PublicMatchHistoryCatalog, PublicMatchHistoryEntry, PublicMatchHistoryIndex, PublicMatchHistoryPage, PublicMatchHistoryPageRef, PublicMatchHistorySeriesRef, PublicRegionHistoryPoint, PublicRegionHistoryPointContext, PublicRegionHistoryScope, PublicRegionHistorySeries, PublicRollingWindow, PublicTeamDirectory, PublicTeamHistoryModelContext, PublicTeamHistoryPoint, PublicTeamHistoryPointContext, PublicTeamHistoryShard, PublicTeamRollingMovement, PublicTournamentMovementShard, PublicTournamentMovementTeam, PublishedRatingScale, RankingSummarySnapshot, Region, RegionHistoryDirectory, Role, SameTeamTopFiveClusteringDiagnostic, SeasonSummary, SnapshotCheckpointOption, SnapshotFilter, SnapshotSourceBreakdown, StaticRankingData, StaticRankingSummaryData, TeamDirectory, TeamEligibility, TeamHistoryArtifacts, TeamHistoryDirectory, TeamHistoryPoint, TeamHistoryPointCompact, TeamHistorySeries, TeamProfile,
   TeamStanding, TournamentMovementArtifacts
 } from '../../types.ts'
@@ -17,7 +17,7 @@ import { homeLeagueForMatch } from '../evidence/matchContext.ts'
 import { filterPublishedRatingUniverseInput } from '../evidence/ratingUniverse.ts'
 import { currentTopTierRegionForLeague, currentTopTierRegions, isCurrentTopTierRegion } from '../evidence/regionTaxonomy.ts'
 import { isSeasonHistoryLeadIn } from '../evidence/seasonHistory.ts'
-import { resolveCanonicalSeries } from '../evidence/seriesResolver.ts'
+import { gameNumberFor, resolveCanonicalSeries } from '../evidence/seriesResolver.ts'
 import { canonicalTeamNameFor, regionForLeague } from '../evidence/teamIdentity.ts'
 import { isCompetitionOnlyLeague, isUnknownLeague } from '../evidence/teamProfiles.ts'
 import { leagueTierFor } from '../policy/leagueTiers.ts'
@@ -616,7 +616,7 @@ function compactTeamHistoryMatchPoint(group: TeamHistoryPublicMatchGroup, includ
   const bestOf = inferBestOfForScore(resultSummary.wins, resultSummary.losses, latest.source?.bestOf)
   const sourceSummary = timelineSourceSummary(group.entries, (entry) => entry.source)
   const delta = sumTimelineRatingDeltas(group.entries)
-  const modelContext = compactTeamHistoryModelContext(group.entries, result)
+  const modelContext = compactTeamHistoryModelContext(group.entries)
 
   return [
     latest.date,
@@ -640,17 +640,13 @@ function compactTeamHistoryMatchPoint(group: TeamHistoryPublicMatchGroup, includ
 
 function compactTeamHistoryModelContext(
   entries: TeamHistoryPoint[],
-  result: 'W' | 'L' | 'T' | undefined,
 ): PublicTeamHistoryModelContext | undefined {
   const update = latestInformativeRatingUpdate(entries)
-  const residual = finiteNumber(update?.neutralResultResidual)
-  const observed = result === 'W' ? 1 : result === 'L' ? 0 : result === 'T' ? 0.5 : undefined
-  const expected = typeof observed === 'number' && typeof residual === 'number'
-    ? clamp01(observed - residual)
-    : undefined
+  const expected = finiteNumber(entries.at(-1)?.recordedSeriesWinProbability)
   const components = compactTeamHistoryComponents(entries.at(-1)?.ratingComponents)
   const context: PublicTeamHistoryModelContext = {
     e: roundOptional(expected, 3, { keepZero: true }),
+    r: roundOptional(update?.neutralResultResidual, 3, { keepZero: true }),
     w: roundOptional(update?.eventWeight, 3, { keepZero: true }),
     ...(components ? { c: components } : {}),
   }
@@ -712,10 +708,6 @@ function omitUndefined<T extends Record<string, unknown>>(value: T): T | undefin
   return entries.length > 0 ? Object.fromEntries(entries) as T : undefined
 }
 
-function clamp01(value: number) {
-  return Math.min(1, Math.max(0, value))
-}
-
 function isSeasonHistoryScope(filter: SnapshotFilter | undefined) {
   return Boolean(filter && filter.season !== 'All' && filter.event === 'All' && filter.region === 'All')
 }
@@ -740,6 +732,8 @@ export function createStaticRankingSummaryData(
     tournamentMovementIndexUrl = '/data/history/tournament-moves/index.json',
     matchHistoryIndexUrl,
     replayPredictionsUrl,
+    scoutingIndexUrl,
+    tournamentReportIndexUrl,
     snapshotUrlForKey = snapshotShardUrlPathForKey,
   }: {
     fullSnapshotUrl?: string
@@ -750,6 +744,8 @@ export function createStaticRankingSummaryData(
     tournamentMovementIndexUrl?: string
     matchHistoryIndexUrl?: string
     replayPredictionsUrl?: string
+    scoutingIndexUrl?: string
+    tournamentReportIndexUrl?: string
     snapshotUrlForKey?: (key: string) => string
   } = {},
 ): {
@@ -810,6 +806,8 @@ export function createStaticRankingSummaryData(
       tournamentMovementIndexUrl,
       ...(matchHistoryIndexUrl ? { matchHistoryIndexUrl } : {}),
       ...(replayPredictionsUrl ? { replayPredictionsUrl } : {}),
+      ...(scoutingIndexUrl ? { scoutingIndexUrl } : {}),
+      ...(tournamentReportIndexUrl ? { tournamentReportIndexUrl } : {}),
       teamCount: Object.keys(data.teams).length,
       snapshotIndex,
     },
@@ -1409,7 +1407,7 @@ export function createMatchHistoryArtifacts(
           winnerId: teamIdFor({ team: canonicalTeamNameFor(match.winner), region: data.teams[canonicalTeamNameFor(match.winner)]?.region, code: data.teams[canonicalTeamNameFor(match.winner)]?.code }),
           ...(picks ? { picks } : {}),
           impact: finalGame && (impactA || impactB)
-            ? { unit: 'series-applied', ...(impactA ? { teamA: impactA.delta, expectedTeamA: impactA.expected, eventWeight: impactA.eventWeight } : {}), ...(impactB ? { teamB: impactB.delta } : {}) }
+            ? { unit: 'series-applied', ...(impactA ? { teamA: impactA.delta, ...(impactA.expected !== undefined ? { expectedTeamA: impactA.expected } : {}), eventWeight: impactA.eventWeight } : {}), ...(impactB ? { teamB: impactB.delta, ...(impactB.expected !== undefined ? { expectedTeamB: impactB.expected } : {}) } : {}) }
             : { unit: 'held' },
           source: {
             provider: match.sourceProvider ?? 'seed',
@@ -1565,12 +1563,11 @@ function matchImpactLookup(standings: TeamStanding[]) {
     }
     for (const [seriesId, points] of groups) {
       const update = latestInformativeRatingUpdate(points)
-      const observed = points.filter((point) => point.result === 'W').length > points.length / 2 ? 1 : 0
-      const residual = finiteNumber(update?.neutralResultResidual)
+      const expected = finiteNumber(points.at(-1)?.recordedSeriesWinProbability)
       const displayDelta = sumTimelineRatingDeltas(points)
       lookup.set(`${canonicalTeamNameFor(standing.team)}\u0000${seriesId}`, {
         delta: Number(displayDelta.toFixed(1)),
-        ...(typeof residual === 'number' ? { expected: Number((observed - residual).toFixed(3)) } : {}),
+        ...(typeof expected === 'number' ? { expected: Number(expected.toFixed(3)) } : {}),
         ...(typeof update?.eventWeight === 'number' ? { eventWeight: Number(update.eventWeight.toFixed(3)) } : {}),
       })
     }
@@ -1629,7 +1626,7 @@ function playerDirectoryFromCompact(
     roles: ROLE_ORDER.filter((role) => players.some((player) => player.role === role)),
     players,
     ...(Object.keys(scopedPlayers).length > 0 ? { scopedPlayers } : {}),
-    currentLineups: currentLineupsForPlayers(players, data.generatedAt),
+    currentLineups: currentLineupsForMatches(data, players),
   }
 }
 
@@ -1769,59 +1766,110 @@ function compactPlayersForSnapshot(
   return assignCompactPlayerResidualRanks(compactPlayers)
 }
 
-function currentLineupsForPlayers(players: CompactPlayer[], generatedAt: string): Record<string, PublicCurrentLineup> {
-  const byTeamId = new Map<string, CompactPlayer[]>()
-  for (const player of players) {
-    if (!player.teamId || !player.latestObservedAt) continue
-    const teamPlayers = byTeamId.get(player.teamId) ?? []
-    teamPlayers.push(player)
-    byTeamId.set(player.teamId, teamPlayers)
-  }
+type ObservedLineupGame = {
+  match: MatchRecord
+  roster: MatchRosterSnapshot
+  seriesId?: string
+}
 
-  return Object.fromEntries([...byTeamId.entries()].map(([teamId, teamPlayers]) => {
-    const observedAt = teamPlayers.map((player) => player.latestObservedAt ?? '').sort().at(-1) ?? ''
-    const observedPlayers = teamPlayers
-      .filter((player) => player.latestObservedAt === observedAt)
-      .toSorted((left, right) => ROLE_ORDER.indexOf(left.role) - ROLE_ORDER.indexOf(right.role)
-        || (right.teamShare ?? 0) - (left.teamShare ?? 0)
-        || right.games - left.games
-        || compareCodeUnits(left.name, right.name))
-    const starters: CompactPlayer[] = []
-    const occupiedRoles = new Set<Role>()
-    for (const player of observedPlayers) {
-      if (!occupiedRoles.has(player.role)) {
-        starters.push(player)
-        occupiedRoles.add(player.role)
+function currentLineupsForMatches(data: StaticRankingData, players: CompactPlayer[]): Record<string, PublicCurrentLineup> {
+  const byTeam = new Map<string, { observedAt: string; observations: ObservedLineupGame[] }>()
+  for (const series of resolveCanonicalSeries(data.matches ?? [])) {
+    for (const match of series.games) {
+      if (match.sourceProvider === 'seed') continue
+      for (const [name, roster] of [[match.teamA, match.teamARoster], [match.teamB, match.teamBRoster]] as const) {
+        if (!roster) continue
+        const team = canonicalTeamNameFor(name)
+        const observedAt = roster.observedAt.slice(0, 10)
+        const previous = byTeam.get(team)
+        if (previous && previous.observedAt > observedAt) continue
+        const observation: ObservedLineupGame = {
+          match,
+          roster,
+          seriesId: roster.sourceSeriesId ?? (series.id.startsWith('fallback\u0000') ? undefined : series.id),
+        }
+        if (previous?.observedAt === observedAt) previous.observations.push(observation)
+        else byTeam.set(team, { observedAt, observations: [observation] })
       }
     }
-    const coveredRoles = ROLE_ORDER.filter((role) => occupiedRoles.has(role))
-    const missingRoles = ROLE_ORDER.filter((role) => !occupiedRoles.has(role))
-    const first = observedPlayers[0] ?? teamPlayers[0]
-    const compactLineupPlayer = (player: CompactPlayer) => ({
-      playerId: player.playerId ?? player.id,
-      name: player.name,
-      role: player.role,
-      rating: player.rating,
-      latestObservedAt: player.latestObservedAt,
+  }
+
+  const ratings = new Map(players.map((player) => [
+    `${canonicalTeamNameFor(player.team)}\u0000${player.role}\u0000${player.playerId ?? player.id}`,
+    player.rating,
+  ]))
+  const teamCodes = new Map(Object.values(data.teams).map((team) => [canonicalTeamNameFor(team.name), team.code]))
+  for (const standing of data.snapshots[data.defaultSnapshotKey]?.standings ?? []) {
+    teamCodes.set(canonicalTeamNameFor(standing.team), standing.code)
+  }
+  const lineups: Record<string, PublicCurrentLineup> = {}
+  for (const [team, { observedAt, observations }] of byTeam) {
+    const latest = observations.filter((candidate) => !observations.some((other) => observedLineupGameIsLater(other, candidate)))
+    const rosterKeys = new Set(latest.map(({ roster }) => JSON.stringify(
+      roster.players.map((player) => [player.role, player.id]).sort((left, right) =>
+        compareCodeUnits(left[0], right[0]) || compareCodeUnits(left[1], right[1])),
+    )))
+    const first = latest[0]
+    if (!first || rosterKeys.size !== 1) continue
+
+    const starters = ROLE_ORDER.flatMap((role) => {
+      const rolePlayers = first.roster.players.filter((player) => player.role === role)
+      if (rolePlayers.length !== 1) return []
+      const player = rolePlayers[0]
+      if (first.roster.players.filter((other) => other.id === player.id).length !== 1) return []
+      const rating = ratings.get(`${team}\u0000${role}\u0000${player.id}`)
+      return [{
+        playerId: player.id,
+        name: player.name,
+        role,
+        ...(rating !== undefined ? { rating } : {}),
+        latestObservedAt: observedAt,
+      }]
     })
-    const lineup: PublicCurrentLineup = {
-      team: first.team,
+    if (starters.length === 0) continue
+    const coveredRoles = starters.map((player) => player.role)
+    const missingRoles = ROLE_ORDER.filter((role) => !coveredRoles.includes(role))
+    const teamCode = teamCodes.get(team)
+    const teamId = teamIdFor({ team, code: teamCode })
+    const observedEvents = new Set(latest.map(({ match }) => match.event))
+    lineups[teamId] = {
+      team,
       teamId,
-      teamCode: first.teamCode,
+      teamCode,
       observedAt,
-      observedEvent: first.latestObservedEvent,
-      freshnessDays: wholeDaysBetween(observedAt, generatedAt.slice(0, 10)),
-      sourceProvider: first.sourceProvider ?? 'oracles-elixir',
+      ...(observedEvents.size === 1 ? { observedEvent: first.match.event } : {}),
+      freshnessDays: wholeDaysBetween(observedAt, data.generatedAt.slice(0, 10)),
+      sourceProvider: first.roster.sourceProvider,
       claim: 'last-observed',
       evidenceBasis: 'scored-series',
-      completeness: missingRoles.length === 0 ? 'complete-five-role' : 'partial',
+      completeness: missingRoles.length === 0 && latest.every(({ roster }) => roster.completeness === 'complete-five-role')
+        ? 'complete-five-role' : 'partial',
       coveredRoles,
       missingRoles,
-      starters: starters.map(compactLineupPlayer),
+      starters,
       substitutes: [],
     }
-    return [teamId, lineup]
-  }))
+  }
+  return lineups
+}
+
+function observedLineupGameIsLater(left: ObservedLineupGame, right: ObservedLineupGame): boolean {
+  let sameStart = false
+  if (left.match.datetimeUtc && right.match.datetimeUtc) {
+    const timeDifference = Date.parse(left.match.datetimeUtc) - Date.parse(right.match.datetimeUtc)
+    if (timeDifference !== 0) return timeDifference > 0
+    sameStart = true
+  }
+  const leftGame = gameNumberFor(left.match)
+  const rightGame = gameNumberFor(right.match)
+  const gameOrder = left.seriesId !== undefined && left.seriesId === right.seriesId
+    && leftGame !== Number.MAX_SAFE_INTEGER && rightGame !== Number.MAX_SAFE_INTEGER ? leftGame - rightGame : 0
+  if (sameStart) return gameOrder > 0
+  if (left.match.gameCompletedAtUtc && right.match.gameCompletedAtUtc) {
+    const timeDifference = Date.parse(left.match.gameCompletedAtUtc) - Date.parse(right.match.gameCompletedAtUtc)
+    if (timeDifference !== 0) return timeDifference > 0
+  }
+  return gameOrder > 0
 }
 
 function wholeDaysBetween(start: string, end: string) {
@@ -2520,9 +2568,8 @@ function rollingUpsetWin(
       const latest = group.entries.at(-1)
       if (!latest || latest.source.seriesState !== 'completed' || latest.source.seriesOutcome !== 1) return []
       if (!permitted.has(`${latest.date}\u0000${latest.event}\u0000${latest.opponent}`)) return []
-      const residual = latest.ratingUpdate?.neutralResultResidual
-      if (typeof residual !== 'number') return []
-      const expectedWinProbability = Number((1 - residual).toFixed(4))
+      const expectedWinProbability = latest.recordedSeriesWinProbability
+      if (expectedWinProbability === undefined) return []
       if (!Number.isFinite(expectedWinProbability) || expectedWinProbability < 0 || expectedWinProbability > 1) return []
       return [{
         date: latest.date,

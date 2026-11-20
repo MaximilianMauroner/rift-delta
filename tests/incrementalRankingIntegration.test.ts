@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import type { MatchRecord, MatchRosterSnapshot, Role, Side, TeamProfile } from '../src/domains/rankings/types.ts'
-import { buildRankingIncrementally, mergePartialPlayerDirectoryArtifact, type IncrementalRankingBuildResult, type RestoredIncrementalAuthority } from '../scripts/incremental-ranking-orchestrator.ts'
+import { buildRankingIncrementally, obsoletePublicArtifactPaths, mergePartialPlayerDirectoryArtifact, type IncrementalRankingBuildResult, type RestoredIncrementalAuthority } from '../scripts/incremental-ranking-orchestrator.ts'
 import { createGenerationManifest, prepareSemanticArtifact } from '../scripts/public-artifact-storage.mjs'
 import { prepareStateCheckpoint, prepareStateObject, stateObjectReferenceFor } from '../scripts/incremental-state-storage.mjs'
 import type { RankingSourceImport } from '../scripts/rankings/source-input.ts'
@@ -20,6 +20,121 @@ import { parseCanonicalMatchLedger } from '../src/lib/incremental/changeClassifi
 import { materializePublicArtifactPatch } from '../scripts/public-artifact-materialization.mjs'
 import { artifactReferences, assertReferenceClosure } from '../src/domains/rankings/internal/published/logicalReferences.mjs'
 import { crossMidnightReviewCases } from './fixtures/crossMidnightReviewCases.ts'
+import { scoutingGame } from './scoutingFixtures.ts'
+import { reportGame, reportSource, reportTeams } from './tournamentReportFixtures.ts'
+import { parseTournamentReport } from '../src/domains/rankings/tournament-reports.ts'
+
+test('unrated-only Worlds corrections bypass no-change, preserve all 17 source-observed teams and match full report builds', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'worlds-unrated-correction-'))
+  try {
+    const rated = [{ ...reportGame('warmup', '2024-12-30'), event: 'LCK 2024', tier: 'regional-regular' as const }, reportGame('rated-one'), reportGame('rated-two', '2025-10-16', -200)]
+    const extraTeams = Object.fromEntries(Array.from({ length: 15 }, (_, index) => {
+      const name = `Unrated ${index}`
+      return [name, { name, code: `U${index}`, league: 'CBLOL', region: 'CBLOL' as const }]
+    }))
+    const unrated = Object.keys(extraTeams).map((name, index) => {
+      const game = reportGame(`unrated-${index}`, '2025-10-17', 100)
+      game.teamB = name
+      game.teamBHomeLeague = 'CBLOL'
+      game.winner = name
+      for (const player of game.teamBRoster!.players) player.id = `${name}-${player.role}`
+      return game
+    })
+    const source = reportSource([...rated, ...unrated], rated, { ...reportTeams, ...extraTeams })
+    const baseline = await run(root, 'worlds-base', structuredClone(source), { mode: 'gated', cause: 'manual-force', enabled: false })
+    const restored = restoreFrom(baseline)
+    const reportPath = '/data/tournament-reports/events/worlds-2025.json'
+    assert.equal(parseTournamentReport(restored.artifacts![reportPath]).coverage.observedTeams, 17)
+    const unchanged = await run(root, 'worlds-unchanged', structuredClone(source), { mode: 'gated', cause: 'pending-match', enabled: true, restored })
+    assert.equal(unchanged.action, 'no-change')
+    const corrected = structuredClone(source)
+    corrected.importedMatches.find(game => game.id === 'unrated-0')!.teamBRoster!.players[2]!.stats!.goldDiffAt15 = 777
+    assert.deepEqual(corrected.matches, source.matches, 'The rated games are unchanged')
+    const candidate = await run(root, 'worlds-corrected', structuredClone(corrected), { mode: 'gated', cause: 'pending-match', enabled: true, restored })
+    assert.equal(candidate.action, 'publish-incremental', candidate.metrics.fallbackReason)
+    if (candidate.action !== 'publish-incremental') throw new Error('Expected an incremental report rebuild')
+    assert.equal(candidate.metrics.classification, 'historical-correction')
+    const updated = candidate.patch.changedArtifacts.find(artifact => artifact.logicalPath === reportPath)
+    assert.ok(updated, 'A source-only correction must rewrite the report')
+    const report = parseTournamentReport(updated.value)
+    assert.equal(report.coverage.observedTeams, 17)
+    assert.equal(report.coverage.ratedTeams, 2)
+    assert.equal(report.coverage.observedGames, 17)
+    assert.equal(report.coverage.ratedGames, 2)
+    assert.equal(report.teams.find(team => team.name === 'Unrated 0')!.participants.find(player => player.role === 'Mid')!.games[0]!.metrics.goldDiffAt15, 777)
+    const full = await run(root, 'worlds-full', structuredClone(corrected), { mode: 'gated', cause: 'manual-force', enabled: false })
+    const expected = restoreFrom(full)
+    assert.equal(prepareSemanticArtifact(updated.value).digest, prepareSemanticArtifact(expected.artifacts![reportPath]).digest)
+    for (const [path, value] of Object.entries(expected.artifacts!)) {
+      if (path.startsWith('/data/scopes/')) assert.equal(prepareSemanticArtifact(value).digest, prepareSemanticArtifact(restored.artifacts![path]).digest, 'The ranking semantic output is unchanged')
+    }
+    const legacy = structuredClone(restored)
+    delete legacy.rootArtifact!.tournamentReportIndexUrl
+    for (const path of Object.keys(legacy.artifacts!)) {
+      if (!path.startsWith('/data/tournament-reports/')) continue
+      delete legacy.artifacts![path]
+      delete (legacy.publicManifest.artifacts as Record<string, unknown>)[path]
+    }
+    const legacyNoChange = await run(root, 'worlds-legacy-no-change', structuredClone(source), { mode: 'gated', cause: 'pending-match', enabled: true, restored: legacy })
+    assert.equal(legacyNoChange.action, 'no-change', 'The optional capability does not force legacy generations to bootstrap')
+    const legacyRebuild = await run(root, 'worlds-legacy-rebuild', structuredClone(corrected), { mode: 'gated', cause: 'pending-match', enabled: true, restored: legacy })
+    assert.equal(legacyRebuild.action, 'publish-incremental', legacyRebuild.metrics.fallbackReason)
+    if (legacyRebuild.action === 'publish-incremental') assert.ok(legacyRebuild.patch.changedArtifacts.some(artifact => artifact.logicalPath === reportPath))
+    const noWorlds = structuredClone(source)
+    for (const game of [...noWorlds.importedMatches, ...noWorlds.matches]) {
+      if (game.event.startsWith('Worlds')) game.event = 'LCK 2025'
+    }
+    const removed = await run(root, 'worlds-removed', noWorlds, { mode: 'gated', cause: 'pending-match', enabled: true, restored })
+    const survivingPaths = removed.action === 'publish-full'
+      ? removed.build.publicPlan.writes.map(write => `/data/${write.relativePath}`)
+      : removed.action === 'publish-incremental' ? removed.patch.expectedLogicalPaths : []
+    assert.ok(!survivingPaths.includes(reportPath), 'Removing the edition removes its report from publication authority')
+    const indexWrite = baseline.action === 'publish-full' ? baseline.build.publicPlan.writes.find(write => write.relativePath === 'tournament-reports/index.json')! : undefined
+    assert.ok(indexWrite)
+    assert.ok(obsoletePublicArtifactPaths({
+      previousPaths: Object.keys(restored.artifacts!), previousRoot: restored.rootArtifact!,
+      candidateWrites: [{ ...indexWrite, value: { ...(indexWrite.value as Record<string, unknown>), tournaments: [] } }],
+      validScopeKeys: new Set(Object.keys(restored.rootArtifact!.snapshotIndex as object)),
+      validTournamentIds: new Set(['worlds:2025']),
+    }).includes(reportPath), 'A partial report-family rebuild prunes orphan event shards')
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test('source receipt updates preserve a one-game append with retained Worlds reports', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'worlds-receipt-append-'))
+  try {
+    const observed = [reportGame('one'), reportGame('two', '2025-10-16', -200), scoutingGame({ id: 'regular', date: '2025-12-30' })]
+    const source = reportSource(observed)
+    const baseline = await run(root, 'receipt-base', structuredClone(source), { mode: 'gated', cause: 'manual-force', enabled: false })
+    const restored = restoreFrom(baseline)
+    const appended = scoutingGame({ id: 'append', date: '2025-12-31' })
+    const next = reportSource([...observed, appended])
+    next.source = 'Oracle primary with an additional Leaguepedia receipt'
+    next.externalSources = [{ name: 'New provider receipt', kind: 'game-stats', status: 'active', description: 'Synthetic receipt metadata', retrievedAt: '2026-01-02T00:00:00.000Z' }]
+    const receiptOnly = { ...structuredClone(source), source: next.source, externalSources: next.externalSources }
+    const metadata = await run(root, 'receipt-only', structuredClone(receiptOnly), { mode: 'gated', cause: 'pending-match', enabled: true, restored })
+    assert.equal(metadata.action, 'publish-incremental')
+    assert.equal(metadata.metrics.classification, 'metadata-only')
+    assert.equal(metadata.metrics.replayedMatchCount, 0)
+    assert.deepEqual(metadata.metrics.changedPaths, ['/data/ranking-summary.json'])
+    const metadataFull = await run(root, 'receipt-only-full', structuredClone(receiptOnly), { mode: 'gated', cause: 'manual-force', enabled: false })
+    const metadataMap = semanticMap(metadata)
+    const metadataFullMap = semanticMap(metadataFull)
+    assert.deepEqual(metadata.rootManifest?.sources, next.externalSources)
+    assert.equal(metadata.rootManifest?.source, next.source)
+    for (const path of ['/data/tournament-reports/index.json', '/data/tournament-reports/events/worlds-2025.json']) {
+      assert.ok(metadataMap[path])
+      assert.equal(metadataMap[path], metadataFullMap[path], `Receipt-only report parity for ${path}`)
+    }
+    const candidate = await run(root, 'receipt-append', structuredClone(next), { mode: 'gated', cause: 'pending-match', enabled: true, restored })
+    assert.equal(candidate.action, 'publish-incremental', candidate.metrics.fallbackReason)
+    assert.equal(candidate.metrics.classification, 'latest-append')
+    assert.equal(candidate.metrics.replayedMatchCount, 1)
+    if (candidate.action !== 'publish-incremental') throw new Error('Expected an incremental append')
+    const full = await run(root, 'receipt-full', structuredClone(next), { mode: 'gated', cause: 'manual-force', enabled: false })
+    assert.deepEqual(semanticMap(candidate), semanticMap(full))
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
 
 test('partial player directory preserves valid unaffected season players and diagnostics', () => {
   const merged = mergePartialPlayerDirectoryArtifact({
@@ -193,20 +308,25 @@ test('feature/mode matrix preserves disabled and daily/manual force full while c
   }
 })
 
-test('retained generations without replay evidence bootstrap before no-change and metadata-only shortcuts', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'incremental-replay-bootstrap-'))
+test('retained generations without replay evidence or scouting bootstrap before no-change and metadata-only shortcuts', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'incremental-capability-bootstrap-'))
   try {
     const source = fixtureSource(baseMatches())
     const base = await run(root, 'baseline', source, { mode: 'gated', cause: 'pending-match', enabled: false })
-    const restored = restoreFrom(base)
-    delete restored.rootArtifact!.replayPredictionsUrl
-    delete (restored.publicManifest.artifacts as Record<string, unknown>)['/data/evaluation/replay-predictions.json']
-    for (const metadata of [false, true]) {
-      const input = metadata ? { ...source, externalSources: [providerReceipt('2026-07-23T00:00:00Z', '2026-01-04')] } : source
-      const result = await run(root, `bootstrap-${metadata}`, input, { mode: 'gated', cause: 'pending-match', enabled: true, restored })
-      assert.equal(result.action, 'publish-full')
-      assert.equal(result.metrics.fallbackReason, 'replay-evidence-capability-missing')
-      assert.ok(semanticMap(result)['/data/evaluation/replay-predictions.json'])
+    for (const [urlKey, path, reason] of [
+      ['replayPredictionsUrl', '/data/evaluation/replay-predictions.json', 'replay-evidence-capability-missing'],
+      ['scoutingIndexUrl', '/data/scouting/index.json', 'scouting-capability-missing'],
+    ] as const) {
+      const restored = structuredClone(restoreFrom(base))
+      delete restored.rootArtifact![urlKey]
+      delete (restored.publicManifest.artifacts as Record<string, unknown>)[path]
+      for (const metadata of [false, true]) {
+        const input = metadata ? { ...source, externalSources: [providerReceipt('2026-07-23T00:00:00Z', '2026-01-04')] } : source
+        const result = await run(root, `bootstrap-${urlKey}-${metadata}`, input, { mode: 'gated', cause: 'pending-match', enabled: true, restored })
+        assert.equal(result.action, 'publish-full')
+        assert.equal(result.metrics.fallbackReason, reason)
+        assert.ok(semanticMap(result)[path])
+      }
     }
   } finally { await rm(root, { recursive: true, force: true }) }
 })
@@ -409,6 +529,36 @@ test('append, same-day insertion, and historical correction use whole-date repla
       const evidence = incremental.patch.changedArtifacts.find((artifact) => artifact.logicalPath === replayPath)?.value as { predictions: unknown[] } | undefined
       assert.equal(evidence?.predictions.length, matches.length, `${name} checkpoint prefix and suffix coverage`)
       await assert.rejects(access(join(root, `${name}-incremental-full.json`)), name)
+    }
+  } finally {
+    if (process.env.KEEP_INCREMENTAL_TEST_TMP !== 'true') await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('scouting player files follow appends, corrections, role changes and deletions with clean full semantics', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'incremental-scouting-'))
+  // Games with complete rosters, so every player has a scouting file. The ledger drops rosters, so only the files show these changes.
+  const scouted = (id: string, date: string, options: Parameters<typeof scoutingGame>[0] extends infer O ? Partial<O> : never = {}) => {
+    const game = scoutingGame({ id, date, ...options })
+    return match(id, date, 'Scout Event', { winner: game.winner, teamARoster: game.teamARoster, teamBRoster: game.teamBRoster })
+  }
+  const baseGames = () => [scouted('s0', '2025-12-31'), scouted('s1', '2026-01-01'), scouted('s2', '2026-01-02'), scouted('s3', '2026-01-03', { champion: 'Other' }), scouted('s4', '2026-01-04')]
+  try {
+    const base = await run(root, 'base', fixtureSource(baseGames()), { mode: 'gated', cause: 'daily-audit', enabled: true })
+    const scenarios = {
+      append: [...baseGames(), scouted('s5', '2026-01-05')],
+      correction: baseGames().map((entry) => entry.id === 's3' ? scouted('s3', '2026-01-03', { champion: 'Corrected', won: false }) : entry),
+      roleChange: baseGames().map((entry) => entry.id === 's4' ? { ...entry, teamARoster: { ...entry.teamARoster!, players: entry.teamARoster!.players.map((player) => player.role === 'Mid' ? { ...player, role: 'Top' as const } : player.role === 'Top' ? { ...player, role: 'Mid' as const } : player) } } : entry),
+      deletion: baseGames().filter((entry) => entry.id !== 's2'),
+    }
+    for (const [name, matches] of Object.entries(scenarios)) {
+      // A gated run releases rosters in place, so each run gets its own copy.
+      const incremental = await run(root, `${name}-incremental`, fixtureSource(structuredClone(matches)), { mode: 'gated', cause: 'pending-match', enabled: true, restored: restoreFrom(base) })
+      assert.equal(incremental.action, 'publish-incremental', `${name}: ${incremental.metrics.fallbackReason ?? 'no fallback reason'}`)
+      const full = await run(root, `${name}-full`, fixtureSource(structuredClone(matches)), { mode: 'gated', cause: 'daily-audit', enabled: false })
+      const scouting = (map: Record<string, unknown>) => Object.fromEntries(Object.entries(map).filter(([path]) => path.startsWith('/data/scouting/')))
+      assert.ok(Object.keys(scouting(semanticMap(full))).length > 1, `${name}: the fixture publishes player files`)
+      assert.deepEqual(scouting(semanticMap(incremental)), scouting(semanticMap(full)), name)
     }
   } finally {
     if (process.env.KEEP_INCREMENTAL_TEST_TMP !== 'true') await rm(root, { recursive: true, force: true })

@@ -62,14 +62,14 @@ test('schedule probes queue completions once and preserve watermark on incomplet
   assert.equal(second.observationWatermark, '2026-07-11T13:00:00.000Z')
 })
 
-test('gated fetches occur only for due pending work, audits, or manual recovery', () => {
+test('shadow and gated fetches occur only for due pending work, audits, or manual recovery', () => {
   const shadow = applyScheduleProbe(emptyTriggerState('shadow'), {
     checkedAt: '2026-07-11T13:00:00Z',
     coverageComplete: true,
     events: [completed],
   })
-  assert.equal(shouldFetchScoredProviders(shadow, { now: '2026-07-11T13:00:00Z' }), false)
-  assert.equal(shouldFetchScoredProviders(shadow, { now: '2026-07-11T13:00:00Z', shadowIngestionEnabled: true }), true)
+  assert.equal(shouldFetchScoredProviders(shadow, { now: '2026-07-11T13:00:00Z' }), true)
+  assert.equal(shouldFetchScoredProviders(emptyTriggerState('shadow')), false)
   assert.equal(shouldFetchScoredProviders({ ...shadow, mode: 'gated' }, { now: '2026-07-11T13:00:00Z' }), true)
   assert.equal(shouldFetchScoredProviders(emptyTriggerState('gated'), { correctionAuditDue: true }), true)
   assert.equal(shouldFetchScoredProviders(emptyTriggerState('gated'), { manual: true }), true)

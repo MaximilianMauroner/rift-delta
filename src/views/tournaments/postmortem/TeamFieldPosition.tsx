@@ -1,0 +1,161 @@
+import { Card, CardContent } from '../../../components/ui/card'
+import { cn } from '../../../shared/utils'
+import { FieldStrip, FieldStripKey } from '../../../components/FieldStrip'
+import { percent, signedGold } from '../../../components/fieldFormat'
+import {
+  REPORT_FIELD_MIN_GAMES,
+  REPORT_TEAM_METRICS,
+  reportTeamFieldPositions,
+  reportTeamGames,
+  type TournamentReport,
+  type TournamentReportTeam,
+} from '../../../domains/rankings/tournament-reports'
+
+function formatTeamMetric(unit: string, value: number) {
+  if (unit === '%') return percent(value)
+  if (unit === 'gold') return signedGold(value)
+  return `${value.toFixed(1)} ${unit}`
+}
+
+export function TeamFieldPosition({
+  report,
+  team,
+}: {
+  report: TournamentReport
+  team: TournamentReportTeam
+}) {
+  const positions = reportTeamFieldPositions(report, team.id)
+  const codes = new Map(report.teams.map((entry) => [entry.id, entry.code]))
+  return (
+    <Card className="gap-0 overflow-visible py-0" role="region" aria-label={`${team.name} compared with the field`}>
+      <CardContent className="grid min-w-0 gap-3 py-4">
+        <h4 className="text-base font-semibold text-text">Compared with the field</h4>
+        <ol className="grid min-w-0 divide-y divide-line">
+          {positions.map((position) => {
+            const metric = REPORT_TEAM_METRICS[position.metric]
+            return (
+              <FieldStrip
+                key={position.metric}
+                label={metric.label}
+                hint={metric.hint}
+                subject={team.code}
+                subjectId={team.id}
+                position={position}
+                format={(value) => formatTeamMetric(metric.unit, value)}
+                nameFor={(id) => codes.get(id) ?? id}
+                within="at the event"
+                minSamples={REPORT_FIELD_MIN_GAMES}
+                note={position.better === null ? 'A style, not better or worse' : undefined}
+              />
+            )
+          })}
+        </ol>
+        <FieldStripKey subject={team.code} others="Other teams">
+          <span>Teams need {REPORT_FIELD_MIN_GAMES} games to count.</span>
+        </FieldStripKey>
+      </CardContent>
+    </Card>
+  )
+}
+
+export function TeamGameSwings({
+  report,
+  team,
+}: {
+  report: TournamentReport
+  team: TournamentReportTeam
+}) {
+  const rows = reportTeamGames(report).flatMap((row) =>
+    row.teamId === team.id && row.goldDiff !== null
+      ? [{ ...row, goldDiff: row.goldDiff }]
+      : [],
+  )
+  const codes = new Map(report.teams.map((entry) => [entry.id, entry.code]))
+  const extent = Math.max(
+    1,
+    ...rows.flatMap((row) => [Math.abs(row.goldDiff), Math.abs(row.goldDiffAt15 ?? 0)]),
+  )
+  const at = (value: number) => 50 + (value / extent) * 50
+  return (
+    <Card className="gap-0 py-0" role="region" aria-label={`${team.name} game by game`}>
+      <CardContent className="grid min-w-0 gap-3 py-4">
+        <div>
+          <h4 className="text-sm font-bold">Game by game</h4>
+          <p className="text-xs text-muted">
+            Team gold lead at 15 minutes (ring) and at the end (dot). The line
+            shows how the lead changed after 15.
+          </p>
+        </div>
+        <div aria-hidden="true" className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)_7rem] gap-2 text-xs text-muted">
+          <span />
+          <span className="flex justify-between">
+            <span>{signedGold(-extent)}</span>
+            <span>0</span>
+            <span>{signedGold(extent)}</span>
+          </span>
+          <span />
+        </div>
+        <ol className="grid min-w-0 gap-1">
+          {rows.map((row) => {
+            const start = row.goldDiffAt15
+            const end = row.goldDiff
+            return (
+              <li
+                key={row.matchId}
+                className="grid min-w-0 grid-cols-[minmax(0,7rem)_minmax(0,1fr)_7rem] items-center gap-2"
+              >
+                <span className="min-w-0 truncate text-xs">
+                  <span
+                    className={cn(
+                      'mr-1 font-bold',
+                      row.result === 'W' ? 'text-up' : 'text-down',
+                    )}
+                  >
+                    {row.result}
+                  </span>
+                  vs {codes.get(row.opponentId)}
+                  {row.side ? (
+                    <span className="text-muted"> · {row.side}</span>
+                  ) : null}
+                </span>
+                <span
+                  className="relative block h-5 min-w-0"
+                  role="img"
+                  aria-label={`${row.result === 'W' ? 'Win' : 'Loss'} against ${codes.get(row.opponentId)}: ${start === null ? 'gold at 15 unavailable' : `${signedGold(start)} gold at 15`}, ${signedGold(end)} at the end`}
+                >
+                  <span className="absolute inset-x-0 top-1/2 border-t border-line" />
+                  <span className="absolute inset-y-0 left-1/2 border-l border-line" />
+                  {start !== null ? (
+                    <>
+                      <span
+                        className="absolute top-1/2 h-0.5 -translate-y-1/2 bg-muted"
+                        style={{
+                          left: `${Math.min(at(start), at(end))}%`,
+                          width: `${Math.abs(at(end) - at(start))}%`,
+                        }}
+                      />
+                      <span
+                        className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-muted bg-surface"
+                        style={{ left: `${at(start)}%` }}
+                      />
+                    </>
+                  ) : null}
+                  <span
+                    className={cn(
+                      'absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full',
+                      row.result === 'W' ? 'bg-up' : 'bg-down',
+                    )}
+                    style={{ left: `${at(end)}%` }}
+                  />
+                </span>
+                <span className="text-right text-xs whitespace-nowrap tabular-nums text-muted">
+                  {start === null ? '—' : signedGold(start)} → {signedGold(end)}
+                </span>
+              </li>
+            )
+          })}
+        </ol>
+      </CardContent>
+    </Card>
+  )
+}

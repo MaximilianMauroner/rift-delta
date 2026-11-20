@@ -1,21 +1,19 @@
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 import { chromium, type Locator, type Page } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { encodeChoices, fillDraw, resolveScenario, seedBaseline, type DrawnRound, type SwissBaseline } from '../src/domains/tournaments/internal/swissScenario'
 import { WORLDS_2026_SWISS_RULES } from '../src/domains/tournaments/internal/worlds2026Swiss'
 import { worldsRandom } from '../src/domains/tournaments/internal/worldsSimulation'
 import { closedSelectKeysChangeValue } from './fixtures/nativeSelect'
 import { at, mainId, playInId, names, team, rankingArtifacts, fixtureFeed } from './fixtures/swissPreviewFixtures'
 
-for (const forecasts of ['0', '1']) for (const ratingsAvailable of [true, false]) test(`Swiss manual preview preserves scenarios with forecasts=${forecasts}, ratings=${ratingsAvailable}`, { timeout: 90_000 }, async () => {
+for (const ratingsAvailable of [true, false]) test(`Swiss manual preview preserves scenarios with ratings=${ratingsAvailable}`, { timeout: 90_000 }, async () => {
   const feed = fixtureFeed()
   const ratings = rankingArtifacts()
   const requests: string[] = []
-  const fixturePlugin: Plugin = {
+  const fixturePlugin: BrowserFixture = {
     name: 'swiss-preview-fixture',
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
@@ -31,15 +29,9 @@ for (const forecasts of ['0', '1']) for (const ratingsAvailable of [true, false]
       })
     },
   }
-  const server = await createServer({
-    configFile: false, logLevel: 'silent',
-    define: { 'import.meta.env.VITE_TOURNAMENT_FORECASTS_ENABLED': JSON.stringify(forecasts) },
-    resolve: { alias: { '@': new URL('../src', import.meta.url).pathname } },
-    server: { host: '127.0.0.1', port: 0 }, plugins: [fixturePlugin, react(), tailwindcss()],
-  })
+  const server = await startBrowserFixture(fixturePlugin)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}`
@@ -58,16 +50,16 @@ for (const forecasts of ['0', '1']) for (const ratingsAvailable of [true, false]
 
     await page.goto(`${base}/#tournaments?event=${encodeURIComponent(mainId)}`)
     await page.getByRole('heading', { name: 'Worlds 2026 Main Event' }).waitFor()
-    await page.getByRole('button', { name: 'Swiss preview' }).click()
+    await page.getByRole('link', { name: 'Swiss preview' }).click()
     await page.getByRole('heading', { name: 'Worlds 2026 Swiss preview' }).waitFor()
     assert.match(page.url(), /view=swiss/)
-    assert.equal(await page.evaluate(async (path) => (await import(path)).FORECASTS_ENABLED, '/src/browser/tournaments/resources.ts'), forecasts === '1')
     assert.match(WORLDS_2026_SWISS_RULES.drawUnavailable, /Future Swiss draw probabilities are unavailable/)
     assert.match(await body(page), /Live draws are not available: The Round 1 draw is not in the schedule yet\./)
     assert.equal(await page.locator('#swiss-start').inputValue(), 'seeds')
     assert.equal(await page.locator('#swiss-start option[value="live"]').isDisabled(), true)
     await page.getByText('Estimates use a uniform legal draw model, not Riot’s official draw probabilities.', { exact: true }).waitFor({ timeout: 5_000 })
     await page.getByRole('button', { name: 'Preview stats', exact: true }).waitFor()
+    assert.equal(await page.getByRole('table', { name: 'Team advancement', exact: true }).count(), 0, 'Manual preview waits for a stats request')
     assert.equal(await page.getByRole('region', { name: 'Region odds' }).count(), 0)
     assert.doesNotMatch(await body(page), /\d+(\.\d+)?%/, 'the preview shows no team or region advancement percentages')
 
@@ -285,11 +277,11 @@ for (const forecasts of ['0', '1']) for (const ratingsAvailable of [true, false]
     // The Play-In is also a Worlds 2026 event, but the Swiss rounds belong to the Main Event.
     await page.locator('#tournament-event').selectOption(playInId)
     await page.getByRole('heading', { name: 'Worlds 2026 Play-In' }).waitFor()
-    assert.equal(await page.getByRole('button', { name: 'Swiss preview' }).count(), 0, 'the Play-In has no Swiss preview, even with view=swiss')
+    assert.equal(await page.getByRole('link', { name: 'Swiss preview' }).count(), 0, 'the Play-In has no Swiss preview, even with view=swiss')
     await page.locator('#tournament-event').selectOption(mainId)
     await page.getByRole('heading', { name: 'Worlds 2026 Swiss preview' }).waitFor()
 
-    await page.getByRole('button', { name: 'Schedule' }).click()
+    await page.getByRole('link', { name: 'Schedule', exact: true }).click()
     await page.getByRole('heading', { name: 'Worlds 2026 Main Event' }).waitFor()
     assert.doesNotMatch(page.url(), /view=swiss/)
     assert.match(await page.locator('section[aria-label="results"]').innerText(), /Alpha 1–0 Bravo/)
@@ -297,7 +289,7 @@ for (const forecasts of ['0', '1']) for (const ratingsAvailable of [true, false]
 
     await page.locator('#tournament-event').selectOption('lcs:2027:promotion')
     await page.getByRole('heading', { name: 'LCS 2027 Promotion' }).waitFor()
-    assert.equal(await page.getByRole('button', { name: 'Swiss preview' }).count(), 0, 'the preview belongs to the Worlds 2026 Main Event only')
+    assert.equal(await page.getByRole('link', { name: 'Swiss preview' }).count(), 0, 'the preview belongs to the Worlds 2026 Main Event only')
 
     // Scenario A plays every match, so the standings table holds its longest rows.
     const finished = hashQuery(shared)
@@ -320,12 +312,11 @@ for (const forecasts of ['0', '1']) for (const ratingsAvailable of [true, false]
         }
       })
       assert.ok(layout.content <= layout.viewport && layout.clipped === 0, `Horizontal overflow at ${width}px: ${JSON.stringify(layout)}`)
-      assert.equal(layout.bracketScrolls, width <= 1024, `The six bracket columns fit at 1440 px and wider and scroll at 1024 px and narrower: ${width}px`)
+      assert.equal(layout.bracketScrolls, width <= 1440, `The six bracket columns fit beside the standings at 1920 px and scroll within their frame at 1440 px and narrower: ${width}px`)
       const tableOverflow = await table.evaluate((element) => element.parentElement!.scrollWidth - element.parentElement!.clientWidth)
       assert.ok(tableOverflow <= 1, `The standings table fits its panel at ${width}px: ${tableOverflow}px too wide`)
     }
 
-    if (forecasts === '0') assert.deepEqual(requests.filter((entry) => entry.startsWith('GET /data/')), [], 'the manual preview does not load ratings when forecasts are disabled')
     assert.equal(await page.getByRole('region', { name: 'Region odds' }).count(), 0)
     assert.doesNotMatch(await body(page), /\d+(\.\d+)?%/, 'completed scenarios do not add advancement percentages')
     assert.deepEqual(errors, [])

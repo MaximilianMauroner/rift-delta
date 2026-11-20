@@ -1,9 +1,10 @@
+import { writeOracleForecastFixture } from './fixtures/oracleForecastFixture.ts'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createHash } from 'node:crypto'
-import { mkdtemp, readFile, readdir, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, writeFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { predictPregameSeries, replayPregameSeriesState, seriesWinnerProbability, temperatureProbability } from '../src/domains/rankings/forecast.ts'
 import type { AvailableRankingGame, PregameForecastInput, PregameSeriesRequest } from '../src/domains/rankings/forecast.ts'
@@ -38,7 +39,7 @@ const request: PregameSeriesRequest = {
   asOf, validUntil: asOf + 1800_000, event: 'LCK 2026 Spring', patch: '26.1', season: 2026, league: 'LCK', region: 'LCK', tier: 'regional-regular',
 }
 const history: AvailableRankingGame[] = sampleMatches.slice(0, 2).map((match, index) => ({
-  match: { ...match, id: `real-shape-${index}`, sourceProvider: 'leaguepedia-cargo', sourceGameId: `game-${index}` },
+  match: { ...match, gameCompletedAtUtc: `${match.date}T00:30:00Z`, id: `real-shape-${index}`, sourceProvider: 'leaguepedia-cargo', sourceGameId: `game-${index}` },
   observedAt: Date.parse(match.date) + 3600_000, resultAvailableAt: Date.parse(match.date) + 3600_000,
 }))
 
@@ -137,19 +138,33 @@ test('dependence fits the complete score even when winner loss prefers independe
   }
 })
 
+test('forecast CLI runs through a symlinked entry point and stays inactive on import', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'pregame-entry-'))
+  try {
+    const entry = join(dir, 'export.ts')
+    await symlink(resolve('scripts/rankings/export-pregame-series.ts'), entry)
+    const stdout = execFileSync(process.execPath, ['--import', 'tsx', entry, '--help'], { encoding: 'utf8' })
+    assert.match(stdout, /^Usage: export-pregame-series /)
+    const imported = execFileSync(process.execPath, ['--import', 'tsx', '--input-type=module', '--eval',
+      `await import(${JSON.stringify(new URL('../scripts/rankings/export-pregame-series.ts', import.meta.url).href)})`,
+      join(dir, 'not-an-entry')], { encoding: 'utf8' })
+    assert.equal(imported, '')
+  } finally { await rm(dir, { recursive: true, force: true }) }
+})
+
 test('offline CLI exports actual hashes and exact states without backdating generatedAt', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'pregame-export-'))
   try {
-    const raw = join(dir, 'raw.json')
+    const raw = join(dir, 'raw.csv')
     const manifest = join(dir, 'manifest.json')
     const requests = join(dir, 'requests.json')
     const candidate = join(dir, 'candidate.json')
     const output = join(dir, 'forecasts.jsonl')
-    await writeFile(raw, JSON.stringify({ fetchedAt: '2026-02-09T00:00:00Z', matches: history.map(row => row.match) }))
-    await writeFile(manifest, JSON.stringify({ generatedAt: '2026-02-09T00:00:00Z', files: { leaguepediaJson: ['raw.json'] } }))
+    const sourceCapture = await writeOracleForecastFixture(dir, 'raw.csv', history.map(row => row.match), Date.parse('2026-02-09T00:00:00Z'))
+    await writeFile(manifest, JSON.stringify({ generatedAt: '2026-02-09T00:00:00Z', files: { oracleCsv: ['raw.csv'] } }))
     const source = await importRankingSourceData({ manifestPath: manifest })
     assert.ok(source.matches.length)
-    await writeFile(requests, JSON.stringify({ evidenceMode: 'synthetic', availability: 'verified', requests: [request],
+    await writeFile(requests, JSON.stringify({ evidenceMode: 'synthetic', availability: 'verified', requests: [request], sourceFiles: [sourceCapture],
       observations: source.matches.map(match => ({ gameId: match.id, observedAt: Date.parse(match.date) + 3600_000, resultAvailableAt: Date.parse(match.date) + 3600_000 })) }))
     await writeFile(candidate, JSON.stringify({ candidateId: 'synthetic-baseline', parentCandidateId: null, transform: input.transform, calibrationFit: null }))
     const before = Date.now()

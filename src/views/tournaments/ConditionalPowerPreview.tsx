@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { Badge } from '../../components/ui/badge'
 import { Select } from '../../components/ui/select'
 import { conditionalOutcomeProblem, legalConditionalScores, publicConditionalPowerPreview, type ConditionalSeriesOutcome } from '../../domains/tournaments/forecast'
 import type { ForecastBasis, TournamentForecast } from '../../domains/tournaments/forecast'
@@ -17,8 +18,8 @@ export function ConditionalPowerPreview({ series, forecast, now, basis, powerPre
     : publicConditionalPowerPreview(series, outcome, forecast, now)
   const canChoose = conditionalOutcomeProblem(series, outcome, now) === null
   const winnerName = series.teams[outcome.winner === 'home' ? 0 : 1]?.name ?? 'TBD'
-  return <details className="mt-2 min-w-0 border-t border-border pt-2">
-    <summary className="cursor-pointer font-semibold text-foreground">Conditional Power preview</summary>
+  return <details className="min-w-0 text-sm text-muted open:border-l-2 open:border-dashed open:border-[var(--forecast)] open:py-2 open:pr-2 open:pl-3">
+    <summary className="cursor-pointer text-sm"><span className="font-semibold text-text">Conditional Power preview</span> <Badge variant="preview" className="ml-1">Forecast</Badge></summary>
     <div className="mt-2 grid min-w-0 gap-2">
       <p>Hypothetical outcome. This does not change ratings or frozen-strength tournament simulations.</p>
       {forecast?.status === 'ready' ? <p>{series.status === 'upcoming' ? 'Current' : 'Pre-match'} Power (snapshot): {forecast.teams.map((team) => `${team.name} ${team.rating}`).join(' · ')}</p> : null}
@@ -38,7 +39,7 @@ export function ConditionalPowerPreview({ series, forecast, now, basis, powerPre
         </div>
       </div> : null}
       {preview.status === 'partial' ? <div className="grid gap-1">
-        <strong className="text-foreground">Stable-team result component · hypothetical</strong>
+        <strong className="text-[var(--forecast)]">Stable-team result component · hypothetical</strong>
         <p role="status">{preview.teams.map((team) => `${team.team}: ${team.delta > 0 ? '+' : ''}${team.delta} Power points (${team.before} → ${team.after})`).join(' · ')}</p>
         <p>Full future Power delta unavailable. Game performance, lineup and time changes are not predicted.</p>
         <p>Snapshot through {preview.provenance.ratingDataAsOf.slice(0, 10)} · Event {preview.provenance.event.name} / {preview.provenance.event.phase} · {preview.provenance.ratingScale.shortLabel}</p>

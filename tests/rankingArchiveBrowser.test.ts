@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { createStaticRankingData } from '../src/domains/rankings/internal/projections/snapshot.ts'
 import { createPublicArtifactWritePlan } from '../src/domains/rankings/internal/published/writePlan.ts'
 import { createGenerationManifest, prepareSemanticArtifact } from '../scripts/public-artifact-storage.mjs'
@@ -43,7 +43,7 @@ test('ranking browser bootstraps without archive history, selects a year, pages,
   let holdIndex = false
   const pendingIndex: Array<() => void> = []
   const indexPath = `/data/objects/sha256/${entries.find((entry) => entry.logicalPath === '/data/matches/index.json')!.digest}`
-  const fixture: Plugin = { name: 'ranking-archive-browser-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'ranking-archive-browser-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (!path.startsWith('/data/')) return next()
@@ -55,10 +55,9 @@ test('ranking browser bootstraps without archive history, selects a year, pages,
       response.end(response.statusCode === 200 ? body : '{}')
     })
   } }
-  const server = await createServer({ logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer!.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}`
@@ -140,11 +139,10 @@ test('ranking browser bootstraps without archive history, selects a year, pages,
     await page.getByRole('heading', { name: 'Power over time', exact: true }).hover()
     await page.locator('.recharts-line-curve').first().waitFor()
     await page.getByTitle('Open Alpha', { exact: true }).click()
-    const detail = page.locator('.team-detail-sheet')
+    const detail = page.getByRole('region', { name: 'Team details', exact: true })
     await detail.waitFor()
-    assert.equal(await detail.getAttribute('aria-label'), 'Alpha details')
-    assert.equal(await detail.getAttribute('aria-modal'), 'true')
-    assert.equal(await page.evaluate(() => document.querySelector('.team-detail-sheet')?.contains(document.activeElement)), true)
+    assert.equal(await detail.getByRole('heading', { level: 2 }).textContent(), 'Alpha')
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Alpha', 'Opening a team moves focus to its dossier heading')
     await detail.locator('.recharts-line-curve').first().waitFor()
     await detail.locator('svg.recharts-surface').first().focus()
     const pointDetails = detail.getByText('Match and model details', { exact: true })
@@ -152,12 +150,9 @@ test('ranking browser bootstraps without archive history, selects a year, pages,
     await page.keyboard.press('Tab')
     await page.waitForFunction(() => document.activeElement?.textContent === 'Match and model details', undefined, { timeout: 2_000 })
     assert.equal(await pointDetails.evaluate((summary) => summary === document.activeElement), true)
-    for (let index = 0; index < 20; index++) {
-      await page.keyboard.press(index < 10 ? 'Tab' : 'Shift+Tab')
-      await page.waitForFunction(() => document.querySelector('.team-detail-sheet')?.contains(document.activeElement), undefined, { timeout: 2_000 })
-    }
     await page.keyboard.press('Escape')
     await detail.waitFor({ state: 'hidden' })
+    await page.waitForFunction(() => document.activeElement?.getAttribute('title') === 'Open Alpha', undefined, { timeout: 2_000 })
   } finally { await browser?.close(); await server.close() }
 })
 
@@ -215,7 +210,7 @@ test('Regions drawer distinguishes unavailable series contributions from zero an
   const meta = plan.manifest.artifactMeta
   assert.ok(meta)
   const manifest = createGenerationManifest({ generationId: meta.runId, rootManifest: plan.manifest, entries })
-  const fixture: Plugin = { name: 'region-contribution-browser-fixture', configureServer(server) {
+  const fixture: BrowserFixture = { name: 'region-contribution-browser-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture.invalid').pathname
       if (!path.startsWith('/data/')) return next()
@@ -225,10 +220,9 @@ test('Regions drawer distinguishes unavailable series contributions from zero an
       response.end(body ?? '{}')
     })
   } }
-  const server = await createServer({ logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [fixture] })
+  const server = await startBrowserFixture(fixture)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer!.address()
     assert.ok(address && typeof address !== 'string')
     const executablePath = chromium.executablePath()
@@ -236,6 +230,7 @@ test('Regions drawer distinguishes unavailable series contributions from zero an
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
     await page.goto(`http://127.0.0.1:${address.port}/#regions?scope=all`)
     await page.getByTitle('Open LCK region detail', { exact: true }).click()
+    await page.getByText('Matches and score history', { exact: true }).click()
     const history = page.getByRole('region', { name: 'LCK match and score history', exact: true })
     for (const entry of cases) {
       const row = history.locator('article').filter({ has: page.getByText(entry.event, { exact: true }) })

@@ -1,0 +1,239 @@
+.regions-view {
+  font-variant-numeric: tabular-nums;
+}
+
+.regions-board,
+.regions-charts {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+}
+
+.regions-lead {
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+.regions-scope-summary {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.regions-scope-summary summary,
+.regions-row-facts summary {
+  width: fit-content;
+  cursor: pointer;
+}
+
+.regions-scale {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) 64px minmax(80px, 1fr);
+  gap: 16px;
+  padding: 10px 58px 10px 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.regions-scale span:last-child {
+  text-align: right;
+}
+
+.regions-ladder {
+  table-layout: fixed;
+  font-size: 14px;
+}
+
+.regions-ladder .regions-row-cell {
+  padding: 0;
+  white-space: normal;
+}
+
+.regions-ladder .regions-compare-cell {
+  width: 100px;
+  padding: 8px;
+  vertical-align: top;
+}
+
+.regions-ladder .regions-row-open {
+  display: grid;
+  grid-template-columns: 24px minmax(70px, 1fr) 64px minmax(70px, 1fr);
+  width: 100%;
+  height: auto;
+  justify-items: stretch;
+  gap: 8px 12px;
+  border: 0;
+  border-radius: 0;
+  padding: 12px 14px 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  white-space: normal;
+}
+
+.regions-row-open:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.regions-rank {
+  align-self: center;
+  font-weight: 600;
+}
+
+.regions-identity {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.regions-identity strong {
+  font-size: 15px;
+}
+
+.regions-power {
+  align-self: center;
+  text-align: right;
+  font-size: 17px;
+}
+
+.regions-top-teams {
+  grid-column: 2 / -1;
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.regions-top-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.regions-row-facts {
+  margin: 0 14px 10px 50px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.regions-row-facts dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.regions-row-facts dd {
+  color: var(--text);
+}
+
+.regions-row--selected {
+  background: var(--raised);
+}
+
+.region-dossier {
+  width: 100%;
+  min-width: 0;
+  align-self: start;
+}
+
+.region-dossier-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.region-dossier-heading:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.region-dossier-close {
+  margin-left: auto;
+}
+
+.region-dossier-back {
+  display: none;
+}
+
+.region-dossier-body {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px;
+}
+
+@media (min-width: 1280px) {
+  .regions-view--selected {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .regions-charts {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1279px) {
+  .regions-view--selected .regions-board,
+  .regions-view--selected .regions-charts {
+    display: none;
+  }
+
+  .region-dossier-back {
+    display: inline-flex;
+  }
+
+  .region-dossier-close {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .regions-lead {
+    font-size: 17px;
+  }
+
+  .regions-scale {
+    display: none;
+  }
+
+  .regions-ladder .regions-row-open {
+    grid-template-columns: 18px minmax(54px, 1fr) 55px minmax(36px, 1fr);
+    gap: 8px;
+    padding-inline: 10px 4px;
+  }
+
+  .regions-ladder .regions-compare-cell {
+    width: 66px;
+    padding: 8px 3px;
+  }
+
+  .regions-row-facts {
+    margin-left: 36px;
+  }
+
+  .regions-top-teams {
+    gap: 6px 10px;
+  }
+
+  .region-dossier-body {
+    padding: 10px;
+  }
+}
+
+.regions-ladder .regions-compare-cell [data-slot="compare-toggle"] {
+  max-width: 100%;
+}

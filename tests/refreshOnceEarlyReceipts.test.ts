@@ -5,7 +5,6 @@ import { parseRolloutEvidence, publishRolloutEvidence } from '../scripts/rollout
 
 const liveEnvironment = {
   RANKING_REFRESH_MODE: 'gated',
-  RANKING_ROLLOUT_EVIDENCE_ENABLED: 'true',
   RAILWAY_GIT_COMMIT_SHA: 'abc123',
   RAILWAY_DEPLOYMENT_ID: 'deployment-1',
   RAILWAY_ENVIRONMENT_ID: 'environment-1',
@@ -110,6 +109,18 @@ test('publication failure is observable and never changes the terminal outcome i
   })
   assert.equal(result.status, 'skipped')
   assert.match(warnings.join('\n'), /publication failed.*receipt-store-unavailable/i)
+})
+
+test('missing deployment authority is reported for an early terminal run', async () => {
+  const warnings: string[] = []
+  const result = await runRefreshOnce({
+    ...options([]),
+    env: { ...liveEnvironment, RAILWAY_SERVICE_ID: '' },
+    acquireLease: async () => ({ acquired: false as const, reason: 'held-by-peer' }),
+    logger: { log() {}, warn: (value: string) => warnings.push(value), error() {} },
+  })
+  assert.equal(result.status, 'skipped')
+  assert.match(warnings.join('\n'), /Rollout evidence requires commit, deployment, environment, and service authority/)
 })
 
 function nativePublisher(objects: Map<string, unknown>, published: Array<Record<string, unknown>>) {

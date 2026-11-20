@@ -99,6 +99,7 @@ struct Leagues {
 struct Pass<'f> {
     model: &'f Model,
     frame: &'f Frame,
+    result_ratings: Vec<f64>,
     teams: Teams<'f>,
     leagues: Leagues,
     side_samples: Vec<(String, SideSample)>,
@@ -131,6 +132,10 @@ pub(crate) fn date(model: &Model, frame: &Frame) -> Result<DateResult> {
     let mut pass = Pass {
         model,
         frame,
+        result_ratings: teams
+            .iter()
+            .map(|team| bits(team.rating).unwrap_or(model.initial_team_rating))
+            .collect(),
         teams: Teams {
             rating: Table::new(teams.iter().map(|t| bits(t.rating))),
             execution: Table::new(teams.iter().map(|t| bits(t.execution_rating))),
@@ -324,7 +329,7 @@ impl<'f> Pass<'f> {
         }
     }
 
-    fn continuity(&mut self, team: usize, observed: Option<&Roster>) {
+    fn continuity(&mut self, team: usize, observed: Option<&Roster>, preserve_strength: bool) {
         let (Some(observed), Some((_, prior))) = (observed, self.teams.last_roster.get(team))
         else {
             return;
@@ -335,16 +340,16 @@ impl<'f> Pass<'f> {
         let model = self.model;
         let initial = model.initial_team_rating;
         self.teams.continuity.set(team, continuity);
-        let retention =
-            model.roster_continuity_floor + (1.0 - model.roster_continuity_floor) * continuity;
-        let rating = self.teams.rating.num(team).unwrap_or(initial);
-        let execution = self.teams.execution.num(team).unwrap_or(initial);
-        self.teams
-            .rating
-            .set(team, initial + retention * (rating - initial));
-        self.teams
-            .execution
-            .set(team, initial + retention * (execution - initial));
+        let retention = if preserve_strength {
+            1.0
+        } else {
+            model.roster_continuity_floor + (1.0 - model.roster_continuity_floor) * continuity
+        };
+        for ratings in [&mut self.teams.rating, &mut self.teams.execution] {
+            let rating = ratings.num(team).unwrap_or(initial);
+            ratings.set(team, initial + retention * (rating - initial));
+        }
+        self.result_ratings[team] = initial + retention * (self.result_ratings[team] - initial);
         if continuity < 1.0 {
             let uncertainty = self
                 .teams
@@ -367,8 +372,12 @@ impl<'f> Pass<'f> {
         let frame = self.frame;
         let last = series.members.len() - 1;
         let final_member = &series.members[last];
-        for side in &final_member.sides {
-            self.continuity(side.team, side.roster.as_ref());
+        for (side, preserve) in final_member
+            .sides
+            .iter()
+            .zip(series.preserve_roster_strength)
+        {
+            self.continuity(side.team, side.roster.as_ref(), preserve);
         }
         let continuity = final_member.sides.each_ref().map(|side| ContinuityState {
             roster_continuity: self.teams.continuity.bits(side.team),
@@ -407,7 +416,7 @@ impl<'f> Pass<'f> {
         let current_power_rating = [0, 1].map(|s| {
             let before = &frame.teams[series.teams[s]];
             let power = model.power_rating(
-                bits(before.rating).unwrap_or(model.initial_team_rating),
+                self.result_ratings[series.teams[s]],
                 self.snapshot_league(series.leagues[s]),
             );
             power + offsets[s] + bits(before.momentum).unwrap_or(0.0)

@@ -132,6 +132,13 @@ function normalizeGame(
     ? Date.parse(datetimeUtc) + duration * 1000 : NaN)
   const format = bestOfForGame(first, playoffs)
   const gameNumber = numberValue(first, 'game')
+  const teamARoster = rosterForSide(rows, 'blue', date, winner === blueTeam)
+  const teamBRoster = rosterForSide(rows, 'red', date, winner === redTeam)
+  const bluePlayers = new Set(teamARoster?.players.map((player) => player.id))
+  if (teamARoster && teamBRoster?.players.some((player) => bluePlayers.has(player.id))) {
+    teamARoster.completeness = 'partial'
+    teamBRoster.completeness = 'partial'
+  }
 
   return {
     id: `oe-${gameId}`,
@@ -155,8 +162,8 @@ function normalizeGame(
     teamBRegion: redRegion,
     teamASide: 'blue',
     teamBSide: 'red',
-    teamARoster: rosterForSide(rows, 'blue', date),
-    teamBRoster: rosterForSide(rows, 'red', date),
+    teamARoster,
+    teamBRoster,
     teamAPicks: picksForSide(rows, 'blue'),
     teamBPicks: picksForSide(rows, 'red'),
     patch,
@@ -180,7 +187,7 @@ function normalizeGame(
   }
 }
 
-function rosterForSide(rows: CsvRecord[], side: string, observedAt: string): MatchRosterSnapshot | undefined {
+function rosterForSide(rows: CsvRecord[], side: string, observedAt: string, won: boolean): MatchRosterSnapshot | undefined {
   const sideRows = rows.filter((row) => value(row, 'side').toLowerCase() === side.toLowerCase() && value(row, 'position').toLowerCase() !== 'team')
   const players: RosterPlayerAppearance[] = []
   const seenRoles = new Set<Role>()
@@ -194,7 +201,7 @@ function rosterForSide(rows: CsvRecord[], side: string, observedAt: string): Mat
       id,
       name: name || id,
       role,
-      stats: playerStatsFor(row, side),
+      stats: playerStatsFor(row, side, won),
     })
     seenRoles.add(role)
   }
@@ -227,14 +234,14 @@ function canonicalOraclePlayerIdFor(row: CsvRecord) {
   return unresolvedPlayerIdFor(row)
 }
 
-function playerStatsFor(row: CsvRecord, side: string) {
+function playerStatsFor(row: CsvRecord, side: string, won: boolean) {
   return {
     side: side.toLowerCase() === 'blue' ? 'blue' as const : 'red' as const,
     champion: value(row, 'champion') || undefined,
-    won: numberValue(row, 'result') === 1,
-    kills: numberValue(row, 'kills'),
-    deaths: numberValue(row, 'deaths'),
-    assists: numberValue(row, 'assists'),
+    won,
+    kills: countValue(row, 'kills'),
+    deaths: countValue(row, 'deaths'),
+    assists: countValue(row, 'assists'),
     totalGold: optionalNumberValue(row, 'totalgold'),
     earnedGold: optionalNumberValue(row, 'earnedgold'),
     damageShare: optionalNumberValue(row, 'damageshare'),
@@ -253,10 +260,15 @@ function playerStatsFor(row: CsvRecord, side: string) {
   }
 }
 
+function countValue(row: CsvRecord, key: string) {
+  const number = nonnegativeValue(row, key)
+  return number !== undefined && Number.isSafeInteger(number) ? number : undefined
+}
+
 function killParticipationFor(row: CsvRecord) {
-  const kills = nonnegativeValue(row, 'kills')
-  const assists = nonnegativeValue(row, 'assists')
-  const teamKills = nonnegativeValue(row, 'teamkills')
+  const kills = countValue(row, 'kills')
+  const assists = countValue(row, 'assists')
+  const teamKills = countValue(row, 'teamkills')
   if (kills === undefined || assists === undefined || teamKills === undefined || teamKills === 0) return undefined
   const participation = (kills + assists) / teamKills
   return participation <= 1 ? participation : undefined
@@ -316,7 +328,8 @@ function roleForOraclePosition(position: string): Role | undefined {
 
 function rosterCompleteness(players: RosterPlayerAppearance[]): RosterCompleteness {
   const roles = new Set(players.map((player) => player.role))
-  return players.length === 5 && ['Top', 'Jungle', 'Mid', 'Bot', 'Support'].every((role) => roles.has(role as Role))
+  return players.length === 5 && new Set(players.map((player) => player.id)).size === 5
+    && ['Top', 'Jungle', 'Mid', 'Bot', 'Support'].every((role) => roles.has(role as Role))
     ? 'complete-five-role'
     : 'partial'
 }

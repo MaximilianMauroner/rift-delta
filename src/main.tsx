@@ -14,13 +14,14 @@ if (!rootElement) {
 }
 
 const legalPage = legalPageFromPath(window.location.pathname)
+const lab = window.location.pathname.startsWith('/lab')
 const root = createRoot(rootElement)
 root.render(
   <StrictMode>
     <RouteErrorBoundary>
-      <ProductNavigation />
+      {lab ? <ProductNavigation /> : null}
       <Suspense fallback={<LoadingState presentation="page" layout="board" label="Loading page" />}>
-        {legalPage ? <LegalPage page={legalPage} /> : window.location.pathname.startsWith('/lab') ? <DpsRoute /> : <App />}
+        {legalPage ? <LegalPage page={legalPage} /> : lab ? <DpsRoute /> : <App />}
       </Suspense>
     </RouteErrorBoundary>
   </StrictMode>,

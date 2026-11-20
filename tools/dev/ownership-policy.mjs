@@ -77,10 +77,21 @@ const domainDefinitions = {
     },
     producers: ['build.ts'],
   },
+  scouting: {
+    dependencies: ['rankings'],
+    entries: {
+      'report.ts': { browserRuntime: true },
+      'build.ts': {},
+    },
+    producers: ['build.ts'],
+  },
   rankings: {
     entries: {
       'types.ts': { browserRuntime: true },
       'read.ts': { browserRuntime: true },
+      'tournament-reports.ts': { browserRuntime: true },
+      'field-statistics.ts': { browserRuntime: true },
+      'report-highlights.ts': { browserRuntime: true },
       'policy.ts': { browserRuntime: true },
       'evidence.ts': { browserRuntime: true },
       'build.ts': {},
@@ -97,6 +108,7 @@ const domainDefinitions = {
       'internal/replay/incremental/',
       'internal/players/playerModel.ts',
       'internal/players/playerStatsPower.ts',
+      'internal/reports/',
       'internal/players/playerResumeLedger.ts',
       'internal/projections/snapshot.ts',
       'internal/projections/predictionModel.ts',

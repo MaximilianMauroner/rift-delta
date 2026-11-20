@@ -4,9 +4,8 @@ import { createHash } from 'node:crypto'
 import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { Readable } from 'node:stream'
-import { pathToFileURL } from 'node:url'
 import test from 'node:test'
 import { runRefreshOnce } from '../scripts/refresh-once.mjs'
 import { prepareContentAddressedState, prepareStateObject, stateObjectReferenceFor, syncContentAddressedStateObject, writeIncrementalStateManifest } from '../scripts/incremental-state-storage.mjs'
@@ -107,7 +106,6 @@ type BucketModule = {
     statePath?: string
     config: BucketConfig
     client: BucketClient
-    uploadFullSnapshot?: boolean
     refreshTelemetry?: unknown
   }) => Promise<BucketUploadResult>
 }
@@ -124,10 +122,19 @@ const {
   sourceProviderResult,
 } = await import(refreshScriptPath) as unknown as RefreshModule
 const { bucketKey, getBucketObject, safeObjectPath, safeRequestedObjectPath, uploadRankingArtifacts } = await import(bucketScriptPath) as unknown as BucketModule
-const isolatedRefreshEnv = {
-  RANKING_BUCKET_RESTORE_RAW: 'false',
-  RANKING_BUCKET_UPLOAD_ENABLED: 'false',
-}
+
+test('the cheap source check detects unrated-only Worlds stat corrections', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'worlds-source-fingerprint-'))
+  try {
+    const path = join(tempDir, 'retained-worlds-fixture.csv')
+    const before = 'gameid,league,teamname,golddiffat15\nfixture-unrated,WLDs,Vivo Keyd Stars,100\n'
+    await writeFile(path, before)
+    const first = await createSourceFingerprint({ files: { oracleCsv: [path] } })
+    await writeFile(path, before.replace(',100\n', ',777\n'))
+    const second = await createSourceFingerprint({ files: { oracleCsv: [path] } })
+    assert.notEqual(first.fingerprint, second.fingerprint)
+  } finally { await rm(tempDir, { recursive: true, force: true }) }
+})
 
 test('full-audit injected functions run only for eligible daily and manual full refreshes', async () => {
   const common = {
@@ -227,12 +234,9 @@ test('provider subprocess uses scoped environment instead of ambient Oracle URL'
   const root = await mkdtemp(join(tmpdir(), 'refresh-provider-env-'))
   const rawDir = join(root, 'raw')
   const manifestPath = join(rawDir, 'manifest.json')
-  const scopedBinary = join(root, 'provider-cli.mjs')
   const requests: string[] = []
   const csv = 'gameid,date,league,side\nscoped-provider,2026-01-02,LCK,Blue\nscoped-provider,2026-01-02,LCK,Red\n'
-  const previousEnv = { ORACLES_ELIXIR_CSV_URL: process.env.ORACLES_ELIXIR_CSV_URL,
-    RANKING_PROVIDER_FETCH_WORKER: process.env.RANKING_PROVIDER_FETCH_WORKER,
-    RANKING_REFRESH_BINARY: process.env.RANKING_REFRESH_BINARY }
+  const previousEnv = { ORACLES_ELIXIR_CSV_URL: process.env.ORACLES_ELIXIR_CSV_URL }
   const server = createServer((request, response) => {
     requests.push(request.url ?? '')
     response.writeHead(200, { 'content-type': 'text/csv', connection: 'close' })
@@ -244,22 +248,12 @@ test('provider subprocess uses scoped environment instead of ambient Oracle URL'
     assert.ok(address && typeof address === 'object')
     const base = `http://127.0.0.1:${address.port}`
     process.env.ORACLES_ELIXIR_CSV_URL = `${base}/ambient.csv`
-    process.env.RANKING_PROVIDER_FETCH_WORKER = 'node'
-    process.env.RANKING_REFRESH_BINARY = join(root, 'ambient-missing-binary')
-    // Exercise the actual default subprocess runner using the Rust CLI argument
-    // shape, while the Node provider supplies the real recorded download behavior.
-    await writeFile(scopedBinary, `#!${process.execPath}
-import assert from 'node:assert/strict'
-assert.equal(process.argv[2], 'fetch')
-process.argv = [process.execPath, ${JSON.stringify(resolve('scripts/download-local-data.mjs'))}, ...process.argv.slice(3)]
-await import(${JSON.stringify(pathToFileURL(resolve('scripts/download-local-data.mjs')).href)})
-`, { mode: 0o700 })
     const result = await refreshDataIfChanged([
       '--raw-dir', rawDir, '--manifest', manifestPath, '--staging-dir', join(root, 'staging'),
       '--start', '2026-01-01', '--end', '2026-01-03', '--skip-crunch',
       '--oracle-drive', 'false', '--leaguepedia', 'false', '--lolesports', 'false',
     ], {
-      env: { ...isolatedRefreshEnv, RANKING_PROVIDER_FETCH_WORKER: 'rust', RANKING_REFRESH_BINARY: scopedBinary,
+      env: {
         ORACLES_ELIXIR_CSV_URL: `${base}/scoped.csv` },
     })
     assert.equal(result.changed, true)
@@ -371,7 +365,7 @@ test('non-zero provider output must satisfy the complete outage manifest contrac
         '--skip-crunch',
         '--skip-bucket-upload',
       ], {
-        env: isolatedRefreshEnv,
+        env: {},
         run: async (_command, args) => {
           const outputManifest = valueAfter(args, '--manifest')
           const manifest = strictDownloaderOutageManifest('2026-07-02', '2026-07-09')
@@ -461,7 +455,7 @@ test('refresh wrapper skips crunch when staged source digest is unchanged', asyn
       join(tempDir, 'public-data'),
       '--end',
       '2026-06-29',
-    ], { run: fakeRun, env: isolatedRefreshEnv })
+    ], { run: fakeRun, env: {} })
     const second = await refreshDataIfChanged([
       '--raw-dir',
       rawDir,
@@ -477,7 +471,7 @@ test('refresh wrapper skips crunch when staged source digest is unchanged', asyn
       join(tempDir, 'public-data'),
       '--end',
       '2026-06-29',
-    ], { run: fakeRun, env: isolatedRefreshEnv })
+    ], { run: fakeRun, env: {} })
     const unchangedState = JSON.parse(await readFile(statePath, 'utf8'))
     const third = await refreshDataIfChanged([
       '--raw-dir',
@@ -494,7 +488,7 @@ test('refresh wrapper skips crunch when staged source digest is unchanged', asyn
       join(tempDir, 'public-data'),
       '--end',
       '2026-06-29',
-    ], { run: fakeRun, env: isolatedRefreshEnv })
+    ], { run: fakeRun, env: {} })
     const fourth = await refreshDataIfChanged([
       '--raw-dir', rawDir,
       '--manifest', manifestPath,
@@ -503,7 +497,7 @@ test('refresh wrapper skips crunch when staged source digest is unchanged', asyn
       '--output', join(tempDir, 'derived.json'),
       '--public-data-dir', join(tempDir, 'public-data'),
       '--end', '2026-06-29',
-    ], { run: fakeRun, env: isolatedRefreshEnv })
+    ], { run: fakeRun, env: {} })
     const outageState = JSON.parse(await readFile(statePath, 'utf8'))
     const fifth = await refreshDataIfChanged([
       '--raw-dir', rawDir,
@@ -513,7 +507,7 @@ test('refresh wrapper skips crunch when staged source digest is unchanged', asyn
       '--output', join(tempDir, 'derived.json'),
       '--public-data-dir', join(tempDir, 'public-data'),
       '--end', '2026-06-29',
-    ], { run: fakeRun, env: isolatedRefreshEnv })
+    ], { run: fakeRun, env: {} })
 
     assert.equal(first.changed, true)
     assert.equal(second.changed, false)
@@ -572,7 +566,7 @@ test('refresh wrapper retries failed publication when source data is unchanged',
   const options = {
     bucketClient: client,
     bucketConfig: bucketConfig(),
-    env: { RANKING_BUCKET_RESTORE_RAW: 'false' },
+    env: {},
     run: async (command: string, commandArgs: string[]) => {
       if (commandArgs.includes('scripts/download-local-data.mjs')) {
         const outDir = valueAfter(commandArgs, '--out-dir')
@@ -593,6 +587,7 @@ test('refresh wrapper retries failed publication when source data is unchanged',
       crunchCount += 1
       await mkdir(publicDataDir, { recursive: true })
       await writeFile(join(publicDataDir, 'ranking-summary.json'), '{}\n')
+      await writeFile(join(root, 'derived.json'), '{}\n')
     },
   }
 
@@ -796,7 +791,6 @@ test('refresh wrapper ignores legacy unverified bucket raw files when bootstrapp
       bucketClient: client,
       bucketConfig: bucketConfig(),
       env: {
-        RANKING_BUCKET_RESTORE_RAW: 'true',
         RANKING_REFRESH_BOOTSTRAP_START: '2025-01-01',
       },
     })
@@ -884,7 +878,6 @@ test('verified startup restore honors a custom manifest path and scoped Node wor
     },
   }
   let downloadStart = ''
-  const restoreAmbientWorker = overrideAmbientRawWorker('rust', join(root, 'missing-ambient-binary'))
   try {
     await refreshDataIfChanged([
       '--raw-dir', rawDir,
@@ -897,12 +890,7 @@ test('verified startup restore honors a custom manifest path and scoped Node wor
     ], {
       bucketClient: client,
       bucketConfig: bucketConfig(),
-      env: {
-        RANKING_BUCKET_RESTORE_RAW: 'true',
-        RANKING_BUCKET_UPLOAD_ENABLED: 'false',
-        RANKING_RAW_SOURCE_WORKER: 'node',
-        RANKING_REFRESH_BINARY: join(root, 'unused-scoped-binary'),
-      },
+      env: {},
       readActiveRawSourceAuthority: readRawAuthority,
       run: async (_command, args) => {
         downloadStart = valueAfter(args, '--start')
@@ -933,7 +921,6 @@ test('verified startup restore honors a custom manifest path and scoped Node wor
     assert.equal(customManifest.start, '2025-01-01')
     assert.equal(customManifest.files.oracleCsv.some((path: string) => path.endsWith('/2026.csv')), true)
   } finally {
-    restoreAmbientWorker()
     await rm(root, { recursive: true, force: true })
   }
 })
@@ -1022,7 +1009,7 @@ test('refresh wrapper merges rolling downloads into existing raw baseline', asyn
       '--end',
       '2026-06-29',
       '--skip-bucket-upload',
-    ], { run: fakeRun, env: isolatedRefreshEnv })
+    ], { run: fakeRun, env: {} })
     const finalManifest = JSON.parse(await readFile(manifestPath, 'utf8'))
     const state = JSON.parse(await readFile(statePath, 'utf8'))
 
@@ -1048,15 +1035,13 @@ test('refresh wrapper merges rolling downloads into existing raw baseline', asyn
   }
 })
 
-test('refresh wrapper preserves artifacts and uses scoped Rust worker for verified recovery and preparation', async () => {
+test('refresh wrapper preserves artifacts and uses Node for verified recovery and preparation', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'lol-ranking-stale-refresh-'))
   const rawDir = join(tempDir, 'raw')
   const manifestPath = join(rawDir, 'manifest.json')
   const statePath = join(rawDir, 'refresh-state.json')
   const stagingDir = join(tempDir, 'staging')
   const previousOraclePath = join(rawDir, 'oracles-elixir', '2026.csv')
-  const scopedBinary = join(tempDir, 'scoped-raw-worker.mjs')
-  const workerLog = join(tempDir, 'raw-worker-actions.jsonl')
   const previousOracleCsv = [
     'gameid,date,year,league,split,playoffs,patch,position,side,teamname,result,kills,totalgold',
     'recovery-game,2026-07-08,2026,LCK,Summer,0,26.13,team,Blue,Gen.G,1,18,65000',
@@ -1087,21 +1072,7 @@ test('refresh wrapper preserves artifacts and uses scoped Rust worker for verifi
     throw new Error(`Unexpected command: ${command} ${commandArgs.join(' ')}`)
   }
 
-  const restoreAmbientWorker = overrideAmbientRawWorker('node', join(tempDir, 'missing-ambient-binary'))
   try {
-    await writeFile(scopedBinary, `#!${process.execPath}
-import assert from 'node:assert/strict'
-import { appendFile, readFile } from 'node:fs/promises'
-assert.equal(process.argv[2], 'raw-source')
-assert.equal(process.env.RANKING_RAW_SOURCE_WORKER, 'rust')
-assert.equal(process.env.RANKING_REFRESH_BINARY, ${JSON.stringify(scopedBinary)})
-const inputPath = process.argv[3]
-const outputPath = process.argv[4]
-const input = JSON.parse(await readFile(inputPath, 'utf8'))
-await appendFile(${JSON.stringify(workerLog)}, JSON.stringify(input.action) + '\\n')
-process.argv = [process.execPath, ${JSON.stringify(resolve('scripts/raw-source-worker.mjs'))}, inputPath, outputPath]
-await import(${JSON.stringify(pathToFileURL(resolve('scripts/raw-source-worker.mjs')).href)})
-`, { mode: 0o700 })
     await mkdir(join(rawDir, 'oracles-elixir'), { recursive: true })
     await writeFile(previousOraclePath, previousOracleCsv)
     await writeFile(manifestPath, `${JSON.stringify({
@@ -1154,7 +1125,6 @@ await import(${JSON.stringify(pathToFileURL(resolve('scripts/raw-source-worker.m
     ], {
       run: fakeRun,
       env: {
-        ...isolatedRefreshEnv,
         ...(recoveryAuthorized ? { RANKING_REUSE_RAW_ON_SOURCE_FAILURE: 'true' } : {}),
       },
     })
@@ -1277,12 +1247,9 @@ await import(${JSON.stringify(pathToFileURL(resolve('scripts/raw-source-worker.m
       bucketConfig: bucketConfig(),
       readActiveRawSourceAuthority: readRawAuthority,
       env: {
-        ...isolatedRefreshEnv,
         RANKING_REUSE_RAW_ON_SOURCE_FAILURE: 'true',
         RANKING_FORCE_REFRESH: 'true',
         RANKING_REFRESH_FENCING_TOKEN: '7',
-        RANKING_RAW_SOURCE_WORKER: 'rust',
-        RANKING_REFRESH_BINARY: scopedBinary,
       },
     })
     const rebuiltManifest = JSON.parse(await readFile(manifestPath, 'utf8'))
@@ -1312,7 +1279,6 @@ await import(${JSON.stringify(pathToFileURL(resolve('scripts/raw-source-worker.m
     assert.equal(recoveryValidation.output.receiptDigest, receiptReference.sha256)
     assert.equal(recoveryValidation.output.objectCount, 1)
     assert.ok(recoveryValidation.output.childMaxRssBytes > 0)
-    assert.deepEqual((await readFile(workerLog, 'utf8')).trim().split('\n').map((line) => JSON.parse(line)), ['restore', 'prepare'])
 
     await rm(previousOraclePath)
     const missingPriorRaw = await runUnavailable(true, true)
@@ -1320,7 +1286,6 @@ await import(${JSON.stringify(pathToFileURL(resolve('scripts/raw-source-worker.m
     assert.equal(missingPriorRaw.status, 'stale-source')
     assert.equal(missingPriorRaw.incrementalAction, undefined)
   } finally {
-    restoreAmbientWorker()
     await rm(tempDir, { recursive: true, force: true })
   }
 })
@@ -1422,7 +1387,7 @@ test('refresh wrapper warns when previous Oracle raw data is preserved for a fal
       '--end',
       '2026-07-09',
       '--skip-bucket-upload',
-    ], { run: fakeRun, env: isolatedRefreshEnv })
+    ], { run: fakeRun, env: {} })
     const finalManifest = JSON.parse(await readFile(manifestPath, 'utf8'))
 
     assert.equal(result.changed, true)
@@ -1501,7 +1466,6 @@ test('refresh wrapper bootstraps when manifest exists but raw files are missing'
     ], {
       run: fakeRun,
       env: {
-        ...isolatedRefreshEnv,
         RANKING_REFRESH_BOOTSTRAP_START: '2025-01-01',
       },
     })
@@ -1585,7 +1549,6 @@ test('refresh wrapper uploads refresh state after bucket publish metadata is att
         RANKING_BUCKET_ACCESS_KEY_ID: 'access-key',
         RANKING_BUCKET_SECRET_ACCESS_KEY: 'secret-key',
         RANKING_BUCKET_PREFIX: 'rankings',
-        RANKING_BUCKET_RESTORE_RAW: 'false',
       },
     })
 
@@ -1599,14 +1562,11 @@ test('refresh wrapper uploads refresh state after bucket publish metadata is att
       enabled: true,
       bucket: 'bucket-123',
       prefix: 'rankings',
-      artifactCount: 5,
-      uploadedCount: 5,
+      artifactCount: 6,
+      uploadedCount: 6,
       unchangedCount: 0,
       unchangedBytes: 0,
-      skipped: [{
-        key: 'rankings/artifacts/latest-full.json',
-        reason: 'full-snapshot-upload-disabled',
-      }],
+      skipped: [],
     })
     assert.equal(typeof uploadedBytes, 'number')
     assert.equal(uploadedBytes > 0, true)
@@ -1698,7 +1658,7 @@ test('refresh fallback persists distinct restored generation and run lineage', a
     ], {
       bucketClient: client, bucketConfig: config,
       readActiveRawSourceAuthority: async () => ({ found: false }),
-      env: { RANKING_BUCKET_RESTORE_RAW: 'false', RANKING_REFRESH_FENCING_TOKEN: '7' },
+      env: { RANKING_REFRESH_FENCING_TOKEN: '7' },
       run: async (_command, args) => {
         assert.ok(args.includes('scripts/download-local-data.mjs'))
         const outDir = valueAfter(args, '--out-dir')
@@ -1808,7 +1768,6 @@ test('refresh workflow preserves a committed promotion and surfaces post-CAS aud
         operationalWarnings: warnings,
       }),
       env: {
-        RANKING_BUCKET_RESTORE_RAW: 'false',
         RANKING_REFRESH_METRICS_PATH: metricsPath,
       },
     })
@@ -1836,7 +1795,7 @@ test('refresh workflow preserves a committed promotion and surfaces post-CAS aud
   }
 })
 
-test('bucket publisher skips full audit artifact upload by default', async () => {
+test('bucket publisher includes the supplied full snapshot in its upload receipt', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'lol-ranking-bucket-'))
   const publicDataDir = join(tempDir, 'public-data')
   const fullSnapshotPath = join(tempDir, 'derived', 'ranking-snapshot.full.json')
@@ -1880,13 +1839,10 @@ test('bucket publisher skips full audit artifact upload by default', async () =>
     const keys = sent.filter((entry) => entry.input.Body !== undefined).map((entry) => entry.input.Key).sort()
 
     assert.equal(result.enabled, true)
-    assert.equal(result.uploaded.length, 5)
+    assert.equal(result.uploaded.length, 6)
     assert.equal(result.uploadedCount, result.uploaded.length)
     assert.equal(result.uploadedBytes, result.uploaded.reduce((total, entry) => total + (entry.bytes ?? 0), 0))
-    assert.deepEqual(result.skipped, [{
-      key: 'rankings/artifacts/latest-full.json',
-      reason: 'full-snapshot-upload-disabled',
-    }])
+    assert.deepEqual(result.skipped, [])
     const publicKeys = sent
       .filter((entry) => entry.input.Key.startsWith('rankings/data/'))
       .map((entry) => entry.input.Key)
@@ -1895,6 +1851,7 @@ test('bucket publisher skips full audit artifact upload by default', async () =>
       'rankings/data/ranking-summary.json',
     ])
     assert.deepEqual(keys, [
+      'rankings/artifacts/latest-full.json',
       'rankings/data/ranking-summary.json',
       'rankings/data/scopes/all.json',
       'rankings/latest-publish.json',
@@ -1925,6 +1882,7 @@ test('bucket publish receipt carries refresh telemetry without changing public a
     await uploadRankingArtifacts({ publicDataDir, config: bucketConfig(), client, refreshTelemetry })
     const publicBody = sent.find((entry) => entry.input.Key === 'rankings/data/ranking-summary.json')?.input.Body
     const receiptBody = sent.find((entry) => entry.input.Key === 'rankings/latest-publish.json')?.input.Body
+    assert.equal(sent.some((entry) => entry.input.Key === 'rankings/artifacts/latest-full.json'), false)
     assert.equal(await bodyText(publicBody), '{}\n')
     assert.deepEqual(JSON.parse(String(receiptBody)).refreshTelemetry, refreshTelemetry)
   } finally {
@@ -1932,15 +1890,15 @@ test('bucket publish receipt carries refresh telemetry without changing public a
   }
 })
 
-test('bucket publisher can opt in to full audit artifact upload', async () => {
+test('bucket publisher uploads the full snapshot when a path is supplied', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'lol-ranking-full-bucket-'))
   const publicDataDir = join(tempDir, 'public-data')
   const fullSnapshotPath = join(tempDir, 'derived', 'ranking-snapshot.full.json')
   const manifestPath = join(tempDir, 'raw', 'manifest.json')
   const statePath = join(tempDir, 'raw', 'refresh-state.json')
-  const sent: Array<{ input: { Key: string; Bucket: string; ContentType?: string } }> = []
+  const sent: Array<{ input: { Key: string; Bucket: string; Body?: unknown; ContentType?: string } }> = []
   const client = {
-    async send(command: { input: { Key: string; Bucket: string; ContentType?: string } }) {
+    async send(command: { input: { Key: string; Bucket: string; Body?: unknown; ContentType?: string } }) {
       sent.push({ input: command.input })
       return {}
     },
@@ -1962,12 +1920,13 @@ test('bucket publisher can opt in to full audit artifact upload', async () => {
       statePath,
       config: bucketConfig(),
       client,
-      uploadFullSnapshot: true,
     })
 
     assert.equal(result.uploaded.some((entry) => entry.key === 'rankings/artifacts/latest-full.json'), true)
     assert.deepEqual(result.skipped, [])
-    assert.equal(sent.some((entry) => entry.input.Key === 'rankings/artifacts/latest-full.json'), true)
+    const snapshot = sent.find((entry) => entry.input.Key === 'rankings/artifacts/latest-full.json')
+    assert.ok(snapshot)
+    assert.equal(await bodyText(snapshot.input.Body), '{}\n')
   } finally {
     await rm(tempDir, { recursive: true, force: true })
   }
@@ -2158,19 +2117,6 @@ function manifest(leaguepediaPath: string, generatedAt = '2026-06-29T00:00:00.00
       },
     },
     warnings: [],
-  }
-}
-
-function overrideAmbientRawWorker(worker: string, binary: string) {
-  const previousWorker = process.env.RANKING_RAW_SOURCE_WORKER
-  const previousBinary = process.env.RANKING_REFRESH_BINARY
-  process.env.RANKING_RAW_SOURCE_WORKER = worker
-  process.env.RANKING_REFRESH_BINARY = binary
-  return () => {
-    if (previousWorker === undefined) delete process.env.RANKING_RAW_SOURCE_WORKER
-    else process.env.RANKING_RAW_SOURCE_WORKER = previousWorker
-    if (previousBinary === undefined) delete process.env.RANKING_REFRESH_BINARY
-    else process.env.RANKING_REFRESH_BINARY = previousBinary
   }
 }
 

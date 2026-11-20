@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { chartPointFromHistoryPoint, dailyChartPointsFromHistoryPoints, deriveDailyRankSeries, tournamentChartPoints } from '../src/views/rankings/teamHistoryChart.ts'
+import { chartPointFromHistoryPoint, dailyChartPointsFromHistoryPoints, deriveDailyRankSeries, internationalChartEvents, tournamentChartPoints } from '../src/views/rankings/teamHistoryChart.ts'
+import type { PublicTournamentMovementIndexEntry } from '../src/domains/rankings/types.ts'
 import { formatChartInfluence, nonMatchDeltaFor } from '../src/shared/chartPoints.ts'
 import type { TeamHistorySeries } from '../src/domains/rankings/internal/projections/snapshot.ts'
 
@@ -185,4 +186,20 @@ test('rank history uses the last recorded rank of each day and skips invalid ran
     ['2026-03-20', 2020, 61],
   ] }
   assert.deepEqual(deriveDailyRankSeries({ alpha }).get('alpha')?.map((point) => point.y), [65, 61])
+})
+
+test('event bands cover every played day and only the three Riot internationals', () => {
+  const entry = (family: PublicTournamentMovementIndexEntry['family'], dates: Partial<PublicTournamentMovementIndexEntry>) => ({
+    id: `${family}:2026`, family, season: '2026', label: family, status: 'completed', startDate: '2026-06-20', boundaryDate: '2026-07-12',
+    ratedThroughDate: '2026-07-12', dataLag: false, participantCount: 10, url: '/data/history/tournament-moves/x.json', ...dates,
+  }) as PublicTournamentMovementIndexEntry
+  const events = internationalChartEvents([
+    entry('msi', { scheduledEndDate: '2026-06-28' }),
+    entry('worlds', { startDate: '2026-10-01', boundaryDate: '2026-10-20', scheduledEndDate: '2026-11-08', status: 'ongoing' }),
+    entry('ewc', {}),
+  ])
+  assert.deepEqual(events.map((event) => [event.label, new Date(event.start).toISOString().slice(0, 10), new Date(event.end).toISOString().slice(0, 10)]), [
+    ['MSI', '2026-06-20', '2026-07-12'],
+    ['Worlds', '2026-10-01', '2026-11-08'],
+  ])
 })

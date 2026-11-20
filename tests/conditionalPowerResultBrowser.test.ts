@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
 import { chromium } from 'playwright-core'
-import { createServer, type Plugin } from 'vite'
+import { startBrowserFixture, type BrowserFixture } from './fixtures/browserFixture'
 import { appendForecastReceipt, createPreMatchReceipt, emptyForecastLedger, pinPreMatchReceipt } from '../src/domains/tournaments/internal/tournamentForecast'
 import type { TournamentFeed } from '../src/domains/tournaments/internal/tournamentFeed'
 import { conditionalPowerReceiptFixture } from './fixtures/conditionalPowerFixtures'
@@ -25,7 +25,7 @@ test('offline numeric result component follows legal outcomes, keeps frozen odds
     events: [{ id: fixture.series.eventId, sourceTournamentId: 'controlled-worlds', competition: 'worlds', label: 'Controlled Worlds fixture', season: '2026', series: [fixture.series] }],
   }
   const artifactBodies = new Map(fixture.plan.writes.map((write) => [`/data/${write.relativePath}`, write.contents]))
-  const plugin: Plugin = { name: 'conditional-component-offline-fixture', configureServer(server) {
+  const plugin: BrowserFixture = { name: 'conditional-component-offline-fixture', configureServer(server) {
     server.middlewares.use((request, response, next) => {
       const path = new URL(request.url ?? '/', 'http://fixture').pathname
       if (artifactBodies.has(path)) {
@@ -48,11 +48,9 @@ test('offline numeric result component follows legal outcomes, keeps frozen odds
       response.end(JSON.stringify(body))
     })
   } }
-  const server = await createServer({ publicDir: false, logLevel: 'silent', server: { host: '127.0.0.1', port: 0 }, plugins: [plugin],
-    define: { 'import.meta.env.VITE_TOURNAMENT_FORECASTS_ENABLED': JSON.stringify('1') } })
+  const server = await startBrowserFixture(plugin)
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
     const base = `http://127.0.0.1:${address.port}`

@@ -13,8 +13,28 @@ import {
   type RegionStrength,
 } from '../../domains/rankings/read'
 import type { CompareColumn, CompareRow } from './CompareDrawer'
-import { FormDots, RegionBadge } from '../../components/ui'
+import { FormDots, LeagueDot } from '../../components/ui'
 import { MovementChip } from './WhatChanged'
+import { leagueColor } from '../../shared/teamColor'
+
+export const REPEAT_COLORS = ['var(--text)', 'var(--muted)', 'var(--forecast)']
+
+/**
+ * Each compared entity takes its league colour. A second pick from a league
+ * already shown takes a neutral colour instead, so two lines never match.
+ */
+export function compareSeriesColors(leagues: readonly string[]) {
+  const used = new Set<string>()
+  let repeats = 0
+  return leagues.map((league) => {
+    const color = leagueColor(league)
+    if (!used.has(color)) {
+      used.add(color)
+      return color
+    }
+    return REPEAT_COLORS[repeats++ % REPEAT_COLORS.length]
+  })
+}
 
 export const REGION_COMPARE_ROWS: CompareRow<RegionStrength>[] = [
   { key: 'score', label: 'Region power', cell: (r) => formatRating(displayRegionPowerScore(r)), score: displayRegionPowerScore, better: 'high' },
@@ -101,28 +121,24 @@ export const REGION_PROFILE_METRICS: CompareProfileMetric<RegionStrength>[] = [
   { key: 'connectivity', label: 'Connectivity', value: (r) => r.connectivity, format: formatRatio },
 ]
 
-export const TEAM_PROFILE_METRICS: CompareProfileMetric<RankingSummaryStanding>[] = [
-  { key: 'rating', label: 'Power', value: teamScore, format: formatRating },
-  { key: 'rank', label: 'Rank', value: (t) => t.rank, format: (value) => (typeof value === 'number' ? `#${Math.round(value)}` : '—'), better: 'low' },
-  { key: 'results-rank', label: 'Rank on results alone', value: (t) => t.deservedStanding?.rank, format: (value) => (typeof value === 'number' ? `#${Math.round(value)}` : '—'), better: 'low' },
-  { key: 'winrate', label: 'Win rate', value: (t) => winRate(t.wins, t.losses), format: formatRatio },
-]
-
 export function regionKey(region: RegionStrength) {
   return region.region
 }
 
 export function regionCompareColumns(regions: RegionStrength[]): CompareColumn[] {
-  return regions.map((region) => ({
+  const colors = compareSeriesColors(regions.map((region) => region.region))
+  return regions.map((region, index) => ({
     id: regionKey(region),
     name: region.region,
     sub: `#${region.rank} · ${region.flagshipLeague ?? 'Multiple leagues'}`,
-    badge: <RegionBadge region={region.region} size="sm" />,
+    badge: <LeagueDot league={region.region} />,
+    color: colors[index],
   }))
 }
 
 export function teamCompareColumns(teams: RankingSummaryStanding[]): CompareColumn[] {
-  return teams.map((team) => ({ id: teamKey(team), name: team.team, sub: `${team.region ?? '—'} · #${team.rank ?? '—'}` }))
+  const colors = compareSeriesColors(teams.map((team) => team.league))
+  return teams.map((team, index) => ({ id: teamKey(team), name: team.team, sub: `${team.league} · #${team.rank ?? '—'}`, color: colors[index] }))
 }
 
 function winRate(wins?: number, losses?: number) {

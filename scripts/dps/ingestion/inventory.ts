@@ -17,18 +17,3 @@ export function applyInventoryEvent(inventory: number[], event: RiotItemEvent): 
   }
   return next;
 }
-
-export function reconstructInventories(
-  participantIds: number[],
-  events: RiotItemEvent[],
-): Map<number, number[]> {
-  const inventories = new Map(participantIds.map((id) => [id, [] as number[]]));
-  for (const event of [...events].sort((a, b) => a.timestamp - b.timestamp)) {
-    if (!event.participantId) continue;
-    inventories.set(
-      event.participantId,
-      applyInventoryEvent(inventories.get(event.participantId) ?? [], event),
-    );
-  }
-  return inventories;
-}

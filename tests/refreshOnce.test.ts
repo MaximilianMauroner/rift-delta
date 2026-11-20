@@ -16,7 +16,7 @@ type RefreshDataIfChanged = (args?: string[], options?: Record<string, unknown>)
 const refreshDataScriptPath: string = '../scripts/refresh-data-if-changed.mjs'
 const { refreshDataIfChanged } = await import(refreshDataScriptPath) as unknown as { refreshDataIfChanged: RefreshDataIfChanged }
 
-test('production publication hook emits strict immutable evidence when explicitly enabled', async () => {
+test('production publication hook emits strict immutable evidence with deployment authority', async () => {
   let published: Record<string, unknown> | undefined
   const result = await publishRefreshRolloutEvidence({
     schemaVersion: 2,
@@ -51,7 +51,6 @@ test('production publication hook emits strict immutable evidence when explicitl
     ],
   }, {
     env: {
-      RANKING_ROLLOUT_EVIDENCE_ENABLED: 'true',
       RAILWAY_GIT_COMMIT_SHA: 'abc123',
       RAILWAY_DEPLOYMENT_ID: 'deployment-1',
       RAILWAY_ENVIRONMENT_ID: 'environment-1',
@@ -71,12 +70,31 @@ test('production publication hook emits strict immutable evidence when explicitl
   assert.equal(published?.evidenceClass, 'production-like-fixture')
 })
 
+test('publication hook writes nothing without metrics and reports missing deployment authority', async () => {
+  let writes = 0
+  const publish = async () => { writes += 1 }
+  const metrics = createRefreshMetrics({ runId: 'local', mode: 'gated', cause: 'manual-force' }).snapshot()
+  assert.equal((await publishRefreshRolloutEvidence(undefined, { env: {}, publish })).status, 'metrics-unavailable')
+  for (const missing of ['RAILWAY_GIT_COMMIT_SHA', 'RAILWAY_DEPLOYMENT_ID', 'RAILWAY_ENVIRONMENT_ID', 'RAILWAY_SERVICE_ID']) {
+    const env: NodeJS.ProcessEnv = {
+      RAILWAY_GIT_COMMIT_SHA: 'abc123', RAILWAY_DEPLOYMENT_ID: 'deployment',
+      RAILWAY_ENVIRONMENT_ID: 'environment', RAILWAY_SERVICE_ID: 'service',
+    }
+    delete env[missing]
+    await assert.rejects(
+      publishRefreshRolloutEvidence(metrics, { env, publish }),
+      /Rollout evidence requires commit, deployment, environment, and service authority/,
+    )
+  }
+  assert.equal(writes, 0)
+})
+
 test('unchanged gated probe performs no broad provider fetch, crunch, or artifact upload', async () => {
   let childRuns = 0
   let writes = 0
   const logs: string[] = []
   const result = await runRefreshOnce({
-    env: { RANKING_REFRESH_MODE: 'gated', RANKING_DAILY_AUDIT_ENABLED: 'false' },
+    env: { RANKING_REFRESH_MODE: 'gated', RANKING_DAILY_AUDIT_INTERVAL_MS: '9000000000000' },
     runId: 'no-change',
     owner: 'worker-1',
     now: () => new Date('2026-07-22T00:00:00Z'),
@@ -114,7 +132,7 @@ test('lease loss during child work prevents trigger-state mutation after the chi
   let assertions = 0
   let writes = 0
   await assert.rejects(() => runRefreshOnce({
-    env: { RANKING_REFRESH_MODE: 'gated', RANKING_DAILY_AUDIT_ENABLED: 'false' },
+    env: { RANKING_REFRESH_MODE: 'gated', RANKING_DAILY_AUDIT_INTERVAL_MS: '9000000000000' },
     owner: 'old-worker',
     now: () => new Date('2026-07-22T00:00:00Z'),
     monotonicNow: increasingClock(),
@@ -256,9 +274,7 @@ test('startup enforces five-minute gate receipts and lease timing', async () => 
 
 test('daily audit defaults on in gated mode, is due from last success, and bypasses unchanged probe work without advancing on failure', async () => {
   assert.equal(isDailyAuditDue({}, {}, '2026-07-23T00:00:00Z'), true)
-  assert.equal(isDailyAuditDue({ RANKING_DAILY_AUDIT_ENABLED: 'true' }, {}, '2026-07-23T00:00:00Z'), true)
-  assert.equal(isDailyAuditDue({ RANKING_DAILY_AUDIT_ENABLED: 'true' }, { lastSuccessfulDailyAuditAt: '2026-07-22T12:00:00Z' }, '2026-07-23T00:00:00Z'), false)
-  assert.equal(isDailyAuditDue({ RANKING_DAILY_AUDIT_ENABLED: 'false' }, {}, '2026-07-23T00:00:00Z'), false)
+  assert.equal(isDailyAuditDue({}, { lastSuccessfulDailyAuditAt: '2026-07-22T12:00:00Z' }, '2026-07-23T00:00:00Z'), false)
   assert.equal(isDailyAuditDue({ RANKING_REFRESH_MODE: 'shadow' }, {}, '2026-07-23T00:00:00Z'), false)
   let childRuns = 0
   const result = await runRefreshOnce({
@@ -287,7 +303,6 @@ test('daily audit success timestamp requires clean parity, promotion, and full-a
         runId: `audit-${auditCase.name}`,
         env: {
           RANKING_REFRESH_MODE: 'gated',
-          RANKING_DAILY_AUDIT_ENABLED: 'true',
           RANKING_REFRESH_METRICS_PATH: metricsPath,
         },
         runChildProcess: async (_command: string, _args: string[], _timeoutMs: number, childEnv: NodeJS.ProcessEnv) => {
@@ -350,7 +365,6 @@ test('default gated child env enables canonical fenced ingestion for every score
     runId: 'shadow-child',
     env: {
       RANKING_REFRESH_MODE: 'shadow',
-      RANKING_INCREMENTAL_SHADOW_ENABLED: 'true',
     },
     cause: 'daily-audit',
   }, { runProcess })
@@ -367,7 +381,8 @@ test('default gated child env enables canonical fenced ingestion for every score
   assert.equal(childEnvironments[1].RANKING_FORCE_REFRESH, undefined)
   assert.equal(childEnvironments[2].RANKING_FORCE_REFRESH, 'true')
   assert.equal(childEnvironments[3].RANKING_FORCE_REFRESH, 'true')
-  assert.equal(childEnvironments[4].RANKING_INCREMENTAL_SHADOW_ENABLED, 'true')
+  assert.equal(childEnvironments[4].RANKING_REFRESH_MODE, 'shadow')
+  assert.equal(childEnvironments[4].RANKING_REFRESH_FENCING_TOKEN, '1')
   assert.equal(childEnvironments[4].RANKING_INCREMENTAL_ENABLED, undefined)
 })
 
@@ -381,7 +396,10 @@ test('release failure cannot replace the primary failure and terminal metric is 
   const terminal = metricLog(logs)
   assert.equal(terminal.result, 'failed')
   assert.match(String(terminal.error), /primary-read-error/)
-  assert.deepEqual(finalizationLog(logs).errors, ['lease-release: release-error'])
+  assert.deepEqual(finalizationLog(logs).errors, [
+    'rollout-evidence: Rollout evidence requires commit, deployment, environment, and service authority',
+    'lease-release: release-error',
+  ])
 })
 
 test('release failure leaves successful canonical metric immutable and emits separate evidence', async () => {
@@ -391,7 +409,10 @@ test('release failure leaves successful canonical metric immutable and emits sep
     releaseLease: async () => { throw new Error('release-after-success') },
   })
   assert.deepEqual(metricLog(logs), result.metrics)
-  assert.deepEqual(finalizationLog(logs).errors, ['lease-release: release-after-success'])
+  assert.deepEqual(finalizationLog(logs).errors, [
+    'rollout-evidence: Rollout evidence requires commit, deployment, environment, and service authority',
+    'lease-release: release-after-success',
+  ])
 })
 
 test('timeout waits for child-tree exit before rejecting and permitting lease release', async () => {
@@ -493,7 +514,7 @@ test('published child telemetry remains canonical in result, trigger state, and 
   try {
     const result = await runRefreshOnce({
       ...baseOptions(logs),
-      env: { RANKING_REFRESH_MODE: 'gated', RANKING_DAILY_AUDIT_ENABLED: 'false', RANKING_REFRESH_METRICS_PATH: metricsPath },
+      env: { RANKING_REFRESH_MODE: 'gated', RANKING_DAILY_AUDIT_INTERVAL_MS: '9000000000000', RANKING_REFRESH_METRICS_PATH: metricsPath },
       runId: canonical.runId,
       fetchProbe: async () => ({
         checkedAt: '2026-07-22T00:00:00Z',
@@ -787,7 +808,7 @@ function realParentOptions(paths: RefreshTestPaths, client: ReturnType<typeof me
   return {
     env: {
       RANKING_REFRESH_MODE: 'gated',
-      RANKING_DAILY_AUDIT_ENABLED: 'false',
+      RANKING_DAILY_AUDIT_INTERVAL_MS: '9000000000000',
       RANKING_REFRESH_METRICS_PATH: paths.metrics,
       RANKING_REFRESH_STATE: paths.refreshState,
       RANKING_RECONCILIATION_OUTPUT: paths.reconciliation,
@@ -862,8 +883,6 @@ async function runRefreshChildCase(kind: 'unchanged' | 'stale-source' | 'error',
     ...(context.affectedDate ? { RANKING_REFRESH_AFFECTED_DATE: String(context.affectedDate) } : {}),
     RANKING_REFRESH_METRICS_PATH: paths.metrics,
     RANKING_REFRESH_STATE: paths.refreshState,
-    RANKING_BUCKET_RESTORE_RAW: 'false',
-    RANKING_BUCKET_UPLOAD_ENABLED: 'false',
   }
   const output = join(paths.root, 'ranking-snapshot.full.json')
   const publicDataDir = join(paths.root, 'public')
@@ -948,7 +967,7 @@ function argValue(args: string[], flag: string) {
 function baseOptions(logs: string[]) {
   let writes = 0
   return {
-    env: { RANKING_REFRESH_MODE: 'gated', RANKING_DAILY_AUDIT_ENABLED: 'false' },
+    env: { RANKING_REFRESH_MODE: 'gated', RANKING_DAILY_AUDIT_INTERVAL_MS: '9000000000000' },
     owner: 'worker',
     now: () => new Date('2026-07-22T00:00:00Z'),
     monotonicNow: increasingClock(),

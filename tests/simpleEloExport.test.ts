@@ -1,3 +1,4 @@
+import { writeOracleForecastFixture } from './fixtures/oracleForecastFixture.ts'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
@@ -25,7 +26,7 @@ const request: PregameSeriesRequest = {
   league: 'LCK', region: 'LCK', tier: 'regional-regular',
 }
 const games = [0, 1].map(index => ({ ...sampleMatches[0], id: `elo-game-${index + 1}`, sourceGameId: `elo-game-${index + 1}`,
-  sourceMatchId: 'elo-series', sourceProvider: 'leaguepedia-cargo' as const, bestOf: 3 as const, bestOfBasis: 'official' as const }))
+  gameCompletedAtUtc: `${sampleMatches[0].date}T00:30:00Z`, sourceMatchId: 'elo-series', sourceProvider: 'leaguepedia-cargo' as const, bestOf: 3 as const, bestOfBasis: 'official' as const }))
 const inputs = games.map(match => ({ match, observedAt: capture, resultAvailableAt: capture }))
 
 async function fixture() {
@@ -34,11 +35,11 @@ async function fixture() {
   const requests = join(directory, 'requests.json')
   const candidatePath = join(directory, 'candidate.json')
   const raw = { fetchedAt: new Date(capture).toISOString(), matches: structuredClone(games) }
-  const files = { leaguepediaJson: ['raw.json'], lolEsportsJson: [] as string[] }
-  await writeFile(join(directory, 'raw.json'), JSON.stringify(raw))
+  const files = { oracleCsv: ['raw.csv'], lolEsportsJson: [] as string[] }
+  const sourceCapture = await writeOracleForecastFixture(directory, 'raw.csv', raw.matches, capture)
   await writeFile(manifest, JSON.stringify({ files }))
   const source = await importRankingSourceData({ manifestPath: manifest })
-  const requestFile: ForecastRequestFile = { evidenceMode: 'synthetic', availability: 'verified',
+  const requestFile: ForecastRequestFile = { evidenceMode: 'synthetic', availability: 'verified', sourceFiles: [sourceCapture],
     observations: source.matches.map(match => ({ gameId: match.id, observedAt: capture, resultAvailableAt: capture })), requests: [{ ...request }] }
   const candidate: ForecastCandidate = { modelKind: 'simple-elo', candidateId: 'simple-elo-v1', parentCandidateId: null,
     calibrationFit: null, transform: { temperature: 1, calibrationOrder: 'game-before-series', dependence: 0 } }
@@ -154,18 +155,18 @@ test('late raw revisions and changed future outcomes cannot alter an earlier Elo
   try {
     f.requestFile.requests.push({ ...request, seriesId: 'second', asOf: cutoff + 1000 })
     const baseline = await f.export()
-    f.files.leaguepediaJson.unshift('future.json')
+    f.files.oracleCsv.unshift('future.csv')
     const revision = { fetchedAt: new Date(future).toISOString(), matches: f.raw.matches.map(match => ({ ...match, winner: 'T1' })) }
-    await writeFile(join(f.directory, 'future.json'), JSON.stringify(revision))
+    f.requestFile.sourceFiles![1] = await writeOracleForecastFixture(f.directory, 'future.csv', revision.matches, Date.parse(revision.fetchedAt))
     const late = await f.export()
     assert.deepEqual(late.states, baseline.states)
     assert.equal(late.rows[0].homeSeriesWinProbability, baseline.rows[0].homeSeriesWinProbability)
     revision.matches[0].teamAKills += 100
-    await writeFile(join(f.directory, 'future.json'), JSON.stringify(revision))
+    f.requestFile.sourceFiles![1] = await writeOracleForecastFixture(f.directory, 'future.csv', revision.matches, Date.parse(revision.fetchedAt))
     assert.deepEqual((await f.export()).states, baseline.states)
     revision.fetchedAt = new Date(capture).toISOString()
     revision.matches = f.raw.matches.map(match => ({ ...match, winner: 'T1' }))
-    await writeFile(join(f.directory, 'future.json'), JSON.stringify(revision))
+    f.requestFile.sourceFiles![1] = await writeOracleForecastFixture(f.directory, 'future.csv', revision.matches, Date.parse(revision.fetchedAt))
     assert.notEqual((await f.export()).rows[0].homeSeriesWinProbability, baseline.rows[0].homeSeriesWinProbability)
   } finally { await rm(f.directory, { recursive: true, force: true }) }
 })
@@ -196,13 +197,13 @@ test('future observations inside an admitted capture cannot change earlier Elo s
     const baseline = await f.export()
     const added = f.raw.matches.map((match, index) => ({ ...match, id: `extra-game-${index + 1}`, sourceGameId: `extra-game-${index + 1}`, sourceMatchId: 'extra-series' }))
     f.raw.matches.push(...added)
-    await writeFile(join(f.directory, 'raw.json'), JSON.stringify(f.raw))
-    const source = await importRankingSourceData({ leaguepediaJsonPaths: [join(f.directory, 'raw.json')] })
+    f.requestFile.sourceFiles![0] = await writeOracleForecastFixture(f.directory, 'raw.csv', f.raw.matches, capture)
+    const source = await importRankingSourceData({ oracleCsvPaths: [join(f.directory, 'raw.csv')] })
     f.requestFile.observations.push(...source.matches.filter(match => !f.requestFile.observations.some(row => row.gameId === match.id))
       .map(match => ({ gameId: match.id, observedAt: future, resultAvailableAt: capture })))
     assert.deepEqual((await f.export()).states, baseline.states)
     for (const match of added) match.winner = 'T1'
-    await writeFile(join(f.directory, 'raw.json'), JSON.stringify(f.raw))
+    f.requestFile.sourceFiles![0] = await writeOracleForecastFixture(f.directory, 'raw.csv', f.raw.matches, capture)
     assert.deepEqual((await f.export()).states, baseline.states)
     for (const row of f.requestFile.observations) row.observedAt = capture
     assert.notEqual((await f.export()).rows[0].homeSeriesWinProbability, baseline.rows[0].homeSeriesWinProbability)
@@ -230,10 +231,10 @@ test('Elo rejects transforms, fit provenance, renamed controls and unsupported k
 test('Elo requires captured inputs and does not mark historical-limited state eligible', async () => {
   const f = await fixture()
   try {
-    await writeFile(join(f.directory, 'raw.json'), JSON.stringify({ matches: f.raw.matches }))
+    delete f.requestFile.sourceFiles
     await assert.rejects(f.export(), /Missing source file capture/)
-    f.requestFile.sourceFiles = [{ path: 'raw.json', observedAt: capture,
-      sha256: createHash('sha256').update(await readFile(join(f.directory, 'raw.json'))).digest('hex') }]
+    f.requestFile.sourceFiles = [{ path: 'raw.csv', observedAt: capture,
+      sha256: createHash('sha256').update(await readFile(join(f.directory, 'raw.csv'))).digest('hex') }]
     assert.equal((await f.export()).rows[0].eligible, true)
     f.requestFile.availability = 'historical-limited'
     const limited = await f.export()

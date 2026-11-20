@@ -307,11 +307,7 @@ function teamRecentMatch(group: TeamMatchGroup, result: 'W' | 'L' | 'T', previou
   const wins = group.entries.filter((entry) => entry.result === 'W').length
   const losses = group.entries.length - wins
   const bestOf = bestOfForScore(wins, losses, latest.source.bestOf)
-  const observedOutcome = latest.source.seriesOutcome
-  const residual = latest.ratingUpdate?.neutralResultResidual
-  const expectedWinProbability = typeof observedOutcome === 'number' && typeof residual === 'number'
-    ? Math.max(0, Math.min(1, Number((observedOutcome - residual).toFixed(4))))
-    : undefined
+  const expectedWinProbability = latest.recordedSeriesWinProbability
 
   return {
     date: latest.date,
@@ -391,6 +387,8 @@ export function parsePublicRankingManifest(value: unknown): PublicRankingManifes
   assertOptionalDataUrlPath(value.teamHistoryIndexUrl, 'ranking manifest teamHistoryIndexUrl', '/data/history')
   assertOptionalDataUrlPath(value.matchHistoryIndexUrl, 'ranking manifest matchHistoryIndexUrl', '/data/matches')
   assertOptionalDataUrlPath(value.replayPredictionsUrl, 'ranking manifest replayPredictionsUrl', '/data/evaluation')
+  assertOptionalDataUrlPath(value.scoutingIndexUrl, 'ranking manifest scoutingIndexUrl', '/data/scouting')
+  assertOptionalDataUrlPath(value.tournamentReportIndexUrl, 'ranking manifest tournamentReportIndexUrl', '/data/tournament-reports')
   if (value.replayEvidence !== undefined || value.predictions !== undefined) throw new Error('Ranking manifest must not embed replay predictions')
   assertOptionalDataUrlPath(value.regionHistoryUrl, 'ranking manifest regionHistoryUrl', '/data/history')
   assertArtifactUrl(value.tournamentMovementIndexUrl, 'ranking manifest tournamentMovementIndexUrl', '/data/history/tournament-moves')
@@ -823,6 +821,7 @@ function assertPublicMatchHistoryEntry(value: unknown, label: string) {
   assertOptionalNumber(value.impact.teamA, `${label} impact teamA`)
   assertOptionalNumber(value.impact.teamB, `${label} impact teamB`)
   assertOptionalNumber(value.impact.expectedTeamA, `${label} impact expectedTeamA`)
+  assertOptionalNumber(value.impact.expectedTeamB, `${label} impact expectedTeamB`)
   assertOptionalNumber(value.impact.eventWeight, `${label} impact eventWeight`)
   assertObject(value.source, `${label} source`)
   assertEnum(value.source.provider, ['oracles-elixir', 'leaguepedia-cargo', 'seed'], `${label} source provider`)

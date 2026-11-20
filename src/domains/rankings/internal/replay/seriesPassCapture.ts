@@ -91,6 +91,7 @@ export class SeriesPassRecorder {
   private readonly keysBefore: Map<string, Set<string>>
   private readonly rosterSources = new Map<string, SeriesPassSource>()
   private readonly updateSources = new Map<string, SeriesPassSource>()
+  private readonly preservedRosterStrength = new Map<number, Pair<boolean>>()
   private readonly trails: Array<Omit<SeriesPassSeriesTrail, 'members'> & { members: SeriesPassMemberTrail[] }> = []
 
   constructor({ groups, matches, profiles, state, lastDate, sideAdjustments, playerEdges }: {
@@ -158,6 +159,10 @@ export class SeriesPassRecorder {
         }
       }),
     })
+  }
+
+  recordRosterRetention(seriesIndex: number, preserved: Pair<boolean>) {
+    if (preserved.some(Boolean)) this.preservedRosterStrength.set(seriesIndex, preserved)
   }
 
   recordSeries(seriesIndex: number, input: SeriesResultInput, result: SeriesResultUpdate) {
@@ -235,7 +240,10 @@ export class SeriesPassRecorder {
         return index
       })
     return detached({
-      frame: this.frame,
+      frame: { ...this.frame, series: this.frame.series.map((series, index) => {
+        const preserveRosterStrength = this.preservedRosterStrength.get(index)
+        return preserveRosterStrength ? { ...series, preserveRosterStrength } : series
+      }) },
       expected: {
         utcDate: this.frame.utcDate, series: this.trails,
         teams: this.frame.teams.map(({ team }) => {

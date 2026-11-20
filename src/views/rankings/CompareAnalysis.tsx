@@ -5,9 +5,9 @@ import { isRegionPowerTeam, type RegionStrength } from '../../domains/rankings/r
 import type { CompareColumn } from './CompareDrawer'
 import {
   REGION_PROFILE_METRICS,
-  TEAM_PROFILE_METRICS,
   type CompareProfileMetric,
   regionKey,
+  compareSeriesColors,
 } from './compareAnalysisData'
 import { LineChart, type ChartSeries } from '../../components/LineChart'
 import { TeamHistoryLineChart } from './TeamHistoryLineChart'
@@ -18,11 +18,10 @@ import { LoadingState } from '../../components/ui/loading'
 
 const REGION_TREND_TEAM_LIMIT = 5
 const REGION_TREND_EVENT_LIMIT = 8
-const compareChartClassName = 'max-w-full min-w-0 min-h-[360px] overflow-hidden rounded-md border border-border bg-[var(--rail)] [&_.chart]:px-3.5 [&_.chart_svg]:h-[300px] max-sm:min-h-0 max-sm:[&_.chart_svg]:h-[230px]'
-const compareChartHeadClassName = 'flex flex-wrap items-baseline justify-between gap-x-3.5 gap-y-2 px-4 pt-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-[var(--text-strong)]'
-const compareChartMetaClassName = 'text-xs text-[var(--faint)] tabular-nums'
-const compareChartEmptyClassName = 'px-4 py-5 text-muted-foreground'
-const COMPARE_SERIES_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)']
+const compareChartClassName = 'max-w-full min-w-0 min-h-[360px] overflow-hidden rounded-md border border-line bg-ground [&_.chart]:px-3.5 [&_.chart_svg]:h-[300px] max-sm:min-h-0 max-sm:[&_.chart_svg]:h-[230px]'
+const compareChartHeadClassName = 'flex flex-wrap items-baseline justify-between gap-x-3.5 gap-y-2 px-4 pt-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-text'
+const compareChartMetaClassName = 'text-xs text-muted tabular-nums'
+const compareChartEmptyClassName = 'px-4 py-5 text-muted'
 type TeamHistoryLike = TeamHistoryDirectory | PublicTeamHistoryShard
 
 type RegionTrendEvent = {
@@ -67,23 +66,6 @@ export function RegionCompareAnalysis({
   )
 }
 
-export function TeamCompareAnalysis({
-  teams,
-  columns,
-  historyState,
-}: {
-  teams: RankingSummaryStanding[]
-  columns: CompareColumn[]
-  historyState: TeamHistoryArtifactState
-}) {
-  return (
-    <>
-      <CompareProfileChart title="Team profile" entities={teams} columns={columns} metrics={TEAM_PROFILE_METRICS} />
-      <TeamCompareChart teams={teams} historyState={historyState} />
-    </>
-  )
-}
-
 export function CompareProfileChart<E>({
   title,
   entities,
@@ -108,7 +90,7 @@ export function CompareProfileChart<E>({
       <div className={compareChartHeadClassName}>
         <h3>{title}</h3>
       </div>
-      <p className="px-4 pt-3 text-xs text-muted-foreground">Bars span the selected range. Longer is better.</p>
+      <p className="px-4 pt-3 text-xs text-muted">Bars span the selected range. Longer is better.</p>
       <div className="grid min-w-0 gap-4 px-4 pt-4 pb-4 max-sm:px-3.5 max-sm:py-3">
         {metrics.map((metric) => {
           const values = entities.map(metric.value)
@@ -118,22 +100,22 @@ export function CompareProfileChart<E>({
           return (
             <div className="grid grid-cols-[minmax(120px,150px)_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-1 max-[900px]:gap-2" key={metric.key}>
               <div className="min-w-0 pt-1">
-                <span className="block text-xs font-medium text-muted-foreground">{metric.label}</span>
-                <span className="mt-1 block text-xs text-muted-foreground tabular-nums">{range}{metric.better === 'low' ? ' · lower is better' : ''}</span>
+                <span className="block text-xs font-semibold text-muted">{metric.label}</span>
+                <span className="mt-1 block text-xs text-muted tabular-nums">{range}{metric.better === 'low' ? ' · lower is better' : ''}</span>
               </div>
               <div className="grid min-w-0 gap-2">
                 {entities.map((entity, index) => {
                   const value = metric.value(entity)
-                  const color = COMPARE_SERIES_COLORS[index % COMPARE_SERIES_COLORS.length]
+                  const color = columns[index].color ?? 'var(--league-other)'
                   const percent = profilePercent(value, values, metric.better)
                   const isBest = best.has(columns[index].id)
                   return (
-                    <div className={`grid min-w-0 grid-cols-[minmax(84px,0.8fr)_minmax(100px,2fr)_minmax(54px,auto)] items-center gap-2.5 text-muted-foreground max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-x-2.5 max-sm:gap-y-1.5${isBest ? ' text-[var(--text-strong)]' : ''}`} key={columns[index].id}>
-                      <span className="inline-flex min-w-0 items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-foreground" title={columns[index].name}>
+                    <div className={`grid min-w-0 grid-cols-[minmax(84px,0.8fr)_minmax(100px,2fr)_minmax(54px,auto)] items-center gap-2.5 text-muted max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-x-2.5 max-sm:gap-y-1.5${isBest ? ' text-text' : ''}`} key={columns[index].id}>
+                      <span className="inline-flex min-w-0 items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-text" title={columns[index].name}>
                         <i className="size-2 shrink-0 rounded-full" style={{ background: color }} aria-hidden="true" />
                         {columns[index].name}
                       </span>
-                      <span className="h-2 overflow-hidden rounded-full bg-[var(--surface-3)] shadow-[inset_0_0_0_1px_var(--line)] max-sm:col-span-full max-sm:col-start-1 max-sm:row-start-2" aria-hidden="true">
+                      <span className="h-2 overflow-hidden rounded-full bg-line shadow-[inset_0_0_0_1px_var(--line)] max-sm:col-span-full max-sm:col-start-1 max-sm:row-start-2" aria-hidden="true">
                         <span className="block h-full min-w-[3px] rounded-full" style={{ width: `${percent}%`, background: color } as CSSProperties} />
                       </span>
                       <strong className="justify-self-end text-sm font-semibold tabular-nums max-sm:col-start-2 max-sm:row-start-1">{metric.format(value)}</strong>
@@ -190,9 +172,10 @@ function RegionTrendChart({
   const trend = useMemo(() => {
     if (regionHistory) return regionHistoryTrend(regions, regionHistory)
     if (!history) return []
+    const colors = compareSeriesColors(regions.map((region) => region.region))
     return regions
       .map((region, index): { series: ChartSeries; events: RegionTrendEvent[] } | null => {
-        const color = COMPARE_SERIES_COLORS[index % COMPARE_SERIES_COLORS.length]
+        const color = colors[index]
         const teams = selectRegionTrendTeams(region, standings, history)
         const points = aggregateRegionTrend(teams, history)
         if (points.length < 2) return null
@@ -236,7 +219,7 @@ function RegionTrendChart({
           </span>
         ) : null}
       </div>
-      {fallbackNote ? <p className="px-4 pt-2.5 text-xs text-muted-foreground">{fallbackNote}</p> : null}
+      {fallbackNote ? <p className="px-4 pt-2.5 text-xs text-muted">{fallbackNote}</p> : null}
       {!regionHistory && regionHistoryState.status === 'loading' ? (
         <LoadingState presentation="chart" className="m-4" label="Loading region history" />
       ) : !regionHistory && historyState.status === 'idle' ? (
@@ -264,11 +247,12 @@ function regionHistoryFallbackNote(state: RegionHistoryScopeState) {
 }
 
 function regionHistoryTrend(regions: RegionStrength[], history: PublicRegionHistoryScope) {
+  const colors = compareSeriesColors(regions.map((region) => region.region))
   return regions
     .map((region, index): { series: ChartSeries; events: RegionTrendEvent[] } | null => {
       const regionSeries = history.regionPowerSeries[region.region]
       if (!regionSeries || regionSeries.points.length < 2) return null
-      const color = COMPARE_SERIES_COLORS[index % COMPARE_SERIES_COLORS.length]
+      const color = colors[index]
       return {
         series: {
           id: regionKey(region),
@@ -288,27 +272,27 @@ function RegionTrendEvents({ events }: { events: RegionTrendEvent[] }) {
   if (events.length === 0) return null
 
   return (
-    <div className="border-t border-border px-4 pt-3.5 pb-4 max-[900px]:px-3.5 max-[900px]:pt-3 max-[900px]:pb-3.5" aria-label="Largest derived region trend movement drivers">
+    <div className="border-t border-line px-4 pt-3.5 pb-4 max-[900px]:px-3.5 max-[900px]:pt-3 max-[900px]:pb-3.5" aria-label="Largest derived region trend movement drivers">
       <div className="mb-2.5 flex items-baseline justify-between gap-2.5 max-[900px]:grid max-[900px]:gap-1">
-        <span className="text-xs font-medium text-foreground">Biggest moves</span>
+        <span className="text-xs font-semibold text-text">Biggest moves</span>
       </div>
       <div className="grid grid-cols-2 gap-2 max-[900px]:grid-cols-1">
         {events.map((event) => (
-          <article className="grid min-w-0 gap-2 rounded-md border border-border bg-[var(--surface-2)] p-2.5" key={event.id}>
+          <article className="grid min-w-0 gap-2 rounded-md border border-line bg-raised p-2.5" key={event.id}>
             <div className="flex min-w-0 items-center gap-2">
-              <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold text-foreground">
+              <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold text-text">
                 <i className="size-2 shrink-0 rounded-full" style={{ background: event.regionColor }} aria-hidden="true" />
                 {event.region}
               </span>
-              <time className="text-xs text-[var(--faint)] tabular-nums" dateTime={event.date}>{formatDate(event.date)}</time>
-              <strong className={`ml-auto font-mono text-sm tabular-nums ${deltaClass(event.delta)}`}>{formatSignedRating(event.delta)}</strong>
+              <time className="text-xs text-muted tabular-nums" dateTime={event.date}>{formatDate(event.date)}</time>
+              <strong className={`ml-auto text-sm tabular-nums ${deltaClass(event.delta)}`}>{formatSignedRating(event.delta)}</strong>
             </div>
-            <div className="flex min-w-0 items-center gap-2 text-foreground [&_b]:overflow-hidden [&_b]:text-ellipsis [&_b]:whitespace-nowrap [&_span]:overflow-hidden [&_span]:text-ellipsis [&_span]:whitespace-nowrap">
-              <b className="text-sm font-semibold text-[var(--text-strong)]">{event.team}</b>
-              {event.opponent ? <span className="text-sm text-muted-foreground">vs {event.opponent}</span> : null}
-              {formatRegionTrendMatchScore(event) ? <em className="inline-grid size-[19px] shrink-0 place-items-center rounded-sm bg-[var(--surface-3)] text-2xs font-bold text-muted-foreground not-italic">{formatRegionTrendMatchScore(event)}</em> : null}
+            <div className="flex min-w-0 items-center gap-2 text-text [&_b]:overflow-hidden [&_b]:text-ellipsis [&_b]:whitespace-nowrap [&_span]:overflow-hidden [&_span]:text-ellipsis [&_span]:whitespace-nowrap">
+              <b className="text-sm font-semibold text-text">{event.team}</b>
+              {event.opponent ? <span className="text-sm text-muted">vs {event.opponent}</span> : null}
+              {formatRegionTrendMatchScore(event) ? <em className="inline-grid size-[19px] shrink-0 place-items-center rounded-md bg-line text-xs font-bold text-muted not-italic">{formatRegionTrendMatchScore(event)}</em> : null}
             </div>
-            <div className="flex min-w-0 flex-wrap items-center gap-1 [&>span]:max-w-full [&>span]:overflow-hidden [&>span]:text-ellipsis [&>span]:whitespace-nowrap [&>span]:rounded-sm [&>span]:border [&>span]:border-border [&>span]:bg-card [&>span]:px-1.5 [&>span]:py-0.5 [&>span]:text-2xs [&>span]:text-[var(--faint)]">
+            <div className="flex min-w-0 flex-wrap items-center gap-1 [&>span]:max-w-full [&>span]:overflow-hidden [&>span]:text-ellipsis [&>span]:whitespace-nowrap [&>span]:rounded-md [&>span]:border [&>span]:border-line [&>span]:bg-surface [&>span]:px-1.5 [&>span]:py-0.5 [&>span]:text-xs [&>span]:text-muted">
               <span>{event.event ?? 'Unknown event'}</span>
               {event.tier ? <span>{formatTierLabel(event.tier)}</span> : null}
               <span>{formatRating(event.rating)}</span>
@@ -442,7 +426,7 @@ function collectRegionTrendEvents(
   return events
 }
 
-function TeamCompareChart({
+export function TeamCompareAnalysis({
   teams,
   historyState,
 }: {
@@ -452,6 +436,7 @@ function TeamCompareChart({
   const history = historyState.status === 'ready' ? historyState.data : undefined
   const series = useMemo<ChartSeries[]>(() => {
     if (!history) return []
+    const colors = compareSeriesColors(teams.map((team) => team.league))
     return teams
       .map((team, index): ChartSeries | null => {
         const teamSeries = history.series[teamKey(team)]
@@ -461,7 +446,7 @@ function TeamCompareChart({
         return {
           id: teamKey(team),
           label: team.code ?? team.team,
-          color: COMPARE_SERIES_COLORS[index % COMPARE_SERIES_COLORS.length],
+          color: colors[index],
           points,
         }
       })
@@ -500,8 +485,8 @@ function formatSignedRating(value?: number) {
 }
 
 function deltaClass(value?: number) {
-  if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) < 0.05) return 'text-[var(--faint)]'
-  return value > 0 ? 'text-[var(--up)]' : 'text-[var(--down)]'
+  if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) < 0.05) return 'text-muted'
+  return value > 0 ? 'text-up' : 'text-down'
 }
 
 function formatTierLabel(value: string) {

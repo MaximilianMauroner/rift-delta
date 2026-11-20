@@ -29,6 +29,15 @@ export function seriesWinner(match: Pick<PublicMatchHistoryEntry, 'seriesWinsA' 
 }
 
 /**
+ * A level score in an odd best-of cannot be a final result. The series state
+ * comes from the score, so it cannot tell a live series from one with a
+ * missing game. An even best-of can end level.
+ */
+export function isUnresolvedSeries(match: Pick<PublicMatchHistoryEntry, 'bestOf' | 'seriesWinsA' | 'seriesWinsB'>) {
+  return !seriesWinner(match) && match.bestOf % 2 === 1
+}
+
+/**
  * Reads the series-level rating change from the summary game. The pre-match
  * chance is reported for the winner, because that is the number an upset is
  * judged by. Series whose deltas do not reconcile report `missing`, and show no
@@ -36,13 +45,12 @@ export function seriesWinner(match: Pick<PublicMatchHistoryEntry, 'seriesWinsA' 
  */
 export function seriesRatingChange(match: PublicMatchHistoryEntry): SeriesRatingChange {
   if (match.impact.unit === 'held') return { kind: 'held' }
-  const { teamA, teamB, expectedTeamA, eventWeight } = match.impact
+  const { teamA, teamB, expectedTeamA, expectedTeamB, eventWeight } = match.impact
   if (!hasConsistentImpactDirection(match) || typeof teamA !== 'number' || typeof teamB !== 'number') return { kind: 'missing' }
   const winner = seriesWinner(match)
   const chanceSide = winner ?? 'A'
-  const chance = typeof expectedTeamA === 'number' && Number.isFinite(expectedTeamA)
-    ? chanceSide === 'A' ? expectedTeamA : 1 - expectedTeamA
-    : undefined
+  const expected = chanceSide === 'A' ? expectedTeamA : expectedTeamB
+  const chance = typeof expected === 'number' && Number.isFinite(expected) ? expected : undefined
   return {
     kind: 'applied',
     teamA,

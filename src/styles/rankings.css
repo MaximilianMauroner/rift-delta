@@ -1,296 +1,154 @@
-/* Power Index table.
+/* Power Index list.
 
-   The head/cell/row styling below used to live in an 815-character inline
-   `className` on the <Table> element in TeamsView. It is table chrome that
-   applies to exactly one table, so it belongs in a stylesheet where it can be
-   read. */
+   One table grouped under tier headers. Each row carries a 3px league stripe
+   at its leading edge. The board sizes itself from its own width: beside the
+   dossier at 1280px it is as narrow as a 900px screen, so the lane and the
+   Compare label give way by container width, not viewport width. */
 
-/* Head typography comes from TableHead in ui/table.tsx, shared by every
-   table. This rule only adds the board's padding and fill. */
 .ranking-table thead th {
-  padding: 12px;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--line);
-  background: var(--surface-2);
+  background: var(--surface);
+  color: var(--muted);
 }
-
-.ranking-table thead th > button {
-  padding-inline: 12px;
-}
-
+.ranking-table thead th > button { padding-inline: 8px; }
 .ranking-table tbody td {
-  padding: 12px;
+  padding: 8px;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
 }
+.ranking-table tbody tr.board-row:hover { background: var(--raised); }
+/* Picked and selected rows use raised, not the focus wash: tier C text
+   falls to 4.15:1 on the wash and holds 4.73:1 on raised. */
+.ranking-table tbody tr.is-picked { background: var(--raised); }
+.ranking-table tbody tr.is-excluded { color: var(--muted); }
+.ranking-table td.right, .ranking-table th.right { text-align: right; }
 
-.ranking-table tbody tr {
-  transition: background-color 150ms ease;
+table.ranking-table.board-grid { table-layout: fixed; }
+table.ranking-table.board-grid col.board-col-rank { width: 52px; }
+table.ranking-table.board-grid col.board-col-tier { width: 44px; }
+table.ranking-table.board-grid col.board-col-score { width: 68px; }
+table.ranking-table.board-grid col.board-col-lane { width: 120px; }
+table.ranking-table.board-grid col.board-col-move { width: 48px; }
+table.ranking-table.board-grid col.board-col-form { width: 112px; }
+table.ranking-table.board-grid col.board-col-record { width: 92px; }
+table.ranking-table.board-grid col.board-col-action { width: 104px; }
+
+.board-row > td:first-child { box-shadow: inset 3px 0 0 var(--league-color, var(--league-other)); }
+.board-row td.board-col-rank { padding-left: 14px; }
+.board-rank { font-size: var(--type-base); font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.board-power { font-size: var(--type-base); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.board-row td.board-col-score { text-align: right; }
+.board-row td.board-col-record { text-align: right; white-space: nowrap; }
+
+/* Tier headers are neutral: the tier name in its colour over a 1px rule. */
+.board-tier-row th {
+  padding: 10px 14px 6px;
+  border-bottom: 1px solid var(--tier-color);
+  background: var(--surface);
+  text-align: left;
+  font-weight: 400;
+}
+.board-tier-name { margin-right: 8px; color: var(--tier-color); font-size: var(--type-sm); font-weight: 700; }
+.board-tier-name.text-text { color: var(--text); }
+.board-tier-row small { color: var(--muted); font-size: var(--type-xs); }
+
+/* The gap to the team above sits on the boundary between the two rows. */
+.board-gap {
+  position: absolute;
+  top: 0;
+  left: 6px;
+  z-index: 1;
+  transform: translateY(-50%);
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.board-gap.is-tie {
+  border: 1.5px solid var(--text);
+  color: var(--text);
+  font-weight: 700;
 }
 
-.ranking-table tbody tr:hover {
-  background: var(--surface-2);
+@container board (width < 760px) {
+  table.ranking-table.board-grid col.board-col-action { width: 44px; }
+  .board-row [data-slot="compare-toggle"] > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+}
+@container board (width < 700px) {
+  table.ranking-table.board-grid col.board-col-lane { width: 0; }
+  table.ranking-table.board-grid .board-col-lane > * { display: none; }
+  table.ranking-table.board-grid .board-col-lane { padding: 0; }
 }
 
-.ranking-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-/* The one selected treatment: soft accent fill plus an inset leading bar.
-   A picked row used to get the fill only, while a tier-highlighted row and a
-   picked region row each got fill plus bar, so "selected" read three ways. */
-.ranking-table tbody tr.is-picked {
-  background: var(--selected-bg);
-  box-shadow: var(--selected-bar);
-}
-
-.ranking-table tbody tr.is-picked:hover {
-  background: var(--selected-bg-hover);
-}
-
-.ranking-table th.center,
-.ranking-table td.center {
-  text-align: center;
-}
-
-.ranking-table th.right,
-.ranking-table td.right {
-  text-align: right;
-}
-
-/* Power Index board table.
-
-   One line per team: rank and tier, team, Power with its position on the
-   visible range, 30-day move, form, record, and the Compare control. Every
-   column except the team is sized to its content, and the team column takes
-   the slack. The board sizes itself from its own width, not the viewport's:
-   at 1280px the sidebar leaves it as narrow as on a 900px screen. */
-
-table.ranking-table.board-grid {
-  table-layout: fixed;
-  width: 100%;
-  min-width: 640px;
-}
-
-table.ranking-table.board-grid col.board-col-rank { width: 88px; }
-table.ranking-table.board-grid col.board-col-score { width: 184px; }
-table.ranking-table.board-grid col.board-col-move { width: 72px; }
-table.ranking-table.board-grid col.board-col-form { width: 128px; }
-table.ranking-table.board-grid col.board-col-record { width: 104px; }
-table.ranking-table.board-grid col.board-col-action { width: 128px; }
-
-table.ranking-table.board-grid tbody td {
-  padding-block: 8px;
-}
-
-/* Below 932px the full column set leaves the team column under 228px, too
-   narrow for a long name such as Hanwha Life Esports beside its mark. The
-   Power bar and the open arrow give way so names stay readable. */
-@container board (width < 932px) {
-  table.ranking-table.board-grid col.board-col-score { width: 84px; }
-  table.ranking-table.board-grid col.board-col-move { width: 64px; }
-
-  table.ranking-table.board-grid .score-track,
-  table.ranking-table.board-grid .board-open-hint {
-    display: none;
-  }
-}
-
-/* From 1064px the team column would pass 360px and leave names far from
-   their Power. It stops there, and the Power column, whose bar stretches,
-   takes the rest. 360px leaves 284px for the name beside the mark: the
-   longest measured name, Yang Dae Pal Korean BBQ Restaurant, needs 276px. */
-@container board (width >= 1064px) {
-  table.ranking-table.board-grid col.board-col-team { width: 360px; }
-  table.ranking-table.board-grid col.board-col-score { width: auto; }
-}
-
-/* The sort select exists for the list layout, which has no column headers. */
+/* The sort select serves the phone rows, which have no column headers. */
 .board-sort { display: none; }
 
-/* Below this width the columns cannot all fit, so each team becomes a flush
-   two-line list row: rank, team and Power on the first line, form, record
-   and the 30-day move under them, and Compare beside both lines. Rows touch,
-   so the near-tie bracket in the rank cell still joins neighbours. */
-@media (max-width: 860px) {
+/* Phone rows: rank, team, tier and Power; the lane with Compare; then the
+   30-day move, the record and the form. */
+@media (max-width: 639px) {
   .board-sort { display: flex; }
   table.ranking-table.board-grid,
   table.ranking-table.board-grid tbody,
   table.ranking-table.board-grid tr,
-  table.ranking-table.board-grid td {
+  table.ranking-table.board-grid td,
+  table.ranking-table.board-grid th {
     display: block;
     width: auto;
     min-width: 0;
   }
-
   table.ranking-table.board-grid thead,
-  table.ranking-table.board-grid colgroup {
-    display: none;
-  }
-
-  table.ranking-table.board-grid tbody tr {
+  table.ranking-table.board-grid colgroup { display: none; }
+  table.ranking-table.board-grid tbody tr.board-row {
+    position: relative;
     display: grid;
-    grid-template-columns: 40px minmax(0, 1fr) auto auto;
-    grid-template-rows: auto auto;
+    grid-template-columns: 26px auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "rank team team tier power"
+      ".    lane lane lane action"
+      ".    move record form form";
     column-gap: 8px;
+    row-gap: 6px;
     align-items: center;
-    padding: 0 8px 0 4px;
-    min-height: 60px;
+    padding: 12px 10px 10px 14px;
     border-bottom: 1px solid var(--line);
+    box-shadow: inset 3px 0 0 var(--league-color, var(--league-other));
   }
-
-  table.ranking-table.board-grid tbody td {
+  table.ranking-table.board-grid tbody tr.board-row > td {
     padding: 0;
     border: 0;
-    min-width: 0;
+    box-shadow: none;
   }
-
-  table.ranking-table.board-grid td.board-col-rank {
-    grid-column: 1;
-    grid-row: 1 / 3;
-    align-self: stretch;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  table.ranking-table.board-grid td:nth-child(2) { grid-column: 2; grid-row: 1; align-self: end; padding-top: 8px; }
-  table.ranking-table.board-grid td.board-col-score { grid-column: 3; grid-row: 1; align-self: end; justify-self: end; padding-top: 8px; }
-  table.ranking-table.board-grid td.board-col-move { grid-column: 3; grid-row: 2; align-self: start; justify-self: end; padding-bottom: 8px; }
-  table.ranking-table.board-grid td.board-col-action { grid-column: 4; grid-row: 1 / 3; }
-  table.ranking-table.board-grid td.board-col-form {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    grid-column: 2;
-    grid-row: 2;
-    align-self: start;
-    padding-bottom: 8px;
-  }
-  /* Record sits beside the form pips on the second line. */
-  table.ranking-table.board-grid td.board-col-record {
-    grid-column: 2;
-    grid-row: 2;
-    justify-self: end;
-    align-self: start;
-    padding-bottom: 8px;
-    font-size: var(--t-2);
-  }
-
-  .board-rankcell {
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .board-rank {
-    min-width: 0;
-    font-size: var(--t-4);
-  }
-
-  .board-rankcell .tier-badge {
-    min-width: 18px;
-    height: 18px;
-    padding-inline: 0;
-    font-size: var(--t-0);
-  }
-
-  .board-rank--excluded {
-    font-size: var(--t-0);
-  }
-
-  .team-cell .team-mark,
-  .team-cell .ent small {
-    display: none;
-  }
-
-  /* A name gets two lines before it is cut. The 44px touch target already
-     makes the name row that tall, so a second line costs no height. */
-  .team-cell .ent b {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    white-space: normal;
-    font-size: var(--t-3);
-    line-height: 1.25;
-  }
-
-  .team-score-value {
-    min-width: 0;
-    font-size: var(--t-4);
-  }
-}
-
-/* Form pips and the record do not both fit beside a phone-width name. The
-   record stays one tap away in the team drawer. */
-@media (max-width: 480px) {
-  table.ranking-table.board-grid td.board-col-record {
-    display: none;
-  }
+  table.ranking-table.board-grid td.board-col-rank { grid-area: rank; position: static; }
+  table.ranking-table.board-grid td.board-col-team { grid-area: team; }
+  table.ranking-table.board-grid td.board-col-tier { grid-area: tier; }
+  table.ranking-table.board-grid td.board-col-score { grid-area: power; }
+  table.ranking-table.board-grid td.board-col-lane { grid-area: lane; }
+  table.ranking-table.board-grid td.board-col-lane > * { display: block; }
+  table.ranking-table.board-grid td.board-col-move { grid-area: move; }
+  table.ranking-table.board-grid td.board-col-record { grid-area: record; text-align: left; font-size: var(--type-xs); }
+  table.ranking-table.board-grid td.board-col-form { grid-area: form; justify-self: end; }
+  table.ranking-table.board-grid td.board-col-action { grid-area: action; justify-self: end; }
+  .board-row [data-slot="compare-toggle"] { flex-direction: row; gap: 6px; padding-inline: 8px; }
+  .board-row [data-slot="compare-toggle"] > span { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+  .board-row .board-gap { top: 0; left: 4px; }
+  .board-row .team-cell .ent b { white-space: normal; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+  .board-tier-row th { padding: 10px 14px 6px; }
 }
 
 /* One frame for every region. Size, radius and code size are driven by four
    custom properties so the `sm` variant is a token override rather than a
    second set of rules. The inset border ring, the 145deg gradient, the double
    box-shadow and the text shadow were decorative and are gone. */
-.region-badge {
-  --badge-hue: 205;
-  --badge-ink: oklch(0.92 0.045 var(--badge-hue));
-  --badge-surface: oklch(0.76 0.12 var(--badge-hue) / 0.14);
-  --badge-line: oklch(0.76 0.12 var(--badge-hue) / 0.44);
-  --badge-w: 44px;
-  --badge-h: 36px;
-  --badge-r: var(--r-2);
-  /* Glyph-fitting size for a fixed-width box, not a step on the text scale. */
-  --badge-code: var(--t-1);
-
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: var(--badge-w);
-  height: var(--badge-h);
-  border: 1px solid var(--badge-line);
-  border-radius: var(--badge-r);
-  background: var(--badge-surface);
-  color: var(--badge-ink);
-  overflow: hidden;
-}
-
-.region-badge--sm {
-  --badge-w: 28px;
-  --badge-h: 24px;
-  --badge-r: var(--r-1);
-  --badge-code: var(--t-0);
-}
-
-.region-badge__logo {
-  display: block;
-  width: 78%;
-  height: 78%;
-  object-fit: contain;
-}
-
-.region-badge__code {
-  font-family: var(--mono);
-  font-size: var(--badge-code);
-  font-weight: var(--w-figure);
-  line-height: 1;
-  letter-spacing: 0;
-}
-
-.region-badge--lck { --badge-hue: 215; }
-.region-badge--lpl { --badge-hue: 28; }
-.region-badge--lec { --badge-hue: 286; }
-.region-badge--lcs { --badge-hue: 198; }
-.region-badge--lcp { --badge-hue: 154; }
-.region-badge--cblol { --badge-hue: 82; }
-.region-badge--pcs { --badge-hue: 244; }
-.region-badge--vcs { --badge-hue: 18; }
-.region-badge--default { --badge-hue: 205; }
-
 .detail-skeleton {
   display: block;
   overflow: hidden;
-  border-radius: var(--r-pill);
+  border-radius: 999px;
 }
 
 .detail-skeleton--result {
@@ -344,7 +202,7 @@ table.ranking-table.board-grid tbody td {
   padding: 8px 12px;
   border-bottom: 1px solid var(--line);
   color: var(--muted);
-  font-size: var(--t-2);
+  font-size: var(--type-xs);
   line-height: 1.4;
 }
 
@@ -385,7 +243,7 @@ table.ranking-table.board-grid tbody td {
 .player-rank-skeleton {
   display: grid;
   border: 1px solid var(--line);
-  border-radius: var(--r-1);
+  border-radius: var(--radius);
   overflow: hidden;
   background: var(--detail-surface, var(--surface));
 }
@@ -485,12 +343,12 @@ table.ranking-table.board-grid tbody td {
     justify-self: end;
     width: auto;
     color: var(--muted);
-    font-size: var(--t-2);
+    font-size: var(--type-xs);
   }
 
   .player-rank-table td:nth-child(5)::before {
     content: "Games ";
-    color: var(--faint);
+    color: var(--muted);
   }
 
   .player-rank-table .ent b,
@@ -507,7 +365,7 @@ table.ranking-table.board-grid tbody td {
   gap: 12px;
   padding: 16px 16px 12px;
   border: 1px solid var(--line);
-  border-radius: var(--r-2);
+  border-radius: var(--radius);
   background: var(--detail-surface, var(--surface));
 }
 
@@ -552,12 +410,12 @@ table.ranking-table.board-grid tbody td {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--surface-2);
+  background: var(--raised);
 }
 
 .compare-table thead th b {
-  font-size: var(--t-5);
-  font-weight: var(--w-emph);
+  font-size: var(--type-base);
+  font-weight: 600;
 }
 
 .compare-entity-heading { display: grid; gap: 2px; }
@@ -569,8 +427,8 @@ table.ranking-table.board-grid tbody td {
   left: 0;
   background: var(--surface);
   color: var(--muted);
-  font-size: var(--t-2);
-  font-weight: var(--w-label);
+  font-size: var(--type-xs);
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -580,8 +438,8 @@ table.ranking-table.board-grid tbody td {
 }
 
 .compare-table td.best {
-  color: var(--text-strong);
-  font-weight: var(--w-emph);
+  color: var(--text);
+  font-weight: 600;
 }
 
 @media (max-width: 640px) {
@@ -624,128 +482,269 @@ table.ranking-table.board-grid tbody td {
   }
 
   .compare-table[data-compare-count="2"] th[scope="row"] {
-    font-size: var(--t-1);
+    font-size: var(--type-xs);
     white-space: normal;
     overflow-wrap: anywhere;
   }
 }
 
-.players-view { gap: 16px; padding-top: 20px; }
-.players-filters { padding-block: 4px; }
-.players-table { font-size: var(--t-3); }
-.players-table thead { background: var(--surface-2); }
-.players-table th { padding-block: 12px; }
-.players-table td { padding-block: 10px; }
 .player-score-figure { display: inline-grid; grid-template-columns: auto 2ch; text-align: right; font-variant-numeric: tabular-nums; }
 .player-score-figure > span:last-child { text-align: left; }
-.player-score-key, .player-score-position { display: none; }
+.player-score-evidence { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.player-score-key { display: none; }
 @media (min-width: 1000px) {
   .player-score-key { display: inline; color: var(--text); }
-  .player-score-position { display: inline-block; position: relative; width: 80px; height: 3px; margin-right: 16px; vertical-align: middle; background: var(--line-strong); }
-  .player-score-position > i { position: absolute; top: -2px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); transform: translateX(-50%); }
 }
-.player-team { display: flex; align-items: center; gap: 8px; min-height: 24px; }
-.player-team img { display: block; flex: 0 0 24px; width: 24px; height: 24px; object-fit: contain; }
-.player-identity { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.player-identity-mark { display: none; }
-.players-scroll-cue { display: none; }
 .players-source { max-width: 75ch; }
-.players-method { color: var(--muted); font-size: var(--t-2); }
-.players-method > summary { width: fit-content; min-height: 36px; align-content: center; cursor: pointer; color: var(--accent); }
-.players-method > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: var(--r-1); }
+.players-method { color: var(--muted); font-size: var(--type-xs); }
+.players-method > summary { width: fit-content; min-height: 36px; align-content: center; cursor: pointer; color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+.players-method > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: var(--radius); }
 .players-method[open] > summary { margin-bottom: 8px; }
-.players-method[open] > :is(div, p) { font-size: var(--t-3); line-height: 1.65; }
+.players-method[open] > :is(div, p) { font-size: var(--type-sm); line-height: 1.65; }
 @media (min-width: 640px) {
   .players-method > :is(div, p) { max-width: 75ch; }
 }
-.player-role { display: inline-flex; padding: 2px 7px; border: 1px solid var(--line); border-radius: var(--r-1); font-size: var(--t-2); line-height: 1.4; }
 .compare-sheet .compare-table thead th { padding-block: 10px; }
-.compare-sheet .compare-table tbody tr:nth-child(even) td { background: color-mix(in oklch, var(--surface-2) 35%, var(--surface)); }
-@media (max-width: 760px) {
-  .players-table { min-width: 680px; }
-}
+.compare-sheet .compare-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--raised) 35%, var(--surface)); }
 
 @media (max-width: 639px) {
   .rankings-view { gap: 12px; padding-top: 12px; }
-  .board-headline { font-size: var(--t-5); line-height: 1.4; }
+  .board-headline { font-size: var(--type-base); line-height: 1.4; }
   .ranking-board > [data-slot="panel-header"] { align-items: center; padding-block: 12px; }
   .ranking-board > [data-slot="panel-header"] > div:first-child { flex: 1 1 0; }
-  .ranking-board > [data-slot="panel-header"] h2 { font-size: var(--t-5); }
+  .ranking-board > [data-slot="panel-header"] h2 { font-size: var(--type-base); }
   .ranking-board > [data-slot="panel-body"] { gap: 8px; padding-block: 10px; }
   .board-legend { gap: 6px; }
-  .players-view { gap: 12px; padding-top: 12px; }
   .players-empty-result { padding-block: 0; }
   .players-empty-result > div { padding-block: 24px; }
-  .players-reading-tools { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; column-gap: 12px; }
-  .players-reading-tools .players-method[open] { grid-column: 1 / -1; }
   .players-method > summary { min-height: 44px; }
-  .players-scroll-cue { display: flex; align-items: center; justify-self: end; gap: 6px; min-height: 44px; color: var(--muted); font-size: var(--t-1); line-height: 1.4; }
-  .players-scroll-cue > svg { flex: 0 0 16px; }
-  .players-method[open] + .players-scroll-cue { grid-column: 1 / -1; min-height: 28px; }
-  .player-identity-mark { display: block; flex: 0 0 20px; width: 20px; height: 20px; object-fit: contain; }
-  .player-identity > span { min-width: 0; overflow-wrap: anywhere; }
-  .players-filters { display: grid; grid-template-columns: minmax(0, 1fr) 108px; gap: 10px; padding-block: 0; }
-  .players-filters > label { min-width: 0; }
-  .players-filters [data-slot="select"] { width: 100%; min-width: 0; max-width: none; }
 }
 
-@media (max-width: 639px) {
-  .players-board { container-type: inline-size; }
-  .players-table {
-    --players-name-width: calc(100cqw - 152px);
-    --players-secondary-columns: 88px;
-    display: block;
-    width: max-content;
-    min-width: 100%;
-    padding-right: 108px;
-  }
-  .players-table[data-stat-games="true"] { --players-secondary-columns: 100px 108px 88px; }
-  .players-table :is(thead, tbody) { display: block; }
-  .players-table tr {
-    display: grid;
-    grid-template-columns: 44px calc(var(--players-name-width) - 72px) 72px 108px var(--players-secondary-columns);
-    align-items: stretch;
-  }
-  .players-table :is(th, td) { display: flex; align-items: center; min-width: 0; }
-  .players-table .player-col-rank { grid-column: 1; grid-row: 1 / 3; padding-inline: 8px; }
-  .players-table .player-col-name { grid-column: 2 / 4; grid-row: 1; white-space: normal; overflow-wrap: anywhere; }
-  .players-table .player-col-team { grid-column: 2; grid-row: 2; max-width: none; }
-  .players-table .player-col-role { grid-column: 3; grid-row: 2; padding-inline: 4px; }
-  .players-table .player-col-score { grid-column: 4; grid-row: 1 / 3; justify-content: flex-end; }
-  .players-table .player-col-stat-games { grid-column: 5; grid-row: 1 / 3; }
-  .players-table .player-col-role-power { grid-column: 6; grid-row: 1 / 3; }
-  .players-table .player-col-games { grid-column: -2; grid-row: 1 / 3; }
-  .players-table :is(.player-col-stat-games, .player-col-role-power, .player-col-games) { justify-content: flex-end; }
-  .players-table .player-col-score {
-    position: sticky;
-    left: calc(100cqw - 108px);
-    right: 0;
-    z-index: 1;
-    background: var(--surface);
-    box-shadow: -1px 0 var(--line);
-  }
-  .players-table th { height: auto; padding-block: 4px; font-size: var(--t-2); line-height: 1.25; }
-  .players-table th.player-col-name { grid-row: 1 / 3; }
-  .players-table th.player-col-score { white-space: normal; background: var(--surface-2); }
-  .players-table th:is(.player-col-team, .player-col-role) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  .players-table td { padding-block: 0; }
-  .players-table td.player-col-name { padding-top: 3px; }
-  .players-table td:is(.player-col-team, .player-col-role) { padding-bottom: 3px; }
-  .players-table td.player-col-team { color: var(--muted); font-size: var(--t-2); }
-  .players-table td.player-col-role { align-items: flex-start; line-height: 16px; }
-  .players-table td.player-col-score { flex-direction: column; align-items: flex-end; justify-content: flex-start; padding-top: 8px; }
-  .players-table td.player-col-rank { align-items: flex-start; padding-top: 8px; }
-  .players-table td:is(.player-col-stat-games, .player-col-role-power, .player-col-games) { padding-block: 8px; }
-  .players-table .player-role { max-width: 100%; padding: 0; border: 0; font-size: var(--t-2); white-space: normal; overflow-wrap: anywhere; }
-  .players-table .player-team { width: 100%; min-height: 16px; line-height: 16px; }
-  .players-table .player-team img { display: none; }
-  .players-table .player-team > span { min-width: 0; overflow-wrap: anywhere; }
+.head-to-head__teams {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--surface);
 }
+.head-to-head__format { width: auto; }
+@media (max-width: 639px) {
+  .head-to-head__teams {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+  }
+  .head-to-head__format {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: center;
+  }
+}
+
+.board-layout {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+  min-width: 0;
+}
+.ranking-table tbody tr.is-selected {
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--focus);
+}
+.team-dossier {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+.team-dossier__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+.team-dossier__card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--league-color, var(--league-other));
+  border-radius: var(--panel-radius);
+  background: var(--surface);
+}
+.team-dossier__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+}
+.team-dossier__facts > div {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  margin: 0 -1px -1px 0;
+  padding: 10px 16px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.team-dossier__facts dt,
+.team-dossier__facts small {
+  color: var(--muted);
+  font-size: var(--type-xs);
+  line-height: 1.4;
+}
+.team-dossier__facts dd { display: grid; gap: 2px; margin: 0; }
+.team-dossier__facts b {
+  color: var(--text);
+  font-size: var(--type-base);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 1280px) {
+  .board-layout:has(> .team-dossier) {
+    grid-template-columns: minmax(0, 1fr) 380px;
+  }
+  .team-dossier {
+    position: sticky;
+    top: 16px;
+    max-height: calc(100dvh - 32px - var(--tray-h, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .team-dossier__back { display: none; }
+}
+@media (max-width: 1279px) {
+  main:has(.team-dossier) .board-chrome,
+  main:has(.team-dossier) .compare-tray,
+  .rankings-view:has(.team-dossier) > :not(.board-layout),
+  .board-layout:has(> .team-dossier) > .board-main {
+    display: none;
+  }
+  .team-dossier__close { display: none; }
+}
+
+/* Power field: every team in scope on one Power axis, above the list. */
+.power-field {
+  display: grid;
+  gap: 6px;
+  padding: 12px 16px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  min-width: 0;
+}
+.power-field__plot {
+  position: relative;
+  min-width: 0;
+}
+.power-field__zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding: 0 6px;
+  border-left: 1px dashed color-mix(in srgb, var(--tier-color) 45%, transparent);
+  background: color-mix(in srgb, var(--tier-color) 5%, transparent);
+  color: var(--tier-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+}
+.power-field__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+/* Marks keep their drawn size under the 44px touch rule. Each team also
+   has a full-size row button in the list, the equivalent control that
+   WCAG 2.5.8 accepts. */
+.power-field__mark {
+  min-width: 0;
+  min-height: 0;
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--surface);
+  border-radius: 999px;
+  background: var(--league-color);
+  cursor: pointer;
+}
+.power-field__mark.is-disc {
+  border-color: var(--league-color);
+  background: var(--surface);
+}
+.power-field__mark:hover { z-index: 1; filter: brightness(1.15); }
+.power-field__mark.is-selected {
+  z-index: 2;
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+.power-field__mark:focus-visible {
+  z-index: 3;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.power-field__axis {
+  position: relative;
+  height: 16px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.power-field__axis > span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.power-field.is-strip .power-field__axis {
+  display: flex;
+  justify-content: space-between;
+}
+.power-field.is-strip .power-field__axis > span {
+  position: static;
+  transform: none;
+}
+.power-field.is-strip { padding: 8px 12px; }
+.power-field__caption {
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+/* Closed-by-default sections below the list. */
+.board-disclosure {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.board-disclosure > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 12px 40px 12px 16px;
+  position: relative;
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+}
+.board-disclosure > summary::-webkit-details-marker { display: none; }
+.board-disclosure > summary::after {
+  content: '+';
+  position: absolute;
+  right: 16px;
+  top: 12px;
+  color: var(--muted);
+}
+.board-disclosure[open] > summary { border-bottom: 1px solid var(--line); }
+.board-disclosure[open] > summary::after { content: '−'; }

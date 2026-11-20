@@ -81,6 +81,21 @@ test('checkpoint exhaustively and losslessly round-trips every RatingRunState fi
   )
 })
 
+test('checkpoint round-trips recorded forecasts and accepts old histories without them', () => {
+  const matches = replayMatches()
+  const state = completeRun(matches)
+  const expected = state.predictions[0].teamASeriesWinProbability
+  assert.equal(state.histories.get('Alpha')![0].recordedSeriesWinProbability, expected)
+  const restored = decodeRatingCheckpoint(encodeAtBoundary(state, '2026-01-03', matches), checkpointIdentity).state
+  assert.equal(restored.histories.get('Alpha')![0].recordedSeriesWinProbability, expected)
+  for (const history of state.histories.values()) {
+    for (const point of history) delete point.recordedSeriesWinProbability
+  }
+  const legacy = decodeRatingCheckpoint(encodeAtBoundary(state, '2026-01-03', matches), checkpointIdentity).state
+  assert.deepEqual(legacy.histories, state.histories)
+  assert.ok([...legacy.histories.values()].flat().every((point) => !('recordedSeriesWinProbability' in point)))
+})
+
 test('semantically identical maps and sets serialize byte-identically regardless of insertion order', () => {
   const state = completeRun(replayMatches())
   const serialized = encodeAtBoundary(state, '2026-01-03', replayMatches())
