@@ -48,36 +48,19 @@ export function tierZones(
 
 export type SwarmItem = { x: number; radius: number }
 
-/**
- * Vertical offsets from the centre line that keep marks apart, in the given
- * order, so earlier marks sit nearest the line. A mark with no free place
- * inside the height takes the place with the least overlap.
- */
-export function swarmOffsets(items: readonly SwarmItem[], height: number, gap = 2): number[] {
-  const placed: { x: number; y: number; radius: number }[] = []
+/** Keep the Power coordinate fixed and pack the rectangular button bounds vertically. */
+export function swarmOffsets(items: readonly SwarmItem[], gap = 2): number[] {
+  const placed: (SwarmItem & { y: number })[] = []
   return items.map(({ x, radius }) => {
-    const limit = Math.max(0, height / 2 - radius)
-    const step = Math.max(1, radius / 2)
-    let best = 0
-    let bestClearance = -Infinity
-    for (let reach = 0; reach <= limit; reach += step) {
-      for (const y of reach === 0 ? [0] : [-reach, reach]) {
-        let clearance = Infinity
-        for (const other of placed) {
-          if (Math.abs(other.x - x) >= other.radius + radius + gap) continue
-          clearance = Math.min(clearance, Math.hypot(other.x - x, other.y - y) - other.radius - radius - gap)
-        }
-        if (clearance >= 0) {
-          placed.push({ x, y, radius })
-          return y
-        }
-        if (clearance > bestClearance) {
-          bestClearance = clearance
-          best = y
-        }
-      }
-    }
-    placed.push({ x, y: best, radius })
-    return best
+    const blocked = placed.flatMap((other) => {
+      const clearance = other.radius + radius + gap
+      return Math.abs(other.x - x) >= clearance ? [] : [{ min: other.y - clearance, max: other.y + clearance }]
+    })
+    const candidates = [0, ...blocked.flatMap(({ min, max }) => [min, max])]
+    candidates.sort((left, right) => Math.abs(left) - Math.abs(right))
+    // At least the outermost edge is free.
+    const y = candidates.find((offset) => blocked.every(({ min, max }) => offset <= min || offset >= max))!
+    placed.push({ x, y, radius })
+    return y
   })
 }
