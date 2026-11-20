@@ -102,6 +102,10 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
 
   function closeProfile() {
     returnFocus.current = profilePlayer?.id ?? ''
+    const index = visible.findIndex((player) => player.id === returnFocus.current)
+    if (index >= visibleCount) {
+      setBatch({ filterKey, count: Math.ceil((index + 1) / PLAYER_BATCH_SIZE) * PLAYER_BATCH_SIZE })
+    }
     if (pushedProfile.current) {
       pushedProfile.current = false
       window.history.back()

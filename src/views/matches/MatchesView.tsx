@@ -191,7 +191,7 @@ export function MatchesView({ hashQuery, state, onRequestPages, searchRef, archi
       <div className="matches-ledger-heading">
         <h2 id={headingId} className="matches-heading">Series ledger</h2>
         <p className="text-xs text-muted">
-          {formatNumber(filtered.length)} series · {formatNumber(filteredGameCount)} games · {formatNumber(filteredLeagueCount)} leagues · {formatNumber(filteredEventCount)} events
+          Series {formatNumber(filtered.length)} · Games {formatNumber(filteredGameCount)} · Leagues {formatNumber(filteredLeagueCount)} · Events {formatNumber(filteredEventCount)}
         </p>
       </div>
       <div className="matches-filters">

@@ -545,11 +545,14 @@ export function TeamsView({
                 </Select>
               </label>
               </div>
-              <p className="board-legend flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" title={`Model ${formatModelVersion(model?.version)}${model?.configHash ? ` · config ${model.configHash}` : ''}`}>
-                {rankedOrder ? <span><b className="font-semibold">Δ</b> is the gap to the team above. <b className="font-semibold">Tie</b> marks a near tie, under {Math.round(NEAR_TIE_WIN_PROBABILITY * 100)}% per game</span> : null}
-                <span><b className="font-semibold">{activeTournament ? 'Event move' : '30 days'}</b> rank change {movementPeriod}</span>
-                <span><b className="font-semibold">Form</b> oldest → latest · latest underlined</span>
-              </p>
+              <details className="text-xs text-muted">
+                <summary className="w-fit cursor-pointer py-1">How to read the rankings</summary>
+                <p className="board-legend flex flex-wrap gap-x-4 gap-y-1" title={`Model ${formatModelVersion(model?.version)}${model?.configHash ? ` · config ${model.configHash}` : ''}`}>
+                  {rankedOrder ? <span><b className="font-semibold">Δ</b> is the gap to the team above. <b className="font-semibold">Tie</b> marks a near tie, under {Math.round(NEAR_TIE_WIN_PROBABILITY * 100)}% per game</span> : null}
+                  <span><b className="font-semibold">{activeTournament ? 'Event move' : '30 days'}</b> rank change {movementPeriod}</span>
+                  <span><b className="font-semibold">Form</b> oldest → latest · latest underlined</span>
+                </p>
+              </details>
             </PanelBody>
 
             {tournamentMovementIndexState.status === 'missing' || tournamentMovementIndexState.status === 'error' ? (
