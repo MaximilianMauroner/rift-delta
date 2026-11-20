@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react'
+import { recoverRouteLoad } from '../browser/routeRecovery'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Button } from './ui/button'
 
@@ -7,6 +8,10 @@ export class RouteErrorBoundary extends Component<{ children: ReactNode }, { fai
 
   static getDerivedStateFromError() {
     return { failed: true }
+  }
+
+  componentDidCatch(error: Error) {
+    recoverRouteLoad(error)
   }
 
   render() {

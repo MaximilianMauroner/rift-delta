@@ -6,7 +6,12 @@ const loadRegionsView = () => import('../regions/RegionsView').then((module) => 
 
 const loadMatchesView = () => import('../matches/MatchesView').then((module) => ({ default: module.MatchesView }))
 
-const loadPlayersView = () => import('./PlayersView').then((module) => ({ default: module.PlayersView }))
+function importPlayersView() {
+  return import('./PlayersView').then((module) => ({ default: module.PlayersView }))
+}
+
+let playersView: ReturnType<typeof importPlayersView> | undefined
+const loadPlayersView = () => playersView ??= importPlayersView()
 
 const loadProfilesView = () => import('../style/StyleProfileRoute').then((module) => ({ default: module.StyleProfileRoute }))
 
