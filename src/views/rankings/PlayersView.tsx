@@ -216,7 +216,9 @@ export function PlayersView({ state, manifest, filter, scopeLabel, hashQuery, se
                         const evidenceThrough = score.status === 'unranked' ? undefined : statsFamily ? player.statsPower?.evidenceThrough : player.latestObservedAt
                         const decimalIndex = scoreText.lastIndexOf('.')
                         return (
-                          <TableRow data-first-answer="players" role="row" key={player.id} league={league} data-selected={profilePlayer?.id === player.id}>
+                          <TableRow data-first-answer="players" role="row" key={player.id} league={league} data-selected={profilePlayer?.id === player.id} onClick={(event) => {
+                            if (!(event.target as HTMLElement).closest('button, summary, a')) selectProfile(player.id)
+                          }}>
                             <TableCell role="cell" className="player-col-rank pl-4 text-muted tabular-nums">
                               {player.leaderboardRank ?? <><span aria-hidden="true">—</span><span className="sr-only">Unranked</span></>}
                             </TableCell>
