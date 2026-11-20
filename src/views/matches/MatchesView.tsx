@@ -195,7 +195,7 @@ export function MatchesView({ hashQuery, state, onRequestPages, searchRef, archi
         </p>
       </div>
       <div className="matches-filters">
-        {archiveYears.length > 1 && onYearChange ? <label className="grid min-w-0 gap-1"><span className="text-xs text-muted">Calendar year played</span><Select aria-label="Calendar year played" aria-describedby={`${headingId}-year-note`} className="w-full max-w-none" value={archiveYear ?? 'All'} onChange={(event) => onYearChange(event.target.value)}><option value="All">All years</option>{archiveYears.map((year) => <option key={year} value={year}>{year}</option>)}</Select></label> : null}
+        {archiveYears.length > 1 && onYearChange ? <label className="grid min-w-0 gap-1"><span className="text-xs text-muted">Calendar year played</span><Select aria-label="Calendar year played" aria-describedby={`${headingId}-year-note`} className="w-full min-w-0 max-w-none" value={archiveYear ?? 'All'} onChange={(event) => onYearChange(event.target.value)}><option value="All">All years</option>{archiveYears.map((year) => <option key={year} value={year}>{year}</option>)}</Select></label> : null}
         <label className="matches-search grid min-w-0 gap-1">
           <span className="text-xs text-muted">Find a team</span>
           <span className="relative">
@@ -203,7 +203,7 @@ export function MatchesView({ hashQuery, state, onRequestPages, searchRef, archi
             <Input ref={searchRef} type="search" aria-keyshortcuts="/" className="w-full pl-9" value={view.search} onChange={(event) => update({ search: event.target.value })} placeholder="Find a team" />
           </span>
         </label>
-        <label data-league-filter className="grid min-w-0 gap-1"><span className="text-xs text-muted">League</span><Select className="w-full max-w-none" value={view.league} onChange={(event) => { const league = event.target.value; update({ league, event: compatibleMatchEvents(refs, league).includes(view.event) ? view.event : 'All' }) }}><option>All</option>{leagues.map((league) => <option key={league}>{league}</option>)}</Select></label>
+        <label data-league-filter className="grid min-w-0 gap-1"><span className="text-xs text-muted">League</span><Select className="w-full min-w-0 max-w-none" value={view.league} onChange={(event) => { const league = event.target.value; update({ league, event: compatibleMatchEvents(refs, league).includes(view.event) ? view.event : 'All' }) }}><option>All</option>{leagues.map((league) => <option key={league}>{league}</option>)}</Select></label>
         <label className="matches-event-filter grid min-w-0 gap-1">
           <span className="text-xs text-muted">Event</span>
           <Select data-wrap className="w-full min-w-0 max-w-none" value={view.event} onChange={(event) => update({ event: event.target.value })}>
