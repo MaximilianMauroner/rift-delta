@@ -21,20 +21,34 @@ export function useTournamentReportAddress() {
 
 export type TournamentTab = 'bracket' | 'schedule' | 'swiss' | 'postmortem'
 
-/**
- * The address of one tournament tab. Bracket, schedule and Swiss preview read
- * the same competition, so they keep the whole query. Team reports use their
- * own event ids, so crossing to or from them keeps only the scope.
- */
+export type TournamentTabContext = {
+  schedule?: { address: string; edition?: string }
+  reportEdition?: string
+}
+
 export function tournamentTabAddress(
   tab: TournamentTab,
   from: TournamentTab,
   query: URLSearchParams,
+  context: TournamentTabContext,
 ) {
   const crossing = (tab === 'postmortem') !== (from === 'postmortem')
   const next = crossing ? new URLSearchParams() : new URLSearchParams(query)
   const scope = query.get('scope')
   if (crossing && scope) next.set('scope', scope)
+  if (tab === 'postmortem' && crossing) {
+    const edition = query.get('edition') ?? context.schedule?.edition
+    const scheduleEvent = query.has('edition') ? null : context.schedule?.address ?? query.get('event')
+    if (edition) next.set('edition', edition)
+    if (scheduleEvent) next.set('scheduleEvent', scheduleEvent)
+  } else if (from === 'postmortem' && crossing) {
+    const scheduleEvent = query.get('scheduleEvent')
+    const edition = query.get('event') ?? context.reportEdition
+    if (scheduleEvent) next.set('event', scheduleEvent)
+    else if (edition && /^worlds:\d{4}$/.test(edition)) next.set('edition', edition)
+  } else if (tab !== 'postmortem' && tab !== from && !next.has('event') && !next.has('edition') && context.schedule) {
+    next.set('event', context.schedule.address)
+  }
   if (tab === 'bracket') next.delete('view')
   else next.set('view', tab)
   return `#tournaments${next.size ? `?${next}` : ''}`
@@ -44,8 +58,13 @@ export function selectTournamentReport(selection: {
   event: string
   team?: string
   player?: string
+  changeEdition?: boolean
 }) {
   const query = currentHashQuery()
+  if (selection.changeEdition) {
+    query.delete('edition')
+    query.delete('scheduleEvent')
+  }
   query.set('view', 'postmortem')
   query.set('event', selection.event)
   for (const key of ['team', 'player'] as const) {

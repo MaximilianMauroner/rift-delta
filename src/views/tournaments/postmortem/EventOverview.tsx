@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import type { ReactNode } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
@@ -32,7 +33,7 @@ export function EventOverview({
   onSelectTeam,
 }: {
   report: TournamentReport
-  caption: string
+  caption: ReactNode
   onSelectTeam: (teamId: string) => void
 }) {
   const summary = reportEventSummary(report)
@@ -47,7 +48,10 @@ export function EventOverview({
     values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length)
   return (
     <section className="grid min-w-0 gap-3" aria-label="Tournament statistics" data-first-answer="tournament-reports">
-      <h3 className="sr-only">Tournament</h3>
+      <div>
+        <h3 className="text-base font-semibold">Event overview</h3>
+        <p className="text-xs text-muted">{caption}</p>
+      </div>
       <ul className="grid grid-cols-2 gap-px overflow-hidden border-y border-line bg-line lg:grid-cols-4">
         <RateTile label="Blue side wins" rate={summary.blueSide} />
         <RateTile label="Team ahead at 15 wins" rate={summary.leaderAt15} />
@@ -66,7 +70,6 @@ export function EventOverview({
           detail={`of ${summary.games} games`}
         />
       </ul>
-      <p className="-mt-1 text-xs text-muted">{caption}</p>
       <ReportHighlights report={report} />
       <div className="grid min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <Card className="gap-0 py-0">
@@ -289,7 +292,7 @@ function GameList({
                       {code(row.teamId)} {row.result === 'W' ? 'beat' : 'lost to'} {code(row.opponentId)}
                     </span>
                     <span className="block text-xs font-normal text-muted">
-                      {row.date}
+                      <time className="whitespace-nowrap">{row.date}</time>
                       {row.gameNumber ? ` · Game ${row.gameNumber}` : ''}
                       {row.phase ? ` · ${row.phase}` : ''}
                     </span>

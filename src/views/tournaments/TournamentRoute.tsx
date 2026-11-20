@@ -4,7 +4,7 @@ import { RouteErrorBoundary } from '../../components/RouteErrorBoundary'
 import { LoadingState } from '../../components/ui/loading'
 import { currentSeasonScope } from '../../domains/rankings/read'
 import { AppNavigation } from '../AppShell'
-import { useTournamentReportAddress, type TournamentTab } from '../../browser/tournament-reports/navigation'
+import { useTournamentReportAddress, type TournamentTab, type TournamentTabContext } from '../../browser/tournament-reports/navigation'
 import { TournamentsView } from './routeLoading'
 import { TournamentTabs } from './TournamentTabs'
 import './tournaments.css'
@@ -15,8 +15,11 @@ export function TournamentRoute() {
   const query = useTournamentReportAddress()
   const view = query.get('view')
   const postmortem = view === 'postmortem'
-  const [availability, setAvailability] = useState<{ hasEvent: boolean; swiss: boolean | null }>({ hasEvent: true, swiss: null })
-  const onAvailabilityChange = useCallback((hasEvent: boolean, swiss: boolean | null) => setAvailability({ hasEvent, swiss }), [])
+  const [availability, setAvailability] = useState<{ hasEvent: boolean; swiss: boolean | null; schedule?: TournamentTabContext['schedule'] }>({ hasEvent: true, swiss: null })
+  const [reportEdition, setReportEdition] = useState<string>()
+  const onAvailabilityChange = useCallback((hasEvent: boolean, swiss: boolean | null, schedule?: TournamentTabContext['schedule']) => {
+    setAvailability({ hasEvent, swiss, schedule })
+  }, [])
   const activeView = view === 'schedule' ? 'schedule' : view === 'swiss' && availability.swiss !== false ? 'swiss' : 'bracket'
   const current: TournamentTab = postmortem ? 'postmortem' : activeView
   const tabs: TournamentTab[] = postmortem || availability.hasEvent
@@ -33,11 +36,11 @@ export function TournamentRoute() {
     <AppNavigation mode="tournaments" scope={scope} onGoHome={goHome} />
     <main id="main-content" tabIndex={-1} ref={mainRef} className="min-w-0 flex-1 pb-6 max-sm:pb-[calc(var(--tabbar-h)+24px+env(safe-area-inset-bottom))]">
       <h1 className="sr-only">Tournaments</h1>
-      <TournamentTabs current={current} tabs={tabs} className="px-[var(--page-x)] pt-2" />
+      <TournamentTabs current={current} tabs={tabs} context={{ schedule: availability.schedule, reportEdition }} className="px-[var(--page-x)] pt-2" />
       {/* Keyed by the requested tab, so a fallback while the feed loads does not remount the view. */}
       <RouteErrorBoundary key={postmortem ? 'postmortem' : view ?? 'bracket'}>
         <Suspense fallback={<LoadingState presentation="page" layout="schedule" label="Loading Tournaments" />}>
-          {postmortem ? <PostmortemView /> : <TournamentsView view={activeView} onAvailabilityChange={onAvailabilityChange} />}
+          {postmortem ? <PostmortemView onEditionChange={setReportEdition} /> : <TournamentsView view={activeView} onAvailabilityChange={onAvailabilityChange} />}
         </Suspense>
       </RouteErrorBoundary>
     </main>

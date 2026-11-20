@@ -174,6 +174,7 @@ test('tournament forecasts are available by default and keep published odds thro
   await page.getByText('T1 3–1 Gen.G').waitFor()
   await page.getByText(/Forecast receipt check failed; showing the last valid ledger/).waitFor({ state: 'hidden' })
   assert.match(await page.locator('section[aria-label="results"]').innerText(), /Published pre-match forecast/)
+  assert.equal(await page.getByText(/^Historical forecasts/).count(), 0, 'The results need no missing-forecast message when every receipt is verified')
   await page.locator('section[aria-label="results"]').getByText('Conditional Power preview', { exact: true }).click()
   assert.match(await page.locator('section[aria-label="results"]').innerText(), /Actual rating impact belongs to the rating evidence ledger/)
   assert.match(await page.locator('section[aria-label="results"]').innerText(), /Pre-match Power \(snapshot\): T1/)
@@ -182,10 +183,17 @@ test('tournament forecasts are available by default and keep published odds thro
     await page.setViewportSize({ width, height: 800 })
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Horizontal overflow at ${width}px`)
   }
-  feed = { ...feed, source: 'leaguepedia-cargo', unsupportedApi: false }
+  feed = { ...feed, source: 'leaguepedia-cargo', unsupportedApi: false, events: [{ ...feed.events[0]!, series: [
+    ...feed.events[0]!.series, { ...completed, id: 'fixture-match-no-receipt' },
+  ] }] }
   identityStatus = 503
   await page.clock.fastForward(65_000)
   await page.getByText(/Forecast unavailable: Forecasts are unavailable for this schedule source/).first().waitFor()
+  const results = page.getByRole('region', { name: 'results', exact: true })
+  await results.getByText('Historical forecasts are unavailable for this schedule source.', { exact: true }).waitFor()
+  assert.equal(await results.getByText(/^Historical forecasts/).count(), 1)
+  assert.equal(await results.getByText(/^Forecast unavailable:/).count(), 0)
+  assert.equal(await results.getByText('T1 3–1 Gen.G').count(), 2)
   assert.equal(await page.getByText('Published pre-match forecast', { exact: true }).count(), 0)
   assert.equal(await page.getByText(/Score-conditioned series odds:/).count(), 0)
   assert.match(await page.locator('body').innerText(), /T1 3–1 Gen.G/)

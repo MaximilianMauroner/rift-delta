@@ -18,6 +18,7 @@ import {
   prepareSemanticArtifact,
 } from '../scripts/public-artifact-storage.mjs'
 import { reportGame, reportTeams } from './tournamentReportFixtures.ts'
+import type { TournamentFeed } from '../src/domains/tournaments/read'
 
 function generation({ legacy = false, updated = false } = {}) {
   const matches = [
@@ -101,6 +102,7 @@ type Fixture = ReturnType<typeof generation>
 type Control = {
   generation: Fixture
   unavailable?: string
+  feed?: TournamentFeed
   feedGate?: Promise<void>
   delay?: { edition: string; promise: Promise<void> }
 }
@@ -126,7 +128,9 @@ async function journey(
           return next()
         requests.push(path)
         const kind = control.generation.kinds.get(path)
-        const body = control.generation.objects.get(path)
+        const body = path === '/tournament-data/feed.json' && control.feed
+          ? JSON.stringify(control.feed)
+          : control.generation.objects.get(path)
         const delay = control.delay
         const delayed =
           kind === 'tournament-report' &&
@@ -210,7 +214,7 @@ function team(report: TournamentReport, name: string) {
 const hash = (page: Page) =>
   page.evaluate(() => decodeURIComponent(location.hash))
 const eventPicker = (page: Page) =>
-  page.getByRole('combobox', { name: 'Report event', exact: true })
+  page.getByRole('combobox', { name: 'Worlds report', exact: true })
 const teamPicker = (page: Page) =>
   page.getByRole('combobox', { name: 'Report team', exact: true })
 const evidence = (page: Page, name = 'Focal') =>
@@ -252,6 +256,21 @@ test(
         exact: true,
       })
       await overview.getByText('Blue side wins', { exact: true }).waitFor()
+      const highlights = overview.locator('details').filter({ has: page.getByText('Stand-out stats', { exact: true }) })
+      await highlights.getByText('Stand-out stats', { exact: true }).focus()
+      assert.equal(await highlights.locator('li:visible').count(), 0)
+      await page.keyboard.press('Enter')
+      assert.ok(await highlights.locator('li:visible').count() > 0)
+      await page.setViewportSize({ width: 390, height: 844 })
+      assert.equal(await overview.locator('time').first().innerText(), '2025-10-15')
+      await highlights.locator('time').first().waitFor()
+      assert.ok(await overview.locator('time:visible').evaluateAll((dates) => dates.every((date) => {
+        const range = document.createRange()
+        range.selectNodeContents(date)
+        return range.getClientRects().length === 1
+      })), 'Coverage and game dates each occupy one line on mobile')
+      await page.keyboard.press('Enter')
+      await page.setViewportSize({ width: 1280, height: 900 })
       await overview.getByText('Team chart values', { exact: true }).click()
       const chartValues = overview.getByRole('table', { name: 'Win rate and gold at 15 values' })
       await chartValues.getByRole('button', { name: 'Alpha', exact: true }).focus()
@@ -422,6 +441,58 @@ test(
     })
   },
 )
+
+test('tournament views keep the Worlds edition and explain when they switch competitions', { timeout: 90_000 }, async () => {
+  await journey(async (page, base, control) => {
+    const playIn = '2024 Season World Championship/Play-In'
+    const main = '2024 Season World Championship/Main Event'
+    control.feed = {
+      version: 1, source: 'leaguepedia-cargo', unsupportedApi: false, dataMode: 'synthetic-fixture',
+      fetchedAt: '2025-10-15T10:00:00.000Z', sourceUpdatedAt: null,
+      coverage: { start: '2025-10-01', end: '2025-11-01', complete: true, warnings: [] },
+      events: [
+        { id: playIn, sourceTournamentId: playIn, competition: 'worlds', label: 'Worlds 2024 Play-In', season: '2024', series: [] },
+        { id: main, sourceTournamentId: main, competition: 'worlds', label: 'Worlds 2024 Main Event', season: '2024', series: [] },
+        { id: 'regional', sourceTournamentId: 'regional', competition: 'lcs', label: 'Regional Final', season: '2025', series: [] },
+      ],
+    }
+    await page.goto(`${base}/#tournaments`)
+    const competition = page.getByRole('combobox', { name: 'Competition', exact: true })
+    const tab = (name: string) => page.getByRole('link', { name, exact: true })
+    await page.getByRole('heading', { name: 'Regional Final', exact: true }).waitFor()
+    await tab('Team reports').focus()
+    await page.keyboard.press('Enter')
+    await page.getByText(/Team reports cover Worlds editions. Showing Worlds 2025/).waitFor()
+    await page.reload()
+    await tab('Schedule').click()
+    await page.getByRole('heading', { name: 'Regional Final', exact: true }).waitFor()
+
+    await competition.selectOption(playIn)
+    await tab('Team reports').click()
+    await page.getByRole('heading', { name: 'Worlds 2024', exact: true }).waitFor()
+    assert.equal(await page.getByText(/Your competition is saved/).count(), 0)
+    await teamPicker(page).selectOption(team(control.generation.reports['worlds:2024']!, 'Beta').id)
+    await tab('Bracket').click()
+    await page.getByRole('heading', { name: 'Worlds 2024 Play-In', exact: true }).waitFor()
+    assert.equal(await competition.inputValue(), playIn)
+    await tab('Schedule').click()
+    await page.getByRole('heading', { name: 'Worlds 2024 Play-In', exact: true }).waitFor()
+
+    await page.goto(`${base}/#tournaments?view=postmortem&event=worlds%3A2024`)
+    await page.getByRole('heading', { name: 'Worlds 2024', exact: true }).waitFor()
+    await tab('Bracket').click()
+    await page.getByRole('heading', { name: 'Worlds 2024 Main Event', exact: true }).waitFor()
+    assert.equal(await competition.inputValue(), main)
+    await tab('Team reports').click()
+    await page.getByRole('heading', { name: 'Worlds 2024', exact: true }).waitFor()
+    await eventPicker(page).selectOption('worlds:2025')
+    await page.getByRole('heading', { name: 'Worlds 2025', exact: true }).waitFor()
+    await tab('Schedule').click()
+    await page.getByText('No matching Worlds competition is available in this schedule. Showing Regional Final.', { exact: true }).waitFor()
+    await tab('Team reports').click()
+    await page.getByRole('heading', { name: 'Worlds 2025', exact: true }).waitFor()
+  })
+})
 
 test(
   'Worlds reports reject explicit invalid event/team/player selections without replacing their saved URLs',

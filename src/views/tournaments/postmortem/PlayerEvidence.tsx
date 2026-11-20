@@ -156,7 +156,7 @@ export function PlayerEvidence({
               >
                 <details className="min-w-0 break-words">
                   <summary className="cursor-pointer leading-6">
-                    {index + 1}. {game.date} · <strong>{game.result}</strong> vs {game.opponent}{' '}
+                    {index + 1}. <time className="whitespace-nowrap">{game.date}</time> · <strong>{game.result}</strong> vs {game.opponent}{' '}
                     · {game.champion ?? 'Champion unavailable'}
                     <span className="block text-muted tabular-nums">
                       Gold lead at 15:{' '}

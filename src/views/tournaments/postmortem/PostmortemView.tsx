@@ -1,4 +1,5 @@
 import { TriangleAlert } from 'lucide-react'
+import { useEffect } from 'react'
 import {
   useTournamentReport,
   useTournamentReports,
@@ -20,7 +21,7 @@ import { PlayerEvidence } from './PlayerEvidence'
 import { EventOverview } from './EventOverview'
 import { TeamFieldPosition, TeamGameSwings } from './TeamFieldPosition'
 
-export function PostmortemView() {
+export function PostmortemView({ onEditionChange }: { onEditionChange: (edition: string | undefined) => void }) {
   const { state, retry } = useTournamentReports()
   return (
     <section
@@ -52,7 +53,7 @@ export function PostmortemView() {
           </Button>
         </div></Alert>
       ) : (
-        <ReportCatalog index={state.data} retryCatalog={retry} />
+        <ReportCatalog index={state.data} retryCatalog={retry} onEditionChange={onEditionChange} />
       )}
     </section>
   )
@@ -61,29 +62,37 @@ export function PostmortemView() {
 function ReportCatalog({
   index,
   retryCatalog,
+  onEditionChange,
 }: {
   index: TournamentReportIndex
   retryCatalog: () => void
+  onEditionChange: (edition: string | undefined) => void
 }) {
   const query = useTournamentReportAddress()
   const requested = query.get('event')
+  const scheduleEdition = query.get('edition')
+  const matchingEdition = index.tournaments.find((event) => event.id === scheduleEdition)
   const entry =
     requested === null
-      ? index.tournaments[0]
+      ? matchingEdition ?? index.tournaments[0]
       : index.tournaments.find((event) => event.id === requested)
   const { state, retry } = useTournamentReport(index, entry)
+  const edition = entry?.id
+  useEffect(() => {
+    onEditionChange(edition)
+  }, [edition, onEditionChange])
   return (
     <>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <label htmlFor="report-event" className="sr-only">
-          Report event
+        <label htmlFor="report-event" className="text-sm font-semibold">
+          Worlds report
         </label>
         <Select
           id="report-event"
           className="h-auto max-w-full border-transparent bg-transparent py-1 pl-0 text-xl font-semibold text-text sm:text-2xl"
           value={entry?.id ?? ''}
           onChange={(event) =>
-            selectTournamentReport({ event: event.target.value })
+            selectTournamentReport({ event: event.target.value, changeEdition: true })
           }
         >
           {!entry ? <option value="">Choose a report</option> : null}
@@ -100,6 +109,11 @@ function ReportCatalog({
           </p>
         ) : null}
       </div>
+      {!matchingEdition && (query.has('scheduleEvent') || scheduleEdition) ? <p role="status" className="text-sm text-muted">
+        {scheduleEdition ? 'No Worlds report is available for this edition.' : 'Team reports cover Worlds editions.'}
+        {entry ? ` Showing ${entry.label}.` : ''}
+        {query.has('scheduleEvent') ? ' Your competition is saved for Bracket and Schedule.' : ''}
+      </p> : null}
       {!entry ? (
         <Alert data-first-answer="tournament-reports" role="status">
           {requested !== null
@@ -146,20 +160,24 @@ function ReportBody({ report }: { report: TournamentReport }) {
   })
   const { coverage } = report
   const players = new Set(report.teams.flatMap((team) => team.participants.map((player) => player.playerId))).size
+  const coverageCaption = <>
+    {coverage.observedGames} games · {coverage.observedTeams} teams · {players} players ·{' '}
+    <time className="whitespace-nowrap">{coverage.since}</time> to <time className="whitespace-nowrap">{coverage.through}</time>
+  </>
   return (
     <>
       <h2 className="sr-only">{report.label}</h2>
       {report.games ? (
         <EventOverview
           report={report}
-          caption={`${coverage.observedGames} games · ${coverage.observedTeams} teams · ${players} players · ${coverage.since} to ${coverage.through}`}
+          caption={coverageCaption}
           onSelectTeam={(team) =>
             selectTournamentReport({ event: report.id, team })
           }
         />
       ) : (
         <Alert data-first-answer="tournament-reports" role="status">
-          {coverage.observedGames} games · {coverage.observedTeams} teams · {players} players · {coverage.since} to {coverage.through}.
+          {coverageCaption}.
           This published report has no game records. Tournament and team
           statistics appear after the next report rebuild.
         </Alert>

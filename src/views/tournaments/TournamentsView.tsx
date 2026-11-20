@@ -18,7 +18,7 @@ import { SwissPreview } from './SwissPreview'
 import { TournamentBracket } from './TournamentBracket'
 import { WorldsTournamentPanel } from './WorldsTournamentPanel'
 import { cn } from '../../shared/utils'
-import type { TournamentTab } from '../../browser/tournament-reports/navigation'
+import type { TournamentTab, TournamentTabContext } from '../../browser/tournament-reports/navigation'
 
 /** The server rechecks Leaguepedia every five minutes while the hub is viewed. */
 const STALE_MS = 15 * REFRESH_MS
@@ -32,7 +32,10 @@ function replaceLegacyEventAlias(requested: string, address: string | undefined)
   writeNavigationHash(`#tournaments?${query}`, 'replace')
 }
 
-export function TournamentsView({ view, onAvailabilityChange }: { view: TournamentPanel; onAvailabilityChange: (hasEvent: boolean, swiss: boolean | null) => void }) {
+export function TournamentsView({ view, onAvailabilityChange }: {
+  view: TournamentPanel
+  onAvailabilityChange: (hasEvent: boolean, swiss: boolean | null, schedule?: TournamentTabContext['schedule']) => void
+}) {
   const [requestedEvent, setRequestedEvent] = useState(() => hashParam('event') ?? '')
   const { state, now, forecastArtifacts, refresh } = useTournamentResources(view)
   const events = state.status === 'ready' ? state.feed.events : EMPTY_EVENTS
@@ -48,7 +51,9 @@ export function TournamentsView({ view, onAvailabilityChange }: { view: Tourname
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [events])
   const link = resolveEventLink(events, requestedEvent)
-  const selected = link.kind === 'resolved' ? link.event : link.kind === 'absent' ? nextEvent(events, now) : undefined
+  const requestedEdition = hashParam('edition')
+  const editionEvent = requestedEdition && link.kind === 'absent' ? scheduleForEdition(events, requestedEdition) : undefined
+  const selected = link.kind === 'resolved' ? link.event : link.kind === 'absent' ? editionEvent ?? nextEvent(events, now) : undefined
   const address = link.kind === 'resolved' ? link.address : undefined
   useEffect(() => {
     replaceLegacyEventAlias(requestedEvent, address)
@@ -59,9 +64,11 @@ export function TournamentsView({ view, onAvailabilityChange }: { view: Tourname
   // Unknown until the feed is ready, so a direct Swiss link does not fall back to Bracket while it loads.
   const swissAvailable = state.status === 'ready' ? selected !== undefined && selected === findSwissEvent(events) : null
   const hasEvent = state.status !== 'ready' || selected !== undefined
+  const selectedAddress = selected ? address ?? eventAddress(selected) : undefined
+  const selectedEdition = selected?.competition === 'worlds' ? `worlds:${selected.season}` : undefined
   useEffect(() => {
-    onAvailabilityChange(hasEvent, swissAvailable)
-  }, [hasEvent, onAvailabilityChange, swissAvailable])
+    onAvailabilityChange(hasEvent, swissAvailable, selectedAddress ? { address: selectedAddress, edition: selectedEdition } : undefined)
+  }, [hasEvent, onAvailabilityChange, selectedAddress, selectedEdition, swissAvailable])
   if (state.status === 'loading') return <div className="grid min-w-0 gap-3 px-[var(--page-x)] pt-2"><LoadingState presentation="page" layout="schedule" delay={false} label="Loading tournament schedule" /></div>
   if (state.status === 'error') return <div className="grid min-w-0 gap-3 px-[var(--page-x)] pt-2 pb-6"><Alert variant="warning" role="alert"><TriangleAlert aria-hidden="true" /><div className="min-w-0">Tournament schedule unavailable: {state.message} <Button className="ml-2" onClick={() => void refresh()}>Retry</Button></div></Alert></div>
   const sourceAge = now - Date.parse(state.health?.checkedAt ?? state.feed.fetchedAt)
@@ -75,7 +82,7 @@ export function TournamentsView({ view, onAvailabilityChange }: { view: Tourname
   return (
     <div className="grid min-w-0 gap-3 px-[var(--page-x)] pt-2 pb-5">
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
-        <label htmlFor="tournament-event" className="sr-only">Competition</label>
+        <label htmlFor="tournament-event" className="text-sm font-semibold">Competition</label>
         <Select id="tournament-event" className="h-auto max-w-full border-transparent bg-transparent py-1 pl-0 text-xl font-semibold text-text sm:text-2xl" value={selected?.id ?? ''} onChange={(event) => {
           const picked = events.find((candidate) => candidate.id === event.target.value)
           if (picked) selectEvent(picked, setRequestedEvent)
@@ -85,6 +92,9 @@ export function TournamentsView({ view, onAvailabilityChange }: { view: Tourname
         </Select>
         {state.feed.dataMode === 'synthetic-fixture' ? <p role="status" className="min-w-[7.5rem] flex-1 text-xs leading-snug text-[var(--warn)]"><TriangleAlert aria-hidden="true" className="mr-1 inline size-4 align-text-bottom" />Test fixture data. Not official LoL Esports results.</p> : null}
       </div>
+      {link.kind === 'absent' && requestedEdition && !editionEvent ? <p role="status" className="text-sm text-muted">
+        No matching Worlds competition is available in this schedule.{selected ? ` Showing ${selected.label}.` : ''}
+      </p> : null}
       {stale ? <Alert variant="warning" role="status"><TriangleAlert aria-hidden="true" /><div className="min-w-0">
         Schedule may be stale. Feed changed {formatFeedAge(state.feed.fetchedAt, now)}, last checked {state.health ? formatFeedAge(state.health.checkedAt, now) : 'unknown'}.
         {[state.error, ...(state.health?.warnings ?? [])].filter(Boolean).map((warning) => ` ${warning}`).join('')}
@@ -153,8 +163,14 @@ type ScheduleProps = { timezone: string; now: number; seriesSource: TournamentFe
 /** Live first, then what is next, then the newest results. */
 function ScheduleSection({ group, series, ...props }: ScheduleProps & { group: typeof SECTION_ORDER[number]; series: TournamentSeries[] }) {
   if (!series.length) return null
+  const missingForecast = group === 'results'
+    ? series.map((entry) => pinnedForecast(props.forecasts.ledger, entry, props.seriesSource)).find((forecast) => forecast.status === 'unavailable')
+    : undefined
   return <section aria-label={group} className="grid gap-2">
     <h3 className={cn('flex items-baseline gap-2 text-base font-semibold', group === 'live' ? 'text-[var(--live)]' : 'text-text')}>{SECTION_TITLES[group]}{' '}<span className="text-xs font-normal text-muted tabular-nums">{series.length}</span></h3>
+    {missingForecast ? <p className="text-xs text-muted">{missingForecast.reason === 'unsupported-source'
+      ? 'Historical forecasts are unavailable for this schedule source.'
+      : 'Historical forecasts appear when a verified pre-match forecast is available.'}</p> : null}
     <SeriesList series={series} {...props} />
   </section>
 }
@@ -193,6 +209,7 @@ function SeriesRow({ series, timezone, now, seriesSource, forecasts }: ScheduleP
   }, [forecasts, scheduledStartPassed, series, seriesSource])
   const scored = first?.gameWins != null || second?.gameWins != null
   const live = series.status === 'live'
+  const historical = series.status === 'completed' || series.status === 'cancelled'
   return <li className={cn('grid gap-x-4 gap-y-1.5 px-3 py-2.5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-baseline lg:grid-cols-[8rem_minmax(0,1fr)_minmax(0,auto)]', live && 'shadow-[inset_2px_0_0_var(--live)]')}>
     <div className="flex flex-wrap gap-x-2 text-xs text-muted sm:grid sm:gap-0.5">
       <span className="text-text tabular-nums">{series.startTime ? formatClock(series.startTime, timezone) : 'Time not supplied'}</span>
@@ -215,7 +232,7 @@ function SeriesRow({ series, timezone, now, seriesSource, forecasts }: ScheduleP
       {series.vodUrls.map((url) => <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="underline">Watch VOD</a>)}
     </p>
     <div className="grid min-w-0 gap-2 sm:col-start-2 lg:col-span-2">
-      {forecast ? <SeriesForecast series={series} forecast={forecast} timezone={timezone} seriesSource={seriesSource} /> : null}
+      {forecast && (!historical || forecast.status === 'ready') ? <SeriesForecast series={series} forecast={forecast} timezone={timezone} seriesSource={seriesSource} /> : null}
       <ConditionalPowerPreview key={JSON.stringify([series, forecast, forecasts.powerPreviews])} series={series} forecast={forecast} now={now} basis={forecasts.basis} powerPreviews={forecasts.powerPreviews} />
     </div>
   </li>
@@ -280,7 +297,14 @@ function selectEvent(event: TournamentEvent, update: (value: string) => void) {
   const address = eventAddress(event)
   update(address)
   const query = currentHashQuery()
+  query.delete('edition')
   query.set('event', address)
   writeNavigationHash(`tournaments?${query}`, 'navigate')
+}
+function scheduleForEdition(events: TournamentEvent[], edition: string) {
+  const matches = events.filter((event) => event.competition === 'worlds' && `worlds:${event.season}` === edition)
+  if (matches.length === 1) return matches[0]
+  const main = matches.filter((event) => event.sourceTournamentId.endsWith('/Main Event'))
+  return main.length === 1 ? main[0] : undefined
 }
 type TournamentPanel = Exclude<TournamentTab, 'postmortem'>

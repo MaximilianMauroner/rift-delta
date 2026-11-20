@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { TeamMark } from '../../components/TeamMark'
@@ -20,6 +20,7 @@ const ROW_GAP = 0.75
 const HEADER_H = 2
 const LANE_LABEL_H = 1.875
 const COLUMN_W = CARD_W + COL_GAP
+const FADE_W = 2.5
 const rem = (value: number) => `${value}rem`
 
 type Trace = { active: string | null; pinned: string | null; hover: (team: string | null) => void; toggle: (team: string) => void }
@@ -116,7 +117,8 @@ function EliminationView({ section, trace, timezone }: { section: EliminationSec
   const layout = useMemo(() => layoutElimination(section), [section])
   const byId = new Map(layout.placed.map((entry) => [entry.match.series.id, entry]))
   const focusColumn = currentColumn(section.columns.map((_, column) => section.matches.filter((match) => match.column === column).map((match) => match.series)))
-  return <BracketScroller focusX={focusColumn * COLUMN_W}>
+  return <BracketScroller columns={layout.champion ? [...section.columns, 'Winner'] : section.columns}
+    focusColumn={focusColumn} columnWidth={COLUMN_W}>
     <div className="relative" style={{ width: rem(layout.width), height: rem(layout.height) }}>
       {section.columns.map((title, column) => <ColumnHeader key={title} x={column * COLUMN_W} title={title} current={column === focusColumn}
         series={section.matches.filter((match) => match.column === column).map((match) => match.series)} timezone={timezone} />)}
@@ -173,15 +175,19 @@ function ColumnHeader({ x, title, series, timezone, current = false }: { x: numb
 }
 
 /** Scrolls sideways inside its own frame. Opens with the current round and the one after it in view, and as much history as fits. */
-function BracketScroller({ focusX, children }: { focusX: number; children: ReactNode }) {
+function BracketScroller({ columns, focusColumn, columnWidth, children }: {
+  columns: string[]; focusColumn: number; columnWidth: number; children: ReactNode
+}) {
+  const id = useId()
   const ref = useRef<HTMLDivElement>(null)
   const [more, setMore] = useState({ start: false, end: false })
+  const focusX = focusColumn * columnWidth
   useLayoutEffect(() => {
     const element = ref.current
     if (!element) return
     if (element.scrollWidth > element.clientWidth) {
       const px = parseFloat(getComputedStyle(document.documentElement).fontSize)
-      element.scrollLeft = Math.max(0, Math.min(focusX * px, (focusX + 2 * COLUMN_W) * px - element.clientWidth) - 2.5 * px)
+      element.scrollLeft = Math.max(0, Math.min(focusX * px, (focusX + 2 * columnWidth) * px - element.clientWidth) - FADE_W * px)
     }
     const measure = () => setMore({ start: element.scrollLeft > 1, end: element.scrollLeft + element.clientWidth < element.scrollWidth - 1 })
     measure()
@@ -189,13 +195,24 @@ function BracketScroller({ focusX, children }: { focusX: number; children: React
     observer.observe(element)
     element.addEventListener('scroll', measure, { passive: true })
     return () => { observer.disconnect(); element.removeEventListener('scroll', measure) }
-  }, [focusX])
+  }, [columnWidth, focusX])
   return <div className="grid min-w-0 gap-1.5">
-    <div ref={ref} tabIndex={0} role="region" aria-label="Bracket, scrolls sideways" data-more-start={more.start} data-more-end={more.end}
+    {more.start || more.end ? <div role="group" aria-label="Jump to a bracket round" className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <p id={`${id}-hint`} className="text-xs text-muted">Scroll sideways or jump to a round.</p>
+      <div className="flex min-w-0 flex-wrap gap-1">
+        {columns.map((title, column) => <Button key={column} variant="outline" size="sm" aria-controls={id}
+          className="h-auto min-h-8 max-w-full py-1 whitespace-normal"
+          onClick={() => {
+            const px = parseFloat(getComputedStyle(document.documentElement).fontSize)
+            ref.current?.scrollTo({ left: Math.max(0, column * columnWidth - FADE_W) * px })
+          }}>{title}</Button>)}
+      </div>
+    </div> : null}
+    <div ref={ref} id={id} tabIndex={0} role="region" aria-label="Bracket, scrolls sideways"
+      aria-describedby={more.start || more.end ? `${id}-hint` : undefined} data-more-start={more.start} data-more-end={more.end}
       className="bracket-frame min-w-0 overflow-x-auto overscroll-x-contain border-y border-line px-1 pt-1 pb-3 outline-none focus-visible:ring-1 focus-visible:ring-focus">
       {children}
     </div>
-    {more.start || more.end ? <p className="text-xs text-muted">Scroll sideways to see {more.start && more.end ? 'earlier and later rounds' : more.end ? 'later rounds' : 'earlier rounds'}.</p> : null}
   </div>
 }
 
@@ -248,7 +265,9 @@ function SwissView({ section, trace, timezone }: { section: SwissSection; trace:
   const advanced = section.standings.filter((standing) => standing.status === 'advanced')
   const eliminated = section.standings.filter((standing) => standing.status === 'eliminated')
   const focusColumn = currentColumn(section.rounds.map((round) => round.series))
-  return <BracketScroller focusX={focusColumn * (CARD_W + 1)}>
+  const columns = section.rounds.map((round) => round.title)
+  if (advanced.length || eliminated.length) columns.push('Outcome')
+  return <BracketScroller columns={columns} focusColumn={focusColumn} columnWidth={CARD_W + 1}>
     <div className="flex items-start gap-4">
       {section.rounds.map((round, index) => <div key={round.title} className="grid shrink-0 content-start gap-2.5" style={{ width: rem(CARD_W) }}>
           <div className={cn('flex items-baseline justify-between gap-2 border-b pb-1.5', index === focusColumn ? 'border-text' : 'border-line')} aria-current={index === focusColumn ? 'step' : undefined}>
